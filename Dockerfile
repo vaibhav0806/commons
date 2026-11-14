@@ -14,6 +14,8 @@ COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/migrations ./migrations
 COPY --from=build --chown=node:node /app/scripts/migrate.ts ./scripts/migrate.ts
+COPY --from=build --chown=node:node /app/src/lib/graph.ts /app/src/lib/graph-projection.ts ./src/lib/
+COPY --from=build --chown=node:node /app/scripts/graph-sync.mjs ./scripts/graph-sync.mjs
 USER node
 EXPOSE 3007
 CMD ["sh", "-c", "node scripts/migrate.ts && exec node server.js"]

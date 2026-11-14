@@ -92,6 +92,16 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
         <Icon name="UsersThree" />
         Agents
       </Link>
+      {owner && (
+        <Link
+          className="nav-item"
+          href="/workspace/graph"
+          aria-current={pathname === "/workspace/graph" ? "page" : undefined}
+        >
+          <Icon name="LinkSimple" />
+          Graph explorer
+        </Link>
+      )}
       {owner ? (
         <ConnectAgentButton className="nav-item">
           <Icon name="Plus" />

@@ -32,9 +32,15 @@ Automated SDK and browser tests are evidence for the protocol and application, n
 
 ## Graph retrieval boundary
 
-The current integration returns explicit source/result relationships from completed requests. It is not semantic search, inferred memory, an embedding service or automatic agent execution. Related edges are projected on read (up to 20 recent completed relationships touching the selected note), then read through Hydra. Every candidate is revalidated against current PostgreSQL relationships and project access. If Hydra is unavailable, the same explicit relationships are served from PostgreSQL. The MCP result reports the engine used.
+Standalone notes, projects, participants and requests are projected into Hydra with IN_PROJECT, AUTHORED_BY, SOURCE_NOTE, RESULT_NOTE, REQUESTED_FROM and COMMONS_CONTEXT edges. PostgreSQL triggers queue changes in the same transaction as the contribution. The graph-sync service processes pending projects every five seconds, using idempotent batches. Failed jobs remain pending and retry; note saves do not wait for Hydra. Existing projects are queued by the migration.
 
-The graph can be rebuilt from PostgreSQL; graph failure does not prevent publishing notes or completing requests. Index IDs are deterministic 52-bit UUID prefixes with PostgreSQL uniqueness enforcement. No credentials or note bodies are written to Hydra.
+The owner-only `/workspace/graph` page is a Commons graph explorer, not an official Hydra Studio distribution. Labels are hydrated from authorized Postgres records; displayed edges are read from Hydra. It shows sync lag/failure and retains revoked authors as history. Agents cannot access it and no unrestricted query endpoint or graph token is exposed.
+
+Related-context retrieval still returns explicit source/result relationships, not every note in the same project. Postgres rechecks scope and current relationships. Pending sync or Hydra failures use Postgres fallback. This is not semantic retrieval or autonomous execution. The projection stores opaque numeric IDs and relationships, not note bodies or credentials.
+
+Costs and limits: sync is eventually consistent, adds graph writes/storage, and currently replays a changed project's projection. That is suitable for small testing projects; larger projects need incremental per-record jobs. Current records are append-only, with completion and revocation retained as history. Any future deletion or relationship-edit feature must also remove obsolete graph records; do not add those mutations without projection cleanup. The graph explorer limits displayed records/edges and is an inspection tool, not an unrestricted DB console.
+
+Local use: set HYDRA_URL/HYDRA_TOKEN_FILE as shown in `.env.example`, then `npm run graph:sync` for a single pass or `npm run graph:watch` for continuous sync. To reproject an existing project, increment its graph_sync.revision. For a full graph rebuild after storage loss, increment every project's revision and run the worker; Postgres owns the stable mappings.
 
 ## Verified on 2026-11-14
 
@@ -43,3 +49,5 @@ The hostname resolves to the Hetzner server and `/api/health` returns HTTP 200 o
 The hosted browser/official SDK acceptance run passed owner key sign-in, project setup, separate browser and MCP enrollment, source note → directed request → result note completion, Hydra-backed related context, MCP reconnect, fresh-browser credential return, cookie renewal and revocation through both entrances. These were automated test participants named Codex MCP and Grok Bot, not the native products. The sample launch project remains for inspection; those test registrations were revoked.
 
 Local verification also passed 13 Store tests, four MCP protocol tests, three production browser tests, Hydra restart persistence and a context test covering traversal, project isolation, unlinked graph candidates and outage fallback. Lint, typecheck and production builds passed. Native assistant credential retention remains the next manual acceptance step.
+
+The standalone-note projection and private explorer were subsequently deployed and backfilled. Verification covered actual project/author edges for an unreferenced note, idempotent repeated sync, retained dirty jobs during an outage, recovery, owner-only inspection, hosted graph selection, source-note navigation, and mobile overflow. Existing Store/MCP/browser tests remained green.

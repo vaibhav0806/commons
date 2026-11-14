@@ -726,6 +726,62 @@ export class Store {
       await this.record(current, request.projectId, "Completed a request", id);
     return this.getRequest(current, id);
   }
+  async inspectGraph(actor: Principal, projectId: string) {
+    await this.owner(actor);
+    await this.getProject(actor, projectId);
+    const sync = await this.one<{
+      revision: number;
+      syncedRevision: number;
+      syncedAt: string | null;
+      lastError: string | null;
+    }>("SELECT * FROM graph_sync WHERE project_id=$1", [projectId]);
+    const nodes = await this.rows<{
+      id: number;
+      resourceId: string;
+      kind: string;
+      title: string;
+      revoked: boolean;
+    }>(
+      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,r.title,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
+       FROM graph_entities g LEFT JOIN notes n ON g.kind='note' AND n.id=g.resource_id
+       LEFT JOIN requests r ON g.kind='request' AND r.id=g.resource_id
+       LEFT JOIN participants p ON g.kind='participant' AND p.id=g.resource_id
+       LEFT JOIN projects pr ON g.kind='project' AND pr.id=g.resource_id
+       WHERE g.project_id=$1 ORDER BY g.kind,g.id LIMIT 200`,
+      [projectId],
+    );
+    const edges: { source: number; target: number; kind: string }[] = [];
+    let available = graphEnabled();
+    if (available && nodes.length) {
+      try {
+        const allowed = new Set(nodes.map((n) => n.id));
+        for (const kind of [
+          "IN_PROJECT",
+          "AUTHORED_BY",
+          "SOURCE_NOTE",
+          "RESULT_NOTE",
+          "REQUESTED_FROM",
+          "COMMONS_CONTEXT",
+        ]) {
+          const result = await graphQuery(
+            `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1000`,
+            { ids: [...allowed] },
+          );
+          for (const row of result.rows) {
+            const source = Number(row[0]?.value),
+              target = Number(row[1]?.value);
+            if (allowed.has(source) && allowed.has(target))
+              edges.push({ source, target, kind });
+          }
+        }
+      } catch {
+        available = false;
+        edges.length = 0;
+      }
+    }
+    await this.owner(actor);
+    return { nodes, edges, available, sync };
+  }
   async relatedContext(actor: Principal, noteId: string) {
     const source = await this.getNote(actor, noteId);
     await this.connection.query(
@@ -746,12 +802,11 @@ export class Store {
     let engine = "postgres";
     if (graphEnabled()) {
       try {
-        for (const link of links) {
-          await graphQuery(
-            "MERGE (a {id: $source})-[:COMMONS_CONTEXT]->(b {id: $target})",
-            link,
-          );
-        }
+        const sync = await this.one<{ ready: boolean }>(
+          "SELECT revision=synced_revision AS ready FROM graph_sync WHERE project_id=$1",
+          [source.projectId],
+        );
+        if (!sync?.ready) throw new Error("Graph projection pending");
         const result = await graphQuery(
           "MATCH (a {id: $source})-[:COMMONS_CONTEXT]-(b) RETURN b.id AS id LIMIT 20",
           { source: root.id },

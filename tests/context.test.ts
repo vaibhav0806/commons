@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Pool } from "pg";
 import { Store, CommonsError } from "../src/lib/store";
+import { syncGraphProject } from "../src/lib/graph-projection";
 import { graphQuery } from "../src/lib/graph";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
@@ -56,7 +57,46 @@ test("Hydra retrieves linked context, rejects unrelated context and falls back d
   await store.acknowledge(agent, request.id);
   await store.completeRequest(agent, request.id, output.id);
   let graphIds: number[] = [];
+  const standalone = await store.createNote(
+    owner,
+    project.id,
+    { title: "Independent update", body: "No request references this note." },
+    crypto.randomUUID(),
+  );
   try {
+    assert.equal(
+      (await store.relatedContext(agent, source.id)).engine,
+      "postgres-fallback",
+    );
+    assert.equal(await syncGraphProject(pool, project.id), true);
+    const snapshot = await store.inspectGraph(owner, project.id);
+    assert.equal(snapshot.available, true);
+    const node = snapshot.nodes.find((n) => n.resourceId === standalone.id)!;
+    assert.ok(node);
+    assert.ok(
+      snapshot.edges.some(
+        (e) => e.source === node.id && e.kind === "IN_PROJECT",
+      ),
+    );
+    assert.ok(
+      snapshot.edges.some(
+        (e) => e.source === node.id && e.kind === "AUTHORED_BY",
+      ),
+    );
+    assert.equal(
+      (await store.relatedContext(agent, standalone.id)).notes.length,
+      0,
+    );
+    await assert.rejects(store.inspectGraph(agent, project.id), CommonsError);
+    await pool.query(
+      "UPDATE graph_sync SET revision=revision+1 WHERE project_id=$1",
+      [project.id],
+    );
+    await syncGraphProject(pool, project.id);
+    assert.deepEqual(
+      (await store.inspectGraph(owner, project.id)).edges,
+      snapshot.edges,
+    );
     const result = await store.relatedContext(agent, source.id);
     assert.equal(result.engine, "hydradb");
     assert.deepEqual(
@@ -98,12 +138,37 @@ test("Hydra retrieves linked context, rejects unrelated context and falls back d
       [output.id],
     );
     process.env.HYDRA_URL = "http://127.0.0.1:1";
+    await pool.query(
+      "UPDATE graph_sync SET revision=revision+1 WHERE project_id=$1",
+      [project.id],
+    );
+    await assert.rejects(syncGraphProject(pool, project.id));
+    const job = (
+      await pool.query(
+        "SELECT revision>synced_revision pending,last_error FROM graph_sync WHERE project_id=$1",
+        [project.id],
+      )
+    ).rows[0];
+    assert.equal(job.pending, true);
+    assert.ok(job.last_error);
     const fallback = await store.relatedContext(agent, source.id);
     assert.equal(fallback.engine, "postgres-fallback");
     assert.equal(fallback.notes[0].id, output.id);
   } finally {
     process.env.HYDRA_URL = "http://127.0.0.1:18443";
-    for (const source of graphIds)
+    await syncGraphProject(pool, project.id);
+    assert.equal(
+      (await store.relatedContext(agent, source.id)).engine,
+      "hydradb",
+    );
+    graphIds.push(
+      ...(
+        await pool.query("SELECT id FROM graph_entities WHERE project_id=$1", [
+          project.id,
+        ])
+      ).rows.map((r) => Number(r.id)),
+    );
+    for (const source of new Set(graphIds))
       await graphQuery("MATCH (a {id: $source}) DETACH DELETE a", { source });
     await pool.end();
   }

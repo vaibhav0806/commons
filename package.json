@@ -22,7 +22,9 @@
     "check": "npm run lint && npm run typecheck",
     "hydra:status": "docker compose --profile graph ps hydra",
     "hydra:logs": "docker compose --profile graph logs --tail=100 hydra",
-    "test:context": "node --env-file=.env.local --import tsx --test tests/context.test.ts"
+    "test:context": "node --env-file=.env.local --import tsx --test tests/context.test.ts",
+    "graph:sync": "node --env-file=.env.local scripts/graph-sync.mjs --once",
+    "graph:watch": "node --env-file=.env.local scripts/graph-sync.mjs"
   },
   "license": "UNLICENSED",
   "type": "module",

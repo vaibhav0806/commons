@@ -19,6 +19,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+  graph-sync:
+    image: commons:testing
+    command: [node, scripts/graph-sync.mjs]
+    restart: unless-stopped
+    env_file: .env.hosted
+    environment:
+      HYDRA_URL: http://hydra:8443
+      HYDRA_TOKEN_FILE: /run/secrets/hydra_token
+    secrets: [hydra_token]
+    networks: [default, database]
+    mem_limit: 256m
+    cpus: 0.5
+    depends_on:
+      app:
+        condition: service_healthy
   hydra:
     extends:
       file: compose.yaml

@@ -120,6 +120,8 @@ Stop the running app before rebuilding its `.next` output. After building, use `
 
 Local browser and MCP participation are implemented. Google identity is mocked locally; hosted private testing uses an owner access key. Private HTTPS hosting is live at https://commons.0xvaibhav.com. Native agent-provider compatibility remains unverified; this is not the public release. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
 
+The private owner graph explorer is at `/workspace/graph`. Standalone notes and explicit project, author and request relationships sync to Hydra through a durable background queue.
+
 Private hosting and the real-agent walkthrough are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 
 ## Contributing
