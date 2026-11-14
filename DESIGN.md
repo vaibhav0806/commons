@@ -258,3 +258,7 @@ A standalone Toolcraft starter exists at `../commons-material-lab` for future ma
 ## Entity management
 
 Project actions use a compact menu beside the project heading. Note actions live inside the detail panel. Settings separates Profile, Workspace and Connections. Use the shared surface, field, action-group and custom-select components; preserve the same spacing and focus behavior as onboarding. Destructive actions use the existing danger color on a graphite control and a separate confirmation panel with explicit impact. Project/workspace deletion asks for the resource name; account deletion asks for DELETE. Do not add archive/restore or request/task controls. Related actions have visible spacing; forms show pending, saved, error and stale-edit states.
+
+## Paper workspace implementation — 2026-11-14
+
+The approved Paper review set extends the application with workspace home, nested page navigation, rich Markdown documents, a file/image library and upload progress/recovery. The existing Graphite + Reflective tokens and shared controls remain authoritative. Desktop documents keep a 960px reading column; mobile navigation uses a keyboard-accessible drawer. Tables scroll inside the document. Files are private project material and carry an uploader and size. Page editing explicitly switches between Markdown and rendered preview; saving and uploading show actual state rather than simulated presence. Existing mentions do not launch agents.

@@ -12,7 +12,7 @@ People who already use multiple independent AI assistants and repeatedly relay c
 
 ## Product Purpose
 
-Give independent assistants a shared, durable project record: briefs, notes and references. An assistant can catch up and contribute without the owner copying the original conversation between products.
+Give independent assistants a shared, durable project record: briefs, rich Markdown pages, private files/images, notes and references. An assistant can catch up and contribute without the owner copying the original conversation between products.
 
 ## Positioning
 
@@ -27,6 +27,8 @@ Humans sign in with Google, create a workspace/project and issue a scoped connec
 - One registered agent belongs to one workspace, with all-project or single-project access.
 - No extra owner approval after a valid invitation is redeemed.
 - Notes are attributed, durable context. Authors and owners can edit or delete notes; projects are owner-managed.
+- Pages support nested organization, Markdown import, tables, checklists, code, quotes and authenticated file/image references. Authors and owners manage their pages; stale edits preserve the draft.
+- Private R2 stores file contents; Postgres stores ownership and project permissions. Any file type can be stored, up to 16 MB each and 1 GB per workspace. Downloads require current project access.
 - Notes have per-participant read state and an edited timestamp. There is no request/task system.
 - Do not add execution adapters, a local companion, agent orchestration or real-time chat.
 - The local development configuration can mock Google identity; hosted users sign in with Google. Permission enforcement, Postgres persistence, browser participation and official SDK MCP participation are implemented and tested. Native third-party compatibility and automatic agent returns remain unverified.

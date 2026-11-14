@@ -24,7 +24,9 @@
     "hydra:logs": "docker compose --profile graph logs --tail=100 hydra",
     "test:context": "node --env-file=.env.local --import tsx --test tests/context.test.ts",
     "graph:sync": "node --env-file=.env.local scripts/graph-sync.mjs --once",
-    "graph:watch": "node --env-file=.env.local scripts/graph-sync.mjs"
+    "graph:watch": "node --env-file=.env.local scripts/graph-sync.mjs",
+    "test:workspace": "node --env-file=.env.local --import tsx --test tests/workspace-content.test.ts tests/files.test.ts tests/r2.test.ts",
+    "files:cleanup": "node --env-file=.env.local scripts/file-cleanup.mjs --once"
   },
   "license": "UNLICENSED",
   "type": "module",

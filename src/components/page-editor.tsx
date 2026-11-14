@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
+import type { ProjectFile } from "@/lib/store";
 import type { WorkspacePage } from "@/lib/store";
 import { MarkdownContent } from "./markdown";
 import { SelectField } from "./ui/select-field";
@@ -20,14 +22,19 @@ const blocks = [
 export function PageEditor({
   page,
   pages,
+  files,
+  projectId,
 }: {
   page?: WorkspacePage;
   pages: WorkspacePage[];
+  files: Pick<ProjectFile, "id" | "name" | "mimeType">[];
+  projectId: string;
 }) {
   const [body, setBody] = useState(page?.body || ""),
     [preview, setPreview] = useState(false),
     [menu, setMenu] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [filePicker, setFilePicker] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null),
     importer = useRef<HTMLInputElement>(null);
   function insert(value: string) {
@@ -104,7 +111,16 @@ export function PageEditor({
           {menu && (
             <div className="block-menu" aria-label="Insert a block">
               {blocks.map(([label, value]) => (
-                <button type="button" key={label} onClick={() => insert(value)}>
+                <button
+                  type="button"
+                  key={label}
+                  onClick={() => {
+                    if (label === "File or image") {
+                      setMenu(false);
+                      setFilePicker(true);
+                    } else insert(value);
+                  }}
+                >
                   {label}
                 </button>
               ))}
@@ -119,6 +135,43 @@ export function PageEditor({
           Import Markdown
         </button>
       </div>
+      {filePicker && (
+        <section className="editor-file-picker">
+          <div className="section-title">
+            <h3>Insert a project file</h3>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setFilePicker(false)}
+            >
+              Close
+            </button>
+          </div>
+          {files.map((file) => (
+            <button
+              key={file.id}
+              type="button"
+              className="context-row compact-row"
+              onClick={() => {
+                const image = file.mimeType.startsWith("image/");
+                insert(
+                  `\n${image ? "!" : ""}[${file.name.replace(/[\[\]]/g, "")}](/api/files/${file.id}${image ? "?preview=1" : ""})\n`,
+                );
+                setFilePicker(false);
+              }}
+            >
+              {file.name}
+            </button>
+          ))}
+          <Link
+            className="text-link"
+            target="_blank"
+            href={`/workspace/projects/${projectId}/files`}
+          >
+            Upload or browse more files
+          </Link>
+        </section>
+      )}
       <input
         ref={importer}
         type="file"

@@ -3950,3 +3950,33 @@ input.join-code {
   font-size: var(--type-body) !important;
   margin: 6px 0 !important;
 }
+.file-drop-zone { display:flex; align-items:center; gap:20px; padding:24px 28px; border:1px dashed var(--strong); border-radius:14px; background:var(--surface); scroll-margin-top:24px; }
+.file-drop-zone.dragging { border-color:var(--focus); background:var(--raised); }
+.file-drop-zone > div { flex:1; min-width:0; }
+.file-drop-zone h2 { font-size:16px; }
+.file-drop-zone p { color:var(--muted); font-size:13px; margin-top:6px; }
+.file-drop-zone > .icon { width:24px; height:24px; }
+.upload-state { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:20px; margin-top:20px; border:1px solid var(--line); border-radius:8px; }
+.upload-state > div { flex:1; min-width:0; overflow-wrap:anywhere; }
+.upload-state p,.upload-state small { font-size:13px; color:var(--muted); margin:8px 0; }
+.upload-state progress { accent-color:var(--accent); width:100%; height:4px; }
+.file-table-heading,.file-table-row { display:grid; grid-template-columns:minmax(200px,1fr) 170px 110px 70px; gap:20px; align-items:center; padding:18px 0; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); }
+.file-table-heading { font-size:12px; }
+.file-name { display:flex; gap:14px; align-items:center; color:var(--text); min-width:0; }
+.file-name strong { font-weight:500; overflow-wrap:anywhere; }
+.file-extension { width:40px; height:44px; flex-shrink:0; display:grid; place-items:center; border-radius:8px; background:var(--raised); font:10px var(--font-code); }
+.file-image-preview { display:block; width:100%; max-height:440px; object-fit:contain; border:1px solid var(--line); border-radius:14px; }
+.file-detail-actions { display:flex; flex-wrap:wrap; gap:16px; margin:24px 0; }
+@media(max-width:700px) { .file-drop-zone { flex-wrap:wrap; padding:20px; gap:16px; } .file-drop-zone > div { min-width:220px; } .file-drop-zone > button { width:100%; } .file-table-heading { display:none; } .file-table-row { grid-template-columns:minmax(0,1fr) auto; gap:8px 16px; } .file-name { grid-column:1/-1; } .file-table-row > time { text-align:right; } .file-table-row > span:last-child { grid-column:1/-1; padding-left:54px; } .upload-state { flex-wrap:wrap; } }
+
+.markdown-content input[type="checkbox"] {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0 8px 0 0;
+  padding: 0;
+  vertical-align: middle;
+  accent-color: var(--text-primary);
+}
+.markdown-content .task-list-item { list-style: none; }

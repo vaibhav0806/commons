@@ -59,6 +59,8 @@ export type Note = {
   createdAt: number;
   read: boolean;
 };
+export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
+const fileSelect = "SELECT f.*,p.name AS author_name FROM project_files f JOIN participants p ON p.id=f.author_id";
 export type PageInput = {
   title: string;
   body: string;
@@ -959,11 +961,13 @@ export class Store {
       title: string;
       revoked: boolean;
     }>(
-      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
+      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,d.title,f.name,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
        FROM graph_entities g LEFT JOIN notes n ON g.kind='note' AND n.id=g.resource_id
        LEFT JOIN participants p ON g.kind='participant' AND p.id=g.resource_id
+       LEFT JOIN pages d ON g.kind='page' AND d.id=g.resource_id
+       LEFT JOIN project_files f ON g.kind='file' AND f.id=g.resource_id AND f.ready
        LEFT JOIN projects pr ON g.kind='project' AND pr.id=g.resource_id
-       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
+       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR d.id IS NOT NULL OR f.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
       [projectId],
     );
     const edges: { source: number; target: number; kind: string }[] = [];
@@ -971,7 +975,7 @@ export class Store {
     if (available && sync?.revision === sync?.syncedRevision && nodes.length) {
       try {
         const allowed = new Set(nodes.map((n) => n.id));
-        for (const kind of ["IN_PROJECT", "AUTHORED_BY"]) {
+        for (const kind of ["IN_PROJECT", "AUTHORED_BY", "IN_PAGE", "REFERENCES"]) {
           const result = await graphQuery(
             `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1000`,
             { ids: [...allowed] },
@@ -990,6 +994,56 @@ export class Store {
     }
     await this.owner(actor);
     return { nodes, edges, available, sync };
+  }
+  async listFiles(actor: Principal, projectId: string, options: { query?: string; offset?: number } = {}) {
+    await this.getProject(actor, projectId);
+    const offset = z.number().int().min(0).max(1000000).parse(options.offset || 0);
+    const query = z.string().max(200).parse(options.query || "");
+    const files = await this.rows<ProjectFile>(`${fileSelect} WHERE f.project_id=$1 AND f.ready AND f.name ILIKE $2 ORDER BY f.created_at DESC,f.id DESC LIMIT 51 OFFSET $3`, [projectId, `%${query}%`, offset]);
+    return { files: files.slice(0, 50), nextOffset: files.length > 50 ? offset + 50 : null };
+  }
+  async getFile(actor: Principal, fileId: string, includePending = false) {
+    const file = await this.one<ProjectFile>(`${fileSelect} WHERE f.id=$1 AND (f.ready OR $2)`, [idSchema.parse(fileId), includePending]);
+    if (!file) throw new CommonsError("This file is unavailable.", 404);
+    await this.getProject(actor, file.projectId);
+    return file;
+  }
+  async reserveFile(actor: Principal, projectId: string, input: { name: string; size: number; mimeType: string; checksum: string }) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id);
+      await tx.getProject(current, projectId);
+      await tx.rateLimit(`upload:${current.id}`, 30);
+      const data = z.object({ name: z.string().trim().min(1).max(240).refine((v) => !/[\x00-\x1f\x7f/\\]/.test(v), "Use a file name without control characters or path separators."), size: z.number().int().min(0).max(16777216, "Each file can be up to 16 MB."), mimeType: z.string().min(1).max(120), checksum: z.string().regex(/^[a-f0-9]{64}$/) }).parse(input);
+      await tx.connection.query("SELECT id FROM workspaces WHERE id=$1 FOR UPDATE", [current.workspaceId]);
+      const usage = await tx.one<{ bytes: number }>("SELECT coalesce(sum(size),0)::bigint bytes FROM project_files WHERE workspace_id=$1", [current.workspaceId]);
+      if (usage.bytes + data.size > 1073741824) throw new CommonsError("This workspace has reached its 1 GB storage limit. Remove unused files before uploading more.", 413);
+      const prefix = process.env.R2_PREFIX || "commons-files/";
+      if (!/^[a-zA-Z0-9/-]+\/$/.test(prefix)) throw new Error("Configure a valid private R2 prefix.");
+      const id = randomUUID(), key = `${prefix}${current.workspaceId}/${id}`;
+      await tx.connection.query("INSERT INTO project_files(id,workspace_id,project_id,author_id,name,mime_type,size,checksum,object_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [id, current.workspaceId, projectId, current.id, data.name, data.mimeType, data.size, data.checksum, key, this.clock()]);
+      return tx.getFile(current, id, true);
+    });
+  }
+  async completeFile(actor: Principal, fileId: string) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id), file = await tx.getFile(current, fileId, true);
+      if (file.authorId !== current.id) throw new CommonsError("Only the uploader can finish this upload.", 403);
+      const changed = await tx.connection.query("UPDATE project_files SET ready=true WHERE id=$1 AND NOT ready", [fileId]);
+      if (changed.rowCount) await tx.record(current, file.projectId, "Uploaded a file", fileId);
+      return tx.getFile(current, fileId);
+    });
+  }
+  async deleteFile(actor: Principal, fileId: string) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id), file = await tx.getFile(current, fileId, true);
+      if (current.kind !== "owner" && current.id !== file.authorId) throw new CommonsError("Only the uploader or workspace owner can delete this file.", 403);
+      await tx.connection.query("DELETE FROM project_files WHERE id=$1", [fileId]);
+      if (file.ready) await tx.record(current, file.projectId, "Deleted a file", fileId);
+      return { projectId: file.projectId };
+    });
+  }
+  async queueFileCleanup(objectKey: string) {
+    await this.connection.query("INSERT INTO file_cleanup(object_key) VALUES($1) ON CONFLICT DO NOTHING", [objectKey]);
   }
   async listPages(
     actor: Principal,
@@ -1168,10 +1222,11 @@ export class Store {
   ): Promise<SearchResult[]> {
     const query = z.string().trim().max(200).parse(input);
     const project = await this.getProject(actor, projectId);
-    const [notes, people, pages] = await Promise.all([
+    const [notes, people, pages, files] = await Promise.all([
       this.listNotes(actor, projectId, { query }),
       this.listParticipants(actor, projectId),
       this.listPages(actor, projectId, { query }),
+      this.listFiles(actor, projectId, { query }),
     ]);
     const base = `/workspace/projects/${projectId}`;
     const results: SearchResult[] = [];
@@ -1205,6 +1260,7 @@ export class Store {
         href: `${base}?note=${note.id}`,
       })),
     );
+    results.push(...files.files.slice(0, 6).map((file) => ({ id: file.id, kind: "file" as const, title: file.name, description: `File by ${file.authorName}`, href: `${base}/files?file=${file.id}` })));
     if (query)
       results.push(
         ...people

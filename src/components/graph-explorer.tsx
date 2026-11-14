@@ -24,13 +24,13 @@ export function GraphExplorer({
   const [selected, setSelected] = useState<number | null>(null);
   const active = nodes.find((n) => n.id === selected);
   const visible = nodes.slice(0, 60);
-  const groups = ["project", "participant", "note"];
+  const groups = ["project", "participant", "page", "file", "note"];
   const positions = new Map<number, { x: number; y: number }>();
   groups.forEach((kind, column) =>
     visible
       .filter((n) => n.kind === kind)
       .forEach((node, row) =>
-        positions.set(node.id, { x: 25 + column * 250, y: 55 + row * 92 }),
+        positions.set(node.id, { x: 25 + column * 225, y: 55 + row * 92 }),
       ),
   );
   const height = Math.max(300, ...[...positions.values()].map((p) => p.y + 90));
@@ -57,14 +57,14 @@ export function GraphExplorer({
           {groups.map((kind, i) => (
             <span
               className={styles.column}
-              style={{ left: 25 + i * 250 }}
+              style={{ left: 25 + i * 225 }}
               key={kind}
             >
               {kind}s
             </span>
           ))}
           <svg
-            width="1000"
+            width="1170"
             height={height}
             aria-hidden="true"
             className={styles.lines}
@@ -110,11 +110,11 @@ export function GraphExplorer({
         {active && (
           <>
             <p className="meta">
-              {active.kind} · {active.resourceId}
+              {active.kind}
             </p>
-            {(active.kind === "note") && (
+            {(["note", "page", "file"].includes(active.kind)) && (
               <Link
-                href={`/workspace/projects/${projectId}?${active.kind}=${active.resourceId}`}
+                href={active.kind === "page" ? `/workspace/projects/${projectId}/pages/${active.resourceId}` : active.kind === "file" ? `/workspace/projects/${projectId}/files?file=${active.resourceId}` : `/workspace/projects/${projectId}?note=${active.resourceId}`}
               >
                 Open in project →
               </Link>

@@ -115,7 +115,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
     await agentPage
       .getByRole("button", { name: "Return to workspace" })
       .click();
-    await agentPage.waitForURL(/\/workspace\/projects\//);
+    await agentPage.waitForURL(/\/workspace/);
     await agentPage.goto(`${projectUrl}?note=${noteId}`);
     await expect(
       agentPage.getByRole("link", { name: "Edit note", exact: true }),
@@ -258,7 +258,7 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
   });
   await connect.click();
   await expect(
-    page.getByRole("dialog", { name: "Bring an agent", exact: true }),
+    page.getByRole("dialog", { name: "Connect an agent", exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/workspace\/agents$/);
   await page.keyboard.press("Escape");
@@ -362,9 +362,7 @@ test("agent returns in a fresh browser with a saved credential and no invitation
     await page.goto("/return");
     await page.getByLabel("Saved agent credential").fill(joined.token);
     await page.getByRole("button", { name: "Return to workspace" }).click();
-    await expect(page).toHaveURL(
-      new RegExp(`/workspace/projects/${project.id}`),
-    );
+    await expect(page).toHaveURL(/\/workspace$/);
     await expect(page.locator(".profile")).toContainText("Returning assistant");
     await page.reload();
     await expect(page.locator(".profile")).toContainText("Returning assistant");
@@ -492,6 +490,157 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     );
   } finally {
     await context.close();
+    await pool.end();
+  }
+});
+
+test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private project", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Paper ${Date.now()}`,
+    "One project. Shared context.",
+  );
+  const base = `/workspace/projects/${project.id}`;
+  const invite = await store.issueInvite(owner, project.id),
+    agent = await store.join(invite.id, invite.code, "Content agent");
+  const client = new Client({ name: "workspace-content-e2e", version: "1" });
+  const anonymous = await browser.newContext();
+  try {
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${base}/pages/new`);
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("Workspace brief");
+    await page
+      .getByLabel("Page content", { exact: true })
+      .fill(
+        "## Rendering works\n\n- [x] Shared Markdown\n\n| Item | Details |\n| --- | --- |\n| Context | Durable |\n\n```js\nconst shared = true;\n```\n\n<script>window.unsafeMarkdown = true</script>",
+      );
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Rendering works" }),
+    ).toBeVisible();
+    await expect(page.locator(".markdown-table table")).toBeVisible();
+    await expect(page.locator(".markdown-content pre")).toContainText(
+      "const shared",
+    );
+    expect(await page.evaluate(() => "unsafeMarkdown" in window)).toBe(false);
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const pageUrl = page.url(),
+      pageId = new URL(pageUrl).pathname.split("/").at(-1)!;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({
+      path: "test-results/paper-document-desktop.png",
+      fullPage: true,
+    });
+    await page.goto(`${base}/files`);
+    const image = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=",
+      "base64",
+    );
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles({
+        name: "reference.png",
+        mimeType: "image/png",
+        buffer: image,
+      });
+    await expect(page.getByRole("status")).toContainText(
+      "reference.png added",
+      { timeout: 30000 },
+    );
+    const file = (await store.listFiles(owner, project.id)).files[0];
+    const download = await page.request.get(`/api/files/${file.id}?preview=1`);
+    expect(download.status()).toBe(200);
+    expect(download.headers()["content-type"]).toBe("image/png");
+    expect(Buffer.from(await download.body())).toEqual(image);
+    expect(
+      (await anonymous.request.get(`${baseURL}/api/files/${file.id}`)).status(),
+    ).toBe(401);
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(baseURL + "/mcp"), {
+        requestInit: { headers: { Authorization: `Bearer ${agent.token}` } },
+      }),
+    );
+    const read = resultData(
+      await client.callTool({ name: "read_page", arguments: { pageId } }),
+    );
+    expect(read.title).toBe("Workspace brief");
+    const mcpFile = resultData(
+      await client.callTool({
+        name: "upload_file",
+        arguments: {
+          projectId: project.id,
+          name: "agent-context.md",
+          contentBase64: Buffer.from(
+            "# Agent context\nShared through MCP",
+          ).toString("base64"),
+        },
+      }),
+    );
+    const fileRead = resultData(
+      await client.callTool({
+        name: "read_file",
+        arguments: { fileId: mcpFile.id, includeContent: true },
+      }),
+    );
+    expect(Buffer.from(fileRead.contentBase64, "base64").toString()).toContain(
+      "Shared through MCP",
+    );
+    await page.reload();
+    await expect(
+      page.getByRole("link", { name: /agent-context.md/ }),
+    ).toBeVisible();
+    await page.goto(`${pageUrl}?edit=1`);
+    await page
+      .getByRole("button", { name: "Insert block", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "File or image", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "reference.png", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    await expect(page.locator(".markdown-content img")).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({
+      path: "test-results/paper-document-mobile.png",
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole("button", { name: "Open workspace navigation" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await store.revoke(owner, agent.actor.id);
+    const denied = await page.request.get(`/api/files/${mcpFile.id}`, {
+      headers: { Authorization: `Bearer ${agent.token}` },
+    });
+    expect(denied.status()).toBe(401);
+  } finally {
+    await client.close();
+    await anonymous.close();
+    await store.deleteProject(owner, project.id, project.name);
     await pool.end();
   }
 });

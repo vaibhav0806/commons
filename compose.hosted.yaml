@@ -5,7 +5,7 @@ services:
     image: commons:testing
     container_name: commons-app
     restart: unless-stopped
-    env_file: .env.hosted
+    env_file: [.env.hosted, .env.files]
     environment:
       HYDRA_URL: http://hydra:8443
       HYDRA_TOKEN_FILE: /run/secrets/hydra_token
@@ -23,7 +23,7 @@ services:
     image: commons:testing
     command: [node, scripts/graph-sync.mjs]
     restart: unless-stopped
-    env_file: .env.hosted
+    env_file: [.env.hosted, .env.files]
     environment:
       HYDRA_URL: http://hydra:8443
       HYDRA_TOKEN_FILE: /run/secrets/hydra_token
@@ -31,6 +31,17 @@ services:
     networks: [default, database]
     mem_limit: 256m
     cpus: 0.5
+    depends_on:
+      app:
+        condition: service_healthy
+  file-cleanup:
+    image: commons:testing
+    command: [node, scripts/file-cleanup.mjs]
+    restart: unless-stopped
+    env_file: [.env.hosted, .env.files]
+    networks: [database, web]
+    mem_limit: 256m
+    cpus: 0.25
     depends_on:
       app:
         condition: service_healthy

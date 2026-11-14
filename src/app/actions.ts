@@ -170,6 +170,11 @@ export async function workspaceAction(
           expiresAt: invite.expiresAt,
         };
       }
+      case "delete-file": {
+        const file = await store.deleteFile(actor, field(data, "fileId"));
+        destination = `/workspace/projects/${file.projectId}/files`;
+        break;
+      }
       case "page": {
         const page = await store.createPage(
           actor,

@@ -90,6 +90,8 @@ export default async function PageDocument({
           <input type="hidden" name="version" value={page.version} />
           <PageEditor
             page={page}
+            projectId={projectId}
+            files={(await store.listFiles(actor, projectId)).files}
             pages={(await store.listPages(actor, projectId)).pages}
           />
         </ActionForm>

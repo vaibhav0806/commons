@@ -62,3 +62,13 @@ Branding has the Commons logo, homepage, privacy URL and support email. Google c
 ## CRUD release verification — 2026-11-14
 
 Migration 005 and the matching app/worker were deployed after a private Postgres backup and stopping the old processes. Local validation passed: lint/typecheck, production build, 17 domain tests, 5 MCP tests, 1 Hydra reconciliation test and 5 production-browser scenarios. Hosted acceptance also passed note edits/deletes, scope changes, outage/retry and project graph cleanup while retaining unrelated context. Temporary fixture data was deleted and the worker resumed. Public health returned OK. This verifies logical graph cleanup; immediate physical R2 object reclamation is not asserted.
+
+## Content workspace deployment
+
+`.env.files` (0600, outside Git) defines `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PREFIX=commons-files/`. The existing private bucket is reused under an isolated prefix, leaving Hydra objects untouched. The app and file-cleanup worker load this config. Keep it with private deployment configuration backups.
+
+Retain the previous image and take a private Postgres backup before replacement. Migrations 006–008 are additive. App, graph-sync and file-cleanup use matching source, with workers starting after app health. A code rollback stops new workers and restores the previous app image, retaining additive tables/data. Do not drop content tables during rollback.
+
+Backups now require Postgres plus application R2 objects; database dumps do not include file bytes. Do not apply bucket-wide expiry rules. Monitor durable `file_cleanup` jobs and pending upload reservations.
+
+Validation commands include the existing check/build/domain/MCP/context/browser scripts plus `npm run test:workspace`. The workspace and browser tests use real R2 credentials with disposable objects and the dedicated `_test` database.

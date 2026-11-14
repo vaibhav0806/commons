@@ -121,7 +121,7 @@ export function AppInteractions({
         <DialogSurface
           open={connectOpen}
           onOpenChange={setConnectOpen}
-          title="Bring an agent"
+          title="Connect an agent"
           description="Choose its access. Your agent joins and introduces itself."
           finalFocus={connectReturn}
         >
@@ -160,7 +160,7 @@ export function AppInteractions({
             value={query}
             maxLength={200}
             autoComplete="off"
-            placeholder="Find notes, projects, people…"
+            placeholder="Find pages, files, notes and people…"
             onChange={(event) => {
               setQuery(event.target.value);
               setIndex(0);

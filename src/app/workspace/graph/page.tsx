@@ -17,7 +17,7 @@ export default async function GraphPage({
   if (!selected)
     return (
       <div className="project-page">
-        <h1>Graph explorer</h1>
+        <h1>The context, connected.</h1>
         <p>Create a project to begin.</p>
       </div>
     );
@@ -32,8 +32,8 @@ export default async function GraphPage({
     >
       <header className="project-heading">
         <div>
-          <h1>Graph explorer</h1>
-          <p>Private inspection · self-hosted HydraDB</p>
+          <h1>The context, connected.</h1>
+          <p>Explore shared material and authorship.</p>
         </div>
       </header>
       <nav aria-label="Graph projects" className="project-section">
@@ -52,9 +52,9 @@ export default async function GraphPage({
         <h2>{project.name}</h2>
         <p className="meta">
           {!graph.available
-            ? "Hydra unavailable. Showing Postgres record labels only."
+            ? "The relationship service is unavailable. Content labels are still available."
             : graph.sync?.revision === graph.sync?.syncedRevision
-              ? "Graph is up to date."
+              ? "Relationships are up to date."
               : "Sync pending. The graph may be behind your latest changes."}{" "}
           {graph.sync?.syncedAt
             ? `Last synced ${new Date(graph.sync.syncedAt).toLocaleString("en-GB", { timeZone: "UTC" })} UTC.`
@@ -68,8 +68,7 @@ export default async function GraphPage({
         />
         <p className="meta">
           Up to 200 records and 1,000 edges per relationship type. Select a
-          record to inspect its connections. Labels come from Postgres; edges
-          come from Hydra. Historical authors remain visible after revocation.
+          record to inspect its connections. Historical authors remain visible after revocation.
         </p>
       </section>
     </div>

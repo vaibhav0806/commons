@@ -26,7 +26,7 @@ export default async function NewPage({
       <ProjectTabs projectId={projectId} active="Pages" />
       <ActionForm operation="page" projectId={projectId} label="Save page">
         <input name="clientKey" type="hidden" value={randomUUID()} />
-        <PageEditor pages={pages.pages} />
+        <PageEditor pages={pages.pages} projectId={projectId} files={(await store.listFiles(actor, projectId)).files} />
       </ActionForm>
     </div>
   );

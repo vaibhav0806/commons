@@ -12,6 +12,8 @@ export default async function Workspace() {
       project,
       notes: await store.listNotes(actor, project.id),
       people: await store.listParticipants(actor, project.id),
+      pages: await store.listPages(actor, project.id),
+      files: await store.listFiles(actor, project.id),
     })),
   );
   const recent = summaries
@@ -42,7 +44,7 @@ export default async function Workspace() {
           <span className="meta">{projects.length} projects</span>
         </div>
         <div className="project-index">
-          {summaries.map(({ project, notes, people }) => (
+          {summaries.map(({ project, notes, people, pages, files }) => (
             <Link
               className="project-index-row"
               key={project.id}
@@ -60,7 +62,7 @@ export default async function Workspace() {
               </div>
               <span className="meta project-count">
                 {people.filter((p) => p.kind === "agent").length} agents ·{" "}
-                {notes.notes.length}
+                {pages.pages.length}{pages.nextOffset ? "+" : ""} pages · {files.files.length}{files.nextOffset ? "+" : ""} files · {notes.notes.length}
                 {notes.nextOffset ? "+" : ""} notes
               </span>
               {notes.notes.some((n) => !n.read) && (

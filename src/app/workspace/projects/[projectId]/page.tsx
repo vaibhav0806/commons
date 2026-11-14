@@ -47,10 +47,11 @@ export default async function ProjectPage({
     unread = query.view === "unread";
   const offset = Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
     search = (query.q || "").slice(0, 200);
-  const [notePage, people, pageList] = await Promise.all([
+  const [notePage, people, pageList, fileList] = await Promise.all([
     store.listNotes(actor, projectId, { query: search, unread, offset }),
     store.listParticipants(actor, projectId),
     store.listPages(actor, projectId),
+    store.listFiles(actor, projectId),
   ]);
   let note: Note | undefined,
     detailError = false;
@@ -163,6 +164,7 @@ export default async function ProjectPage({
             </Link>
           </section>
         )}
+        {!unread && !query.view && <Link className="context-row project-files-preview" href={`${base}/files`}><Icon name="Folder" /><div className="row-copy"><h3>Files &amp; images</h3><p>{fileList.files.length ? fileList.files.slice(0, 3).map((file) => file.name).join(", ") : "Bring documents, images and original material into the project."}</p></div><span className="meta">Browse files</span><Icon name="CaretRight" /></Link>}
         <form className="project-search" action={base}>
           <Icon name="MagnifyingGlass" />
           {unread && <input type="hidden" name="view" value="unread" />}

@@ -44,7 +44,7 @@ Owners manage agent names/scopes, revoke access or remove registrations. Removal
 
 Disposable test records live in a separate Postgres database. A real browser session and actual SDK MCP client exchange a complete handoff through the same application. Typecheck, lint, build and desktop/mobile/browser checks are required. See ../CONTRIBUTING.md for reproducible commands and verification scope.
 
-The product runs locally and in a private Hetzner testing deployment. Google branding verification, broader native-provider return testing, public OSS licensing and product-level editing/deletion remain outstanding. Binary uploads, billing, agent execution and real-time chat remain non-goals.
+The product runs locally and in a private Hetzner testing deployment. Google branding verification, broader native-provider return testing, public OSS licensing and product-level editing/deletion remain outstanding. Billing, agent execution and real-time chat remain non-goals.
 
 ## Local graph evaluation (2026-11-14)
 
@@ -59,3 +59,13 @@ Runtime verification found that default HTTP query IDs can collide with persiste
 The owner authorized a Hetzner testing deployment at commons.0xvaibhav.com. External Google sign-in is live and replaces the temporary testing-owner key entrance. The loopback-only mock remains disabled on the server. Hydra runs on Hetzner with private Cloudflare R2 Standard object storage; Postgres remains on Hetzner. See TESTING_DEPLOYMENT.md for configuration and verification.
 
 HydraDB projects project membership and note authorship. Postgres remains authoritative for content and authorization. The durable graph_sync queue and graph_entities mappings survive project deletion until cleanup succeeds. The worker locks per project, captures a versioned snapshot, deletes the graph IDs owned by that project with batched DETACH DELETE, then rebuilds its current edges. Retry after a partial failure is safe. A concurrent change increments the revision and schedules another pass. Stale edges are withheld from the explorer while a revision is pending. Old request relationships are removed on the next sync after migration 005. R2 stores Hydra-managed database objects; application deletion must use graph mutations, never direct bucket-object deletion. Physical storage reclamation follows Hydra compaction/garbage collection, not immediate per-note object removal.
+
+## Paper content workspace — 2026-11-14
+
+Migrations 006–008 add project-scoped Markdown pages, file metadata, R2 cleanup and content graph projection. Page hierarchy changes lock the project row and reject recursive cycles. Author/owner checks and optimistic versions match note behavior. `react-markdown` and `remark-gfm` render Markdown without raw HTML and retain the library URL sanitizer.
+
+The S3 SDK uses private R2 with generated object keys under `R2_PREFIX` (default `commons-files/`) and workspace UUIDs. User filenames never become object paths. The current host reuses its private bucket under this isolated prefix; no public access or bucket-wide lifecycle settings change. Downloads are proxied through Commons, reauthorize after storage I/O and use no-store/nosniff and attachment disposition. PNG/JPEG/GIF/WebP byte signatures enable safe inline image previews. Credentials never reach tool results or page props.
+
+Uploads reserve hidden metadata before writing bytes and publish only after completion. Failures enqueue deletion even after registration/project revocation. Postgres deletion triggers persist cleanup independently of deleted projects. `scripts/file-cleanup.mjs` locks cleanup rows and retries; abandoned hidden uploads expire after an hour. Logical deletion is immediate; physical R2 deletion is eventual.
+
+Hydra projects pages/files, authors, page parents and explicit in-project file/page references. It stores neither page bodies nor file bytes. Cross-project links do not create edges. Postgres remains authoritative, and pending graph revisions suppress stale relationships.
