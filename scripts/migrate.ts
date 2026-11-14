@@ -10,7 +10,7 @@ try {
     "CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())",
   );
   for (const name of (await readdir(resolve("migrations")))
-    .filter((n) => n.endsWith(".sql"))
+    .filter((n) => !n.startsWith(".") && n.endsWith(".sql"))
     .sort()) {
     if (
       (

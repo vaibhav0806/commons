@@ -54,6 +54,48 @@ export async function mockSignIn(): Promise<ActionState> {
     (await getStore().listProjects(actor)).length ? "/workspace" : "/setup",
   );
 }
+export async function testOwnerSignIn(
+  _previous: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  try {
+    if (
+      process.env.COMMONS_MOCK_AUTH === "true" ||
+      !process.env.COMMONS_TEST_OWNER_KEY_HASH
+    )
+      throw new CommonsError("Private testing sign-in is not enabled.", 403);
+    if (await currentParticipant())
+      throw new CommonsError("Sign out before switching identities.");
+    const joined = await getStore().signInTestOwner(
+      field(data, "accessKey"),
+      process.env.COMMONS_TEST_OWNER_KEY_HASH,
+      process.env.COMMONS_OWNER_EMAIL!,
+      process.env.COMMONS_OWNER_NAME || "Owner",
+    );
+    await setSession(joined.token);
+  } catch (error) {
+    return errorState(error);
+  }
+  redirect("/workspace");
+}
+export async function resumeAgent(
+  _previous: ActionState,
+  data: FormData,
+): Promise<ActionState> {
+  try {
+    if (await currentParticipant())
+      throw new CommonsError(
+        "This browser already has a session. Open your workspace or sign out first.",
+      );
+    const joined = await getStore().resumeAgent(
+      field(data, "credential").trim(),
+    );
+    await setSession(joined.token, true);
+  } catch (error) {
+    return errorState(error);
+  }
+  redirect("/workspace");
+}
 export async function joinWorkspace(
   _previous: ActionState,
   data: FormData,

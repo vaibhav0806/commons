@@ -14,8 +14,9 @@ export function validOrigin(request: Request) {
   const origin = request.headers.get("origin"),
     host = request.headers.get("host");
   return (
-    allowedOrigins().has(new URL(request.url).origin) &&
-    (!origin || allowedOrigins().has(origin)) &&
-    (!host || [...allowedOrigins()].some((o) => new URL(o).host === host))
+    (host
+      ? [...allowedOrigins()].some((o) => new URL(o).host === host)
+      : allowedOrigins().has(new URL(request.url).origin)) &&
+    (!origin || allowedOrigins().has(origin))
   );
 }

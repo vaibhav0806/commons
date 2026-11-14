@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import { Pool, types, type PoolClient } from "pg";
 import { z } from "zod";
+import { graphEnabled, graphQuery } from "./graph";
 
 types.setTypeParser(20, Number);
 export class CommonsError extends Error {
@@ -258,6 +259,28 @@ export class Store {
       return { token: await tx.session(actor.id, "Browser", 30), actor };
     });
   }
+  async signInTestOwner(
+    key: string,
+    expectedHash: string,
+    email: string,
+    name: string,
+  ) {
+    await this.rateLimit("test-owner-login", 10);
+    if (
+      !/^[a-f0-9]{64}$/.test(expectedHash) ||
+      key.length > 200 ||
+      !timingSafeEqual(Buffer.from(digest(key)), Buffer.from(expectedHash))
+    )
+      throw new CommonsError("That testing access key is not valid.", 401);
+    return this.createLocalOwner(email, name);
+  }
+  async resumeAgent(token: string) {
+    const actor = await this.authenticate(token);
+    if (actor.kind !== "agent")
+      throw new CommonsError("Use an agent credential to return.", 403);
+    await this.rateLimit(`resume:${actor.id}`, 10);
+    return { actor, token: await this.session(actor.id, "Browser", 90) };
+  }
   async authenticate(token: string) {
     const session = await this.one<{ participantId: string }>(
       "SELECT participant_id FROM sessions WHERE token_hash=$1 AND expires_at>$2",
@@ -269,6 +292,16 @@ export class Store {
         401,
       );
     const actor = await this.active(session.participantId);
+    if (actor.kind === "agent") {
+      await this.connection.query(
+        "UPDATE sessions SET expires_at=$1 WHERE token_hash=$2 AND expires_at<$3",
+        [
+          this.clock() + 90 * 86400000,
+          digest(token),
+          this.clock() + 89 * 86400000,
+        ],
+      );
+    }
     await this.connection.query(
       "UPDATE participants SET last_seen=$1 WHERE id=$2",
       [this.clock(), actor.id],
@@ -692,6 +725,78 @@ export class Store {
     if (changed.rowCount)
       await this.record(current, request.projectId, "Completed a request", id);
     return this.getRequest(current, id);
+  }
+  async relatedContext(actor: Principal, noteId: string) {
+    const source = await this.getNote(actor, noteId);
+    await this.connection.query(
+      "INSERT INTO graph_notes(id,note_id) SELECT ('x'||substr(replace(id::text,'-',''),1,13))::bit(52)::bigint,id FROM notes WHERE project_id=$1 ON CONFLICT(note_id) DO NOTHING",
+      [source.projectId],
+    );
+    const links = await this.rows<{ source: number; target: number }>(
+      `SELECT a.id AS source,b.id AS target FROM requests r
+       JOIN graph_notes a ON a.note_id=r.note_id JOIN graph_notes b ON b.note_id=r.result_note_id
+       WHERE r.project_id=$1 AND r.completed_at IS NOT NULL AND (r.note_id=$2 OR r.result_note_id=$2) ORDER BY r.created_at DESC LIMIT 20`,
+      [source.projectId, noteId],
+    );
+    const root = await this.one<{ id: number }>(
+      "SELECT id FROM graph_notes WHERE note_id=$1",
+      [noteId],
+    );
+    let ids: number[] = [];
+    let engine = "postgres";
+    if (graphEnabled()) {
+      try {
+        for (const link of links) {
+          await graphQuery(
+            "MERGE (a {id: $source})-[:COMMONS_CONTEXT]->(b {id: $target})",
+            link,
+          );
+        }
+        const result = await graphQuery(
+          "MATCH (a {id: $source})-[:COMMONS_CONTEXT]-(b) RETURN b.id AS id LIMIT 20",
+          { source: root.id },
+        );
+        ids = result.rows
+          .map((row) => Number(row[0]?.value))
+          .filter(Number.isSafeInteger);
+        engine = "hydradb";
+      } catch {
+        engine = "postgres-fallback";
+      }
+    }
+    if (engine !== "hydradb")
+      ids = links
+        .flatMap((link) =>
+          link.source === root.id
+            ? [link.target]
+            : link.target === root.id
+              ? [link.source]
+              : [],
+        )
+        .slice(0, 20);
+    // Revalidate graph candidates against current project relationships and permissions.
+    const valid = new Set(
+      links.flatMap((link) =>
+        link.source === root.id
+          ? [link.target]
+          : link.target === root.id
+            ? [link.source]
+            : [],
+      ),
+    );
+    ids = [...new Set(ids)].filter((id) => valid.has(id));
+    await this.getProject(actor, source.projectId);
+    const candidates = await this.rows<{ noteId: string }>(
+      "SELECT g.note_id FROM graph_notes g JOIN notes n ON n.id=g.note_id WHERE g.id=ANY($1::bigint[]) AND n.project_id=$2 ORDER BY n.created_at DESC,n.id LIMIT 20",
+      [ids, source.projectId],
+    );
+    return {
+      engine,
+      sourceNoteId: noteId,
+      notes: await Promise.all(
+        candidates.map((row) => this.getNote(actor, row.noteId)),
+      ),
+    };
   }
   async searchProject(
     actor: Principal,

@@ -569,3 +569,54 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     }
   }
 });
+
+test("agent returns in a fresh browser with a saved credential and no invitation", async ({
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (
+    await store.createLocalOwner(
+      `return-ui-${crypto.randomUUID()}@example.test`,
+      "Owner",
+    )
+  ).actor;
+  const project = await store.createProject(
+    owner,
+    "Return test",
+    "Keep this context across sessions.",
+  );
+  const invitation = await store.issueInvite(owner, project.id);
+  const joined = await store.join(
+    invitation.id,
+    invitation.code,
+    "Returning assistant",
+  );
+  const context = await browser.newContext({ baseURL });
+  try {
+    const page = await context.newPage();
+    await page.goto("/return");
+    await page.getByLabel("Saved agent credential").fill(joined.token);
+    await page.getByRole("button", { name: "Return to workspace" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/workspace/projects/${project.id}`),
+    );
+    await expect(page.locator(".profile")).toContainText("Returning assistant");
+    await page.reload();
+    await expect(page.locator(".profile")).toContainText("Returning assistant");
+    const refresh = await page.evaluate(
+      async () =>
+        (await fetch("/api/agent/session", { method: "POST" })).status,
+    );
+    expect(refresh).toBe(204);
+    await store.revoke(owner, joined.actor.id);
+    await page.reload();
+    await expect(page).toHaveURL(/sign-in/);
+  } finally {
+    await context.close();
+    await pool.end();
+  }
+});

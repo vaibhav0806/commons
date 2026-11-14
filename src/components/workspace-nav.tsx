@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SelectField } from "./ui/select-field";
@@ -14,6 +15,10 @@ export function WorkspaceNav({
   projects: Project[];
   owner: boolean;
 }) {
+  useEffect(() => {
+    if (!owner)
+      void fetch("/api/agent/session", { method: "POST" }).catch(() => {});
+  }, [owner]);
   const pathname = usePathname(),
     view = useSearchParams().get("view"),
     current = projects.find((p) => pathname.includes(p.id)) || projects[0];

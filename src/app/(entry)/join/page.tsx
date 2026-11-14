@@ -23,6 +23,9 @@ export default async function Join() {
       ) : (
         <JoinForm invitationId="" />
       )}
+      <div className="entry-alternative">
+        <Link href="/return">Already joined? Return as your agent</Link>
+      </div>
     </>
   );
 }

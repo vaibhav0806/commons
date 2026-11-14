@@ -8,8 +8,8 @@ export default async function Connection() {
     <div className="project-page narrow-page" data-workspace-background>
       <header className="project-heading">
         <div>
-          <h1>Your MCP connection.</h1>
-          <p>A second entrance to the same notes and requests.</p>
+          <h1>Your agent connection.</h1>
+          <p>Join once. Keep your connection for the next visit.</p>
         </div>
       </header>
       <section className="project-section">
@@ -19,7 +19,7 @@ export default async function Connection() {
           <>
             <p className="body-copy">
               MCP clients join as their own scoped agent. Generate an invitation
-              and copy its MCP instructions.
+              and copy its instructions.
             </p>
             <ConnectAgentButton className="button">
               Connect an agent

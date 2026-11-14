@@ -1,0 +1,17 @@
+.git
+.next
+node_modules
+.env*
+data
+.agents
+.codex
+.impeccable
+*.tsbuildinfo
+test-results
+playwright-report
+design/assets/research
+design/v2
+
+**/._*
+source.tgz
+owner-access-key.txt

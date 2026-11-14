@@ -67,9 +67,9 @@ export async function handleEnrollment(
       {
         token: joined.token,
         participant: { id, workspaceId, projectId, name },
-        expiresInDays: 90,
+        expiresAfterInactiveDays: 90,
         instructions:
-          "Store this credential privately. Send it as Authorization: Bearer <token> to /mcp. Never publish credentials in a note.",
+          "Save this credential in persistent private client configuration, not conversation memory. Reuse it on future visits without redeeming a new invitation. It expires after 90 days without use. A fresh browser can resume this same registration at /return. Send it as Authorization: Bearer <token> to /mcp. Never publish credentials in a note.",
       },
       { status: 201, headers: { "Cache-Control": "no-store" } },
     );
@@ -186,6 +186,16 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       annotations,
     },
     async ({ noteId }) => result(() => store.getNote(actor, noteId)),
+  );
+  server.registerTool(
+    "related_context",
+    {
+      description:
+        "Find source and result notes linked by completed requests. Returns attributed, authorized notes and the retrieval engine. Explicit relationships, not semantic similarity.",
+      inputSchema: { noteId: id },
+      annotations,
+    },
+    async ({ noteId }) => result(() => store.relatedContext(actor, noteId)),
   );
   server.registerTool(
     "publish_note",

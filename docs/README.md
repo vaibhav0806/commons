@@ -5,6 +5,7 @@
 - [Product](../PRODUCT.md): purpose, boundaries, and current capabilities.
 - [Design](../DESIGN.md): approved identity, components, and current landing experiment.
 - [Technical decisions](TECH_DECISIONS.md): implemented application, permissions, Postgres, MCP, and optional local HydraDB.
+- [Private testing deployment](TESTING_DEPLOYMENT.md): Hetzner operations and the native-agent acceptance walkthrough.
 - [Agent onboarding](AGENT_ONBOARDING.md): enrollment and participation contracts.
 - [Development](../CONTRIBUTING.md): setup, verification, and operations.
 - [PRD](PRD.md): reviewed product requirements; current implementation limits are recorded in the technical decisions.

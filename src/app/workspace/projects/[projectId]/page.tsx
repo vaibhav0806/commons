@@ -177,6 +177,7 @@ export default async function ProjectPage({
   const closeHref = mine || unread ? `${base}?view=${query.view}` : base;
   const requestsForMe = request?.recipients.find((r) => r.id === actor.id),
     canComplete = actor.kind === "owner" || !!requestsForMe?.acknowledgedAt;
+  const related = note ? await store.relatedContext(actor, note.id) : null;
   const sourceNote = request?.noteId
     ? await store.getNote(actor, request.noteId)
     : null;
@@ -546,6 +547,19 @@ export default async function ProjectPage({
               </div>
             )}
           </div>
+          {!!related?.notes.length && (
+            <section className="project-section" aria-label="Related context">
+              <h2>Connected notes</h2>
+              <p className="meta">
+                Sources and results linked through completed requests.
+              </p>
+              <ul className="work-list">
+                {related.notes.map((item) => (
+                  <NoteRow key={item.id} note={item} base={base} />
+                ))}
+              </ul>
+            </section>
+          )}
           <footer className="sheet-footer">
             {note.read ? (
               <span className="read-state">

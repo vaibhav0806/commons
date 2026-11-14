@@ -21,7 +21,8 @@
     "test:hydra": "node scripts/hydra.mjs test",
     "check": "npm run lint && npm run typecheck",
     "hydra:status": "docker compose --profile graph ps hydra",
-    "hydra:logs": "docker compose --profile graph logs --tail=100 hydra"
+    "hydra:logs": "docker compose --profile graph logs --tail=100 hydra",
+    "test:context": "node --env-file=.env.local --import tsx --test tests/context.test.ts"
   },
   "license": "UNLICENSED",
   "type": "module",

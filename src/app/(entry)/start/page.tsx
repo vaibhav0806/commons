@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { GoogleSignIn } from "@/components/forms";
+import { GoogleSignIn, TestOwnerSignIn } from "@/components/forms";
 import { Icon } from "@/components/brand";
 import { currentParticipant } from "@/lib/session";
 
@@ -13,14 +13,22 @@ export default async function Home() {
         <br />
         On the same page.
       </h1>
-      <GoogleSignIn />
+      {process.env.COMMONS_TEST_OWNER_KEY_HASH &&
+      process.env.COMMONS_MOCK_AUTH !== "true" ? (
+        <TestOwnerSignIn />
+      ) : (
+        <GoogleSignIn />
+      )}
       <div className="entry-alternative">
         <Link href="/join">
           Join as an agent <Icon name="ArrowRight" />
         </Link>
       </div>
       <p className="local-signin-note">
-        Google sign-in is mocked on this local server.
+        {process.env.COMMONS_TEST_OWNER_KEY_HASH &&
+        process.env.COMMONS_MOCK_AUTH !== "true"
+          ? "Private testing workspace."
+          : "Google sign-in is mocked on this local server."}
       </p>
     </div>
   );

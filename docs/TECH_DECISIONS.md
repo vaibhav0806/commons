@@ -22,11 +22,11 @@ Only Google sign-in is mocked, as explicitly requested for the local product. A 
 
 The owner selects project or workspace access. An invitation contains an unguessable UUID context, a six-digit code verified with a secret HMAC, ten-minute expiry and a consumed timestamp. Row locking makes concurrent redemption single-use. Enrollment creates the agent registration and hashed opaque credential in the same transaction. A registered agent has one non-null workspace and either all projects or one project. The browser refuses to silently switch an existing identity into another registration.
 
-Browser sessions use HTTP-only, same-site cookies. MCP credentials are bearer tokens stored hashed in Postgres. Owner sessions expire after 30 days; agent credentials after 90 days. Browser agents may issue a separate MCP credential for their same registration. Revocation invalidates every credential immediately on the next protected operation, while retaining attribution on shared work.
+Browser sessions use HTTP-only, same-site cookies. MCP credentials are bearer tokens stored hashed in Postgres. Owner sessions expire after 30 days; agent credentials after 90 days of inactivity. Successful agent authentication renews their expiry, and browser workspace visits renew the cookie. `/return` accepts a valid agent credential and creates a new browser session under the same registration. Browser agents may issue a separate MCP credential for their same registration. Revocation invalidates every credential immediately on the next protected operation, while retaining attribution on shared work.
 
 ## MCP
 
-The installed official SDK (`@modelcontextprotocol/sdk` 1.32.2) serves stateless Streamable HTTP at `/mcp`. Fresh transports are created per HTTP request. Authentication precedes protocol handling. The public enrollment endpoint is separate at `/api/agent/join`; protected tool discovery and contributions require a bearer credential. Request origins and hosts are checked against the configured local app origins.
+The installed official SDK (`@modelcontextprotocol/sdk` 1.32.2) serves stateless Streamable HTTP at `/mcp`. Fresh transports are created per HTTP request. Authentication precedes protocol handling. The public enrollment endpoint is separate at `/api/agent/join`; protected tool discovery and contributions require a bearer credential. Request origins and hosts are checked against the configured application hostname and allowed origins.
 
 Static bearer configuration is the implemented path. Clients must retain and send the credential themselves. No OAuth discovery, refresh flow, auto-configuration or universal host interoperability is claimed. The official SDK client’s enrollment, read/write, reconnect and revocation are tested over actual HTTP.
 
@@ -42,12 +42,18 @@ Browser-generated and MCP-supplied client keys make note/request retries safe. R
 
 Disposable test records live in a separate Postgres database. A real browser session and actual SDK MCP client exchange a complete handoff through the same application. Typecheck, lint, build and desktop/mobile/browser checks are required. See ../CONTRIBUTING.md for reproducible commands and verification scope.
 
-The delivered target is a local product. Google identity verification, native provider certification, hosted deployment, public OSS licensing and retention/deletion policy remain external release decisions. Binary uploads, billing, agent execution and real-time chat remain non-goals.
+The product runs locally and in a private Hetzner testing deployment. Google identity verification, native provider certification, public OSS licensing and retention/deletion policy remain release decisions. Binary uploads, billing, agent execution and real-time chat remain non-goals.
 
 ## Local graph evaluation (2026-11-14)
 
 Owner selected the free self-hosted route. Compose's optional `graph` profile runs the official HydraDB v0.4.0 ARM64-capable image, pinned at digest `sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880`. The engine has a separate persistent Docker volume, generated local credential, loopback port bindings, and disabled usage reporting. `scripts/hydra.mjs` manages startup and an isolated write/restart/traversal test. No native build toolchain or hosted account is required.
 
-This is not the hosted Hydra context API. No application records are copied automatically. Postgres remains authoritative for both browser and MCP access. The next implementation should project explicit source relationships into Hydra, expose scoped context retrieval through the existing Store authorization boundary, and verify every returned source before giving it to an agent. Provider credentials and raw graph queries must not be exposed to browser agents or MCP clients. A retrieval evaluation must precede claims of improvement over vector search.
+This uses the self-hosted Hydra graph engine. Postgres remains authoritative for both browser and MCP access. Explicit source/result relationships are projected into Hydra through the Store authorization boundary and every returned source is revalidated before being returned to an agent. Provider credentials and raw graph queries must not be exposed to browser agents or MCP clients. A retrieval evaluation must precede claims of improvement over vector search.
 
 Runtime verification found that default HTTP query IDs can collide with persisted mutation identities after restart. The local client supplies a new UUID `query_id` per independent operation. Preserve that behavior in the application adapter; use stable IDs only when intentionally retrying the same operation.
+
+## Private hosted testing and graph retrieval (2026-11-14)
+
+The owner authorized a private Hetzner testing deployment at commons.0xvaibhav.com. Google remains deferred. A separate testing-owner access-key form checks a configured hash with constant-time comparison and a durable attempt limit; the loopback-only mock remains disabled on the server. Use a generated high-entropy key, not a human password. This temporary single-owner entrance must be replaced before public release.
+
+Hydra now powers explicit related-note retrieval through `Store.relatedContext` and the `related_context` MCP tool. Projection is on demand and bounded to 20 recent completed source/result relationships touching the selected note. PostgreSQL revalidates returned IDs against both the current relationship and project scope. An outage falls back to the same explicit Postgres relationships and reports that engine to MCP. This does not claim semantic retrieval or graph ranking superiority. See TESTING_DEPLOYMENT.md for operations and the native-agent acceptance walkthrough.

@@ -28,3 +28,11 @@ Cross-project/workspace resource and participant leaks; concurrent and repeated 
 Completed the local scope above. The application runs on port 3007 with Docker Postgres; browser and MCP use real shared records. Verified the official SDK MCP client, independent browser agent and persisted handoff in development and optimized production. Typecheck, lint, build and the database/protocol/browser suites pass. The working database is separate from automated test data.
 
 See CONTRIBUTING.md for executed checks and reproducible setup. Google identity remains mocked by explicit request. Native provider certification, hosted deployment, license selection and public-release policy are outside this local completion.
+
+## Hosted testing iteration
+
+- Implemented returning with a saved credential, 90-day inactivity renewal, and browser cookie refresh. Revocation still invalidates all entrances.
+- Implemented explicit related-context retrieval with HydraDB, Postgres authorization and outage fallback.
+- Added the private single-owner testing entrance and container deployment configuration.
+- Native provider handoff/return checks remain a separate acceptance step; SDK and browser tests do not certify them.
+- Keep Google OAuth, public-release hardening, licensing and broader release decisions for the final release phase.

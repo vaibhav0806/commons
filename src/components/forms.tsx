@@ -11,6 +11,8 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import {
   mockSignIn,
+  testOwnerSignIn,
+  resumeAgent,
   joinWorkspace,
   workspaceAction,
   type ActionState,
@@ -110,6 +112,44 @@ export function ActionForm({
       <ActionGroup layout="stack">
         <Submit pendingLabel={pendingLabel}>{label}</Submit>
       </ActionGroup>
+    </form>
+  );
+}
+export function TestOwnerSignIn() {
+  const [state, action] = useActionState(testOwnerSignIn, {});
+  return (
+    <form action={action} className="form-stack">
+      <label className="field">
+        <span>Testing access key</span>
+        <input
+          name="accessKey"
+          type="password"
+          autoComplete="current-password"
+          required
+          maxLength={200}
+        />
+      </label>
+      <Notice state={state} />
+      <Submit pendingLabel="Signing in…">Open your workspace</Submit>
+    </form>
+  );
+}
+export function ReturnAgentForm() {
+  const [state, action] = useActionState(resumeAgent, {});
+  return (
+    <form action={action} className="form-stack">
+      <label className="field">
+        <span>Saved agent credential</span>
+        <input
+          name="credential"
+          type="password"
+          autoComplete="off"
+          required
+          maxLength={200}
+        />
+      </label>
+      <Notice state={state} />
+      <Submit pendingLabel="Returning…">Return to workspace</Submit>
     </form>
   );
 }
@@ -240,7 +280,7 @@ If you can use a browser, open the invitation link, enter the code and join.
 
 If you use an MCP client, POST ${origin}/api/agent/join with JSON {"invitationId":"${state.invitationId}","code":"${state.code}","name":"YOUR_AGENT_NAME"}. Retain the returned token privately and configure ${origin}/mcp as a Streamable HTTP server with Authorization: Bearer <token>.
 
-Then read the project brief and shared notes, check requests directed at you, and contribute useful context. The invitation expires in 10 minutes. Never put credentials in shared notes. A browser registration can create an MCP credential later without joining again.`;
+Then read the project brief and shared notes, check requests directed at you, and contribute useful context. The invitation expires in 10 minutes. Never put credentials in shared notes. After browser joining, open /workspace/connection and save a return credential in your private credential store. On later visits, open /workspace in the same browser, or /return with the saved credential in a fresh browser. MCP clients must persist the bearer token in their private client configuration, not conversation memory. Active credentials renew for 90 days from use; after 90 days without use, ask for a new invitation. Call who_am_i and catch_up when you return. Never redeem the invitation again.`;
   return (
     <div className="connection-flow">
       <form
@@ -468,14 +508,14 @@ export function CredentialForm({ endpoint }: { endpoint: string }) {
   return (
     <div>
       <p className="body-copy">
-        Use the same agent registration from an MCP client. This credential has
-        your existing scope.
+        Save a credential to return as this same agent from a fresh browser or
+        MCP client. Your name, access and contributions stay together.
       </p>
       <form action={action} className="form-stack">
         <input type="hidden" name="operation" value="credential" />
         <Notice state={state} />
         <ActionGroup layout="stack">
-          <Submit>Create MCP credential</Submit>
+          <Submit>Create return credential</Submit>
         </ActionGroup>
       </form>
       {state.token && (
@@ -491,7 +531,9 @@ export function CredentialForm({ endpoint }: { endpoint: string }) {
           </p>
           <p className="meta">
             Configure your client’s bearer-token setting. Do not save
-            credentials in notes.
+            credentials in notes. Use /return in a fresh browser. Active
+            credentials renew for 90 days from use; an unused credential expires
+            after 90 days.
           </p>
         </div>
       )}

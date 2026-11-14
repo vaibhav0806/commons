@@ -76,7 +76,7 @@ npm run test:hydra
 npm run hydra:down
 ```
 
-The optional `graph` Docker Compose profile keeps graph data in a persistent volume. The smoke test checks writes, traversal, and persistence across a restart. Application indexing and graph retrieval are the next integration step; current project records use PostgreSQL. See the [technical design](docs/TECH_DECISIONS.md) for infrastructure details.
+The optional `graph` Docker Compose profile keeps graph data in a persistent volume. The smoke test checks writes, traversal, and persistence across a restart. Connected-note retrieval uses HydraDB for explicit source/result relationships, with PostgreSQL permission checks and an outage fallback. Project records remain in PostgreSQL. See the [technical design](docs/TECH_DECISIONS.md) for infrastructure details.
 
 ## Repository structure
 
@@ -111,13 +111,16 @@ docs/              Product, architecture, onboarding, and decision records
 | `npm run db:migrate` | Apply outstanding SQL migrations |
 | `npm run hydra:up` / `npm run hydra:down` | Start / stop the optional graph engine |
 | `npm run hydra:status` / `npm run hydra:logs` | Inspect the local graph service |
+| `npm run test:context` | Verify graph retrieval, isolation, and outage fallback |
 | `npm run test:hydra` | Verify graph writes and persistence; restarts Hydra only |
 
 Stop the running app before rebuilding its `.next` output. After building, use `PLAYWRIGHT_PRODUCTION=true npm run test:e2e` to check the production build.
 
 ## Project status
 
-Local browser and MCP participation are implemented. Google identity is mocked. Native agent-provider compatibility and public hosting remain unverified. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
+Local browser and MCP participation are implemented. Google identity is mocked locally; hosted private testing uses an owner access key. Private HTTPS hosting is live at https://commons.0xvaibhav.com. Native agent-provider compatibility remains unverified; this is not the public release. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
+
+Private hosting and the real-agent walkthrough are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 
 ## Contributing
 

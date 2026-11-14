@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { GoogleSignIn } from "@/components/forms";
+import { GoogleSignIn, TestOwnerSignIn } from "@/components/forms";
 import { currentParticipant } from "@/lib/session";
 
 export default async function SignIn({
@@ -17,12 +17,20 @@ export default async function SignIn({
       </h1>
       <p>
         {query.session
-          ? "Your session ended or access was revoked. Sign in as the owner, or ask for a new agent invitation."
+          ? "Your session ended or access was revoked. Sign in as the owner, or return with your saved agent credential."
           : "A shared home for your projects and assistants."}
       </p>
-      <GoogleSignIn />
+      {process.env.COMMONS_TEST_OWNER_KEY_HASH &&
+      process.env.COMMONS_MOCK_AUTH !== "true" ? (
+        <TestOwnerSignIn />
+      ) : (
+        <GoogleSignIn />
+      )}
       <p className="local-signin-note">
-        Google sign-in is mocked on this local server.
+        {process.env.COMMONS_TEST_OWNER_KEY_HASH &&
+        process.env.COMMONS_MOCK_AUTH !== "true"
+          ? "Private testing workspace."
+          : "Google sign-in is mocked on this local server."}
       </p>
       <div className="entry-alternative">
         <Link href="/join">Joining as an agent?</Link>

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import { Pool } from "pg";
@@ -302,4 +303,58 @@ test("project search finds body text, requests and the brief without leaking oth
     store.searchProject(other, project.id, "quartz"),
     CommonsError,
   );
+});
+
+test("return credentials preserve identity and active credentials renew without invitations", async () => {
+  let now = Date.now();
+  const timed = new Store(
+    pool,
+    "return-test-secret-more-than-32-characters",
+    () => now,
+  );
+  const host = (
+    await timed.createLocalOwner(
+      `return-${crypto.randomUUID()}@example.test`,
+      "Owner",
+    )
+  ).actor;
+  const invite = await timed.issueInvite(host, null);
+  const joined = await timed.join(invite.id, invite.code, "Returning agent");
+  now += 80 * 86400000;
+  assert.equal((await timed.authenticate(joined.token)).id, joined.actor.id);
+  now += 80 * 86400000;
+  const resumed = await timed.resumeAgent(joined.token);
+  assert.equal(resumed.actor.id, joined.actor.id);
+  assert.equal((await timed.authenticate(resumed.token)).id, joined.actor.id);
+  await timed.revoke(host, joined.actor.id);
+  await assert.rejects(timed.authenticate(joined.token), CommonsError);
+  await assert.rejects(timed.authenticate(resumed.token), CommonsError);
+  const secondInvite = await timed.issueInvite(host, null);
+  const idle = await timed.join(
+    secondInvite.id,
+    secondInvite.code,
+    "Idle agent",
+  );
+  now += 91 * 86400000;
+  await assert.rejects(timed.resumeAgent(idle.token), CommonsError);
+});
+
+test("private testing owner login requires the configured key", async () => {
+  const key = crypto.randomUUID();
+  const hash = createHash("sha256").update(key).digest("hex");
+  await assert.rejects(
+    store.signInTestOwner("wrong", hash, owner.email!, owner.name),
+    CommonsError,
+  );
+  await assert.rejects(
+    store.signInTestOwner(key, "", owner.email!, owner.name),
+    CommonsError,
+  );
+  const result = await store.signInTestOwner(
+    key,
+    hash,
+    owner.email!,
+    owner.name,
+  );
+  assert.equal(result.actor.id, owner.id);
 });

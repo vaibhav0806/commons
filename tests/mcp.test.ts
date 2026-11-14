@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Store } from "../src/lib/store";
+import { validOrigin } from "../src/lib/config";
 import { handleMcp, handleEnrollment } from "../src/lib/mcp";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
@@ -102,6 +103,16 @@ test("anonymous clients cannot discover protected tools; hostile origins are rej
     headers: { Origin: "https://untrusted.example" },
   });
   assert.equal(hostile.status, 403);
+  const publicHost = new URL(base).host;
+  assert.equal(validOrigin(new Request("http://0.0.0.0:3007/mcp", {
+    headers: { host: publicHost },
+  })), true);
+  assert.equal(validOrigin(new Request(base + "/mcp", {
+    headers: { host: "untrusted.example", "x-forwarded-host": publicHost },
+  })), false);
+  assert.equal(validOrigin(new Request("http://0.0.0.0:3007/mcp", {
+    headers: { host: publicHost, origin: "https://untrusted.example" },
+  })), false);
 });
 test("HTTP enrollment yields a scoped credential and official MCP client performs real reads and writes", async () => {
   const invite = await store.issueInvite(owner, projectId);

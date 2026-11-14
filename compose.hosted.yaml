@@ -1,0 +1,42 @@
+name: commons-hosted
+services:
+  app:
+    build: .
+    image: commons:testing
+    container_name: commons-app
+    restart: unless-stopped
+    env_file: .env.hosted
+    environment:
+      HYDRA_URL: http://hydra:8443
+      HYDRA_TOKEN_FILE: /run/secrets/hydra_token
+    secrets: [hydra_token]
+    networks: [default, database, web]
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3007/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  hydra:
+    extends:
+      file: compose.yaml
+      service: hydra
+    profiles: !reset []
+    ports: !reset []
+    mem_limit: 768m
+    cpus: 1.0
+    volumes: !override
+      - hydra_data:/tmp/graph
+secrets:
+  hydra_token:
+    file: ./data/hydradb/auth-token
+volumes:
+  hydra_data:
+networks:
+  database:
+    external: true
+  web:
+    external: true
+    name: tech-digest-net
