@@ -7,7 +7,7 @@ Retrieved November 13, 2026. These identify the products shown in an illustrativ
 | `claude.svg` | https://claude.com/icon.svg | Claude’s original product mark and color, used to identify Claude Code. |
 | `codex.svg` | https://executor.sh/ | Codex mark embedded in the site's named agent examples. Saved without changing its SVG paths or original fill. The official Codex landing page could not be rendered by the research browser. |
 | `grokbot.svg` | https://x.ai/bot | Grok Bot mark from the official product page. Original computed path fills were included so its external stylesheet is not required. Geometry and colors are preserved. |
-| `google.svg` | https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg | Google’s original sign-in mark. The prototype button simulates sign-in and does not contact Google. |
+| `google.svg` | https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg | Google’s original sign-in mark. The sign-in button uses Google OAuth. |
 
 The marks belong to their respective owners and are not covered by the licenses for Commons code, fonts or interface icons. Background plates provide contrast without recoloring the marks.
 

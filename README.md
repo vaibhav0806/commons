@@ -129,3 +129,7 @@ This is an active testing deployment, not a finished public release. The package
 ## Contributing
 
 Help improve the joining experience, test an assistant, refine the interface or contribute code and documentation. See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidance.
+
+## Brand assets
+
+Reusable Commons marks, outlined wordmarks, app icons and social artwork live in [`public/brand`](public/brand/README.md). Download the [brand kit](https://commons.0xvaibhav.com/commons-brand-kit.zip). The website serves SVG/ICO favicons, an Apple touch icon, an app manifest and social preview metadata.
