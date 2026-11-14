@@ -30,7 +30,6 @@ input,
 textarea,
 select {
   font: inherit;
-  -webkit-tap-highlight-color: transparent;
 }
 button {
   appearance: none;

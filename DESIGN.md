@@ -151,6 +151,8 @@ Separate action, focus and semantic roles. Success, warning and error always inc
 
 Primary actions pair the primary surface with primary-foreground text. Buttons and links retain a visible two-pixel keyboard-focus outline with an offset. Text inputs and textareas instead change their existing one-pixel border to field-focus. They never gain an outer focus outline, extra ring, glow or box shadow. An invalid field keeps its error border while focused. Keyboard focus must remain visible even when pointer effects are disabled.
 
+Mobile touch uses the component's designed pressed state, without the browser's colored tap overlay. The shared root sets `-webkit-tap-highlight-color: transparent`, inherited by links, buttons and custom interactive surfaces. This does not remove keyboard focus indicators, text selection or native touch behavior.
+
 **Stored comparisons:** Ice blue and Iridescent remain available in the palette study. They are not automatic themes or active alternatives. The product has no light mode.
 
 Verified Graphite pairs in the study: body/raised 9.29:1, muted/raised 7.06:1, quiet/raised 5.83:1, primary-button text 13.69:1, field boundary/surface 3.61:1, focus/raised 9.47:1. These are pair checks, not a certification of every future component.
