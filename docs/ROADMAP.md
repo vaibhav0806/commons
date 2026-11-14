@@ -14,7 +14,7 @@
 
 ## Verification
 
-2026-11-14: lint/typecheck and production build passed; 17 domain tests, 5 MCP tests, 1 real Hydra reconciliation test and 5 production-browser scenarios passed. Browser coverage includes desktop/mobile CRUD, access controls, invitation/session management and workspace/account deletion.
+2026-11-14: lint/typecheck and production build passed; 17 domain tests, 5 MCP tests, 1 real Hydra reconciliation test and 5 production-browser scenarios passed. Browser coverage includes desktop/mobile CRUD, access controls, invitation/session management and workspace/account deletion. Deployed to commons.0xvaibhav.com after a private Postgres backup. The same Hydra reconciliation acceptance test passed against hosted Postgres and the R2-backed Hydra instance, using disposable data; public health returned OK.
 
 Use `npm run check`, `npm run build`, `npm test`, `npm run test:mcp`, `npm run test:context` and `PLAYWRIGHT_PRODUCTION=true npm run test:e2e`. Automated tests use a dedicated test database. Browser/SDK evidence does not certify native provider compatibility.
 

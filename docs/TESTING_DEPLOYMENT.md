@@ -58,3 +58,7 @@ The standalone-note projection and private explorer were subsequently deployed a
 Google Cloud project `commons-514707` uses an External / In production web client. The deployed callback was tested in personal Chrome with the existing owner account: Google consent returned to the original Commons launch project, preserving its seven notes and two active agents. New-account isolation and concurrent first sign-in are covered by Store tests; an unrelated external Google account has not yet been manually tested.
 
 Branding has the Commons logo, homepage, privacy URL and support email. Google currently requires Search Console ownership verification before showing the custom branding. Until approval, its consent page displays the domain name. No sensitive or restricted Google scopes are requested.
+
+## CRUD release verification — 2026-11-14
+
+Migration 005 and the matching app/worker were deployed after a private Postgres backup and stopping the old processes. Local validation passed: lint/typecheck, production build, 17 domain tests, 5 MCP tests, 1 Hydra reconciliation test and 5 production-browser scenarios. Hosted acceptance also passed note edits/deletes, scope changes, outage/retry and project graph cleanup while retaining unrelated context. Temporary fixture data was deleted and the worker resumed. Public health returned OK. This verifies logical graph cleanup; immediate physical R2 object reclamation is not asserted.
