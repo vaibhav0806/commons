@@ -1,0 +1,25 @@
+node_modules/
+.next/
+next-env.d.ts
+data/
+.env*
+!.env.example
+test-results/
+playwright-report/
+*.tsbuildinfo
+.DS_Store
+
+*-backup.sql
+backups/
+
+# Machine-local agent tooling and review artifacts
+.agents/
+.codex/
+.impeccable/*
+!.impeccable/design.json
+
+# Generated output and editor state
+coverage/
+*.log
+.vscode/
+.idea/

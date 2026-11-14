@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T20:33:01.867038+00:00",
+  "title": "Design System: Commons",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Silver"
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Graphite canvas"
+      },
+      "glint": {
+        "role": "secondary",
+        "displayName": "Reflective light"
+      },
+      "field-focus": {
+        "role": "neutral",
+        "displayName": "Text-field focus border"
+      }
+    },
+    "typographyMeta": {
+      "page": {
+        "displayName": "Page heading",
+        "purpose": "Space Grotesk page heading; approved scale."
+      },
+      "body": {
+        "displayName": "Reading",
+        "purpose": "Geist for sustained reading."
+      },
+      "identifier": {
+        "displayName": "Identifier",
+        "purpose": "Geist Mono for codes and literal data."
+      }
+    },
+    "shadows": [
+      {
+        "name": "control-rest",
+        "value": "0 3px 7px #0005",
+        "purpose": "Primary control at rest."
+      },
+      {
+        "name": "control-hover",
+        "value": "0 4px 9px #0005",
+        "purpose": "Primary control hover."
+      },
+      {
+        "name": "control-pressed",
+        "value": "0 1px 3px #0005",
+        "purpose": "Primary control press."
+      }
+    ],
+    "motion": [
+      {
+        "name": "response",
+        "value": "140ms",
+        "purpose": "Hover, focus and press response."
+      },
+      {
+        "name": "surface",
+        "value": "260ms",
+        "purpose": "Surface transitions."
+      },
+      {
+        "name": "highlight",
+        "value": "500ms",
+        "purpose": "Specular button highlight."
+      },
+      {
+        "name": "settle",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Ease-out settling."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "700px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Approved primary action, geometry and response.",
+      "html": "<button class=\"commons-primary\">Save request</button>",
+      "css": ".commons-primary { box-sizing:border-box; background:#DBE0E8; color:#12161C; border:0; border-radius:8px; min-height:44px; padding:12px 16px; font:500 13px/1.4 Geist,sans-serif; cursor:pointer; box-shadow:0 3px 7px #0005; transition:transform 140ms cubic-bezier(.16,1,.3,1),background 140ms; } .commons-primary:hover { background:#F3F5F8; transform:translateY(-1px); } .commons-primary:active { transform:translateY(2px) scale(.99); } .commons-primary:focus-visible { outline:2px solid #BCCADC; outline-offset:5px; } @media(prefers-reduced-motion:reduce) { .commons-primary { transition:none; } .commons-primary:hover,.commons-primary:active { transform:none; } }"
+    },
+    {
+      "name": "Project field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Persistent label, readable text and border-only focus; no outer outline or shadow.",
+      "html": "<label class=\"commons-label\" for=\"commons-field\">Project name</label><input class=\"commons-field\" id=\"commons-field\" value=\"Commons launch\">",
+      "css": ".commons-label { display:block; margin-bottom:8px; color:#C2C7D0; font:400 12px/1.6 Geist,sans-serif; } .commons-field { box-sizing:border-box; width:100%; height:44px; padding:0 12px; background:#17191D; color:#EEF0F3; border:1px solid #677282; border-radius:8px; font:400 15px/1.4 Geist,sans-serif; caret-color:#C8D0DC; } .commons-field:focus { outline:none; box-shadow:none; border-color:#8C97A6; }"
+    },
+    {
+      "name": "Shared note",
+      "kind": "card",
+      "refersTo": "note",
+      "description": "Attributed, durable context on a reflective graphite surface.",
+      "html": "<article class=\"commons-note\"><p class=\"commons-byline\">Note by Codex</p><h2>The platform is ready for launch.</h2><p>Product notes are ready for the next assistant.</p></article>",
+      "css": ".commons-note { box-sizing:border-box; padding:32px; background:linear-gradient(145deg,#202328,#17191D 58%); color:#C2C7D0; border:1px solid #677282; border-radius:14px; font:400 15px/1.8 Geist,sans-serif; } .commons-note .commons-byline { margin:0 0 24px; font-size:12px; color:#A7AEBA; } .commons-note h2 { margin:0 0 12px; font:500 26px/1.3 \"Space Grotesk\",sans-serif; letter-spacing:-.025em; color:#EEF0F3; } .commons-note p { margin:0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Minimal composition. Reflective cybernetic character.",
+    "overview": "The owner approved the font families, dark-only character, Graphite + Reflective, type scale, spacing, corners and interaction response. Text fields use a subtle existing-border change on focus with no outer outline, ring, glow or shadow. Apply these foundations throughout the mock; production product implementation remains separate.",
+    "keyCharacteristics": [
+      "Dark only",
+      "Graphite surfaces and silver light",
+      "Stable reading with responsive controls",
+      "Recognizable agents and explicit requests"
+    ],
+    "rules": [
+      {
+        "name": "Stable reading",
+        "body": "Reflection responds on the surface; text remains still.",
+        "section": "elevation"
+      },
+      {
+        "name": "Deliberate alternate",
+        "body": "Sora is stored as an alternate, not an automatic fallback.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Use semantic roles and shared values.",
+      "Review relevant component states, keyboard behavior and reduced motion."
+    ],
+    "donts": [
+      "Do not reintroduce an outer text-field focus outline, ring, glow or added shadow.",
+      "Do not add a light theme or blanket colored note-hover flashes."
+    ]
+  }
+}

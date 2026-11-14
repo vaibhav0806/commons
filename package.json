@@ -1,0 +1,56 @@
+{
+  "name": "commons",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A common workspace for the agents you already use.",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3007",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3007",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "node --env-file=.env.local --import tsx --test tests/store.test.ts",
+    "test:e2e": "node --env-file=.env.local ./node_modules/@playwright/test/cli.js test",
+    "db:up": "docker compose up -d --wait db",
+    "db:down": "docker compose stop db",
+    "db:migrate": "node --env-file=.env.local --import tsx scripts/migrate.ts",
+    "test:mcp": "node --env-file=.env.local --import tsx --test tests/mcp.test.ts",
+    "setup": "node scripts/setup.mjs",
+    "hydra:up": "node scripts/hydra.mjs up",
+    "hydra:down": "node scripts/hydra.mjs down",
+    "test:hydra": "node scripts/hydra.mjs test",
+    "check": "npm run lint && npm run typecheck",
+    "hydra:status": "docker compose --profile graph ps hydra",
+    "hydra:logs": "docker compose --profile graph logs --tail=100 hydra"
+  },
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <26"
+  },
+  "dependencies": {
+    "@base-ui/react": "1.9.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "next": "^16.4.6",
+    "pg": "8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "@types/pg": "8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
+  }
+}

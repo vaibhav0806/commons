@@ -1,0 +1,70 @@
+/* Approved foundations from DESIGN.md. Shared by the mock and system reference. */
+@font-face { font-family: 'Space Grotesk'; src: url('./typography/fonts/spacegrotesk.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'Geist Mono'; src: url('./typography/fonts/geistmono.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
+:root {
+  color-scheme: dark;
+  --canvas: #0B0C0E;
+  --nav: #101114;
+  --surface: #17191D;
+  --panel: var(--surface);
+  --raised: #202328;
+  --hover: #292D34;
+  --line: #30353E;
+  --strong: #677282;
+  --line-strong: var(--strong);
+  --ink: #EEF0F3;
+  --text: var(--ink);
+  --body-ink: #C2C7D0;
+  --muted: #A7AEBA;
+  --quiet: #959EAC;
+  --dim: var(--quiet);
+  --accent: #C8D0DC;
+  --accent-bg: var(--raised);
+  --primary: #DBE0E8;
+  --primary-hover: #F3F5F8;
+  --on-accent: #12161C;
+  --focus: #BCCADC;
+  --field-focus: #8C97A6;
+  --success: #ADD2BB;
+  --green: var(--success);
+  --warning: #E6BFB0;
+  --error: #F0A5B5;
+  --danger: var(--error);
+  --glint: #E8F2FF;
+  --glint-end: #9BAAC1;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: Geist, system-ui, sans-serif;
+  --font-code: 'Geist Mono', monospace;
+  --type-page: 44px;
+  --type-note: 26px;
+  --type-section: 20px;
+  --type-row: 16px;
+  --type-body: 15px;
+  --type-control: 13px;
+  --type-meta: 12px;
+  --radius-control: 8px;
+  --radius-surface: 14px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-inset: 20px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-page: 40px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --control-height: 44px;
+  --navigation-width: 220px;
+  --content-width: 960px;
+  --motion-response: 140ms;
+  --motion-surface: 260ms;
+  --motion-light: 500ms;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --shadow-rest: 0 3px 7px #0005;
+  --shadow-hover: 0 4px 9px #0005;
+  --shadow-press: 0 1px 3px #0005;
+}
+@media (max-width: 700px) {
+  :root { --type-page: 36px; --type-note: 24px; }
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Commons — compare the handoff</title>
+  <style>
+    @font-face{font-family:Geist;src:url('./assets/geist-latin.woff2') format('woff2');font-weight:100 900;font-display:swap}
+    *{box-sizing:border-box}body{margin:0;color:#ededef;background:#101113;font:13px Geist,system-ui,sans-serif}header{height:76px;display:flex;align-items:center;gap:24px;padding:0 28px;border-bottom:1px solid #2b2c31}h1{margin:0;font-size:16px;letter-spacing:-.35px;font-weight:500}header p{margin:0;color:#a3a4ad;font-size:12px}button{font:inherit;color:#ededef;border:1px solid #45464e;background:#202125;padding:10px 14px;border-radius:7px;margin-left:auto;cursor:pointer}button:hover{background:#2a2b30}button:focus-visible,a:focus-visible{outline:2px solid #dedee5;outline-offset:4px}main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}section+section{border-left:1px solid #2b2c31}.label{height:66px;padding:0 28px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #ffffff08}.label strong{font-weight:500}.label span{font-size:11px;color:#a3a4ad}.label a{font-size:11px;color:#bfc0c9;margin-left:auto;text-decoration:none}iframe{display:block;width:100%;height:calc(100svh - 142px);min-height:700px;border:0;background:#141517}@media(max-width:900px){header{height:auto;min-height:76px;padding:18px;gap:14px;flex-wrap:wrap}header p{display:none}main{grid-template-columns:1fr}section+section{border-left:0;border-top:1px solid #45464e}.label{padding:0 20px;gap:10px}iframe{height:800px}.label span{font-size:10px}}
+  </style>
+</head>
+<body>
+  <header><h1>Commons · two ways to hand off</h1><p>Same work. Different rhythm.</p><button id="replay">Replay both</button></header>
+  <main>
+    <section><div class="label"><strong>Parallel</strong><span>Codex + Instinct → Grok Bot · 13.1s</span><a href="http://localhost:4177/v2/?variant=parallel#/start" target="_blank" rel="noopener">Full onboarding ↗</a></div><iframe title="Parallel agent contributions" src="http://localhost:4177/v2/?preview=1&variant=parallel#/start"></iframe></section>
+    <section><div class="label"><strong>One at a time</strong><span>Codex → Instinct → Grok Bot · 18s</span><a href="http://localhost:4178/sequential/?flow=7#/start" target="_blank" rel="noopener">Full onboarding ↗</a></div><iframe title="Sequential agent handoff" src="http://localhost:4178/sequential/?preview=1#/start"></iframe></section>
+  </main>
+  <script>document.querySelector('#replay').addEventListener('click',()=>{const replay=String(Date.now());document.querySelectorAll('iframe').forEach(frame=>{const url=new URL(frame.src);url.searchParams.set('replay',replay);frame.src=url.href;});});</script>
+</body>
+</html>

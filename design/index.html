@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Commons — Design study</title>
+  <link rel="preload" href="./assets/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./commons.tokens.css">
+  <link rel="stylesheet" href="./commons.css">
+  <script src="./prototype.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="review-bar">
+    <span class="review-label">Commons design study <span class="sample-label">Sample workspace</span></span>
+    <nav aria-label="Prototype screens">
+      <a href="#/join" data-review="join">Join</a>
+      <a href="#/project" data-review="project">Project</a>
+      <a href="#/request/new" data-review="request">Request</a>
+      <a href="#/system" data-review="system">System</a>
+    </nav>
+    <button class="review-reset" type="button" data-action="reset">Reset sample</button>
+  </header>
+  <div id="app"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="overlay" class="dialog" aria-labelledby="dialog-title"></dialog>
+</body>
+</html>

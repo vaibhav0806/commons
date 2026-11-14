@@ -1,0 +1,50 @@
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("./assets/instrument-sans.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --canvas: #f8faf8;
+  --surface: #ffffff;
+  --surface-subtle: #f0f4f0;
+  --surface-hover: #f5f7f4;
+  --surface-selected: #e0eae0;
+  --ink: #25362f;
+  --ink-muted: #596a60;
+  --ink-reading: #43564a;
+  --ink-placeholder: #68796e;
+  --on-accent: #ffffff;
+  --accent: #28634d;
+  --accent-hover: #1d503d;
+  --accent-soft: #e6f0e8;
+  --accent-line: #bfD5c5;
+  --line: #dde5de;
+  --line-strong: #b9c7bd;
+  --warning: #80551a;
+  --warning-soft: #f8f0df;
+  --danger: #b23b3b;
+  --danger-soft: #fff0ef;
+  --blue: #3f5a98;
+  --blue-soft: #edf1fa;
+  --lilac: #6d5687;
+  --lilac-soft: #f0edf6;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --shadow-overlay: 0 20px 70px #25362f20, 0 2px 8px #25362f08;
+}

@@ -1,0 +1,61 @@
+name: commons
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: commons
+      POSTGRES_PASSWORD: commons_local
+      POSTGRES_DB: commons
+    ports:
+      - "127.0.0.1:15437:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commons -d commons"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  hydra:
+    profiles: [graph]
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "mkdir -p /tmp/graph/store /tmp/graph/cache && exec /usr/local/bin/graph-node",
+      ]
+    image: ghcr.io/hydra-db/hydradb@sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880
+    restart: unless-stopped
+    environment:
+      CLOUD_PROVIDER: local
+      LOCAL_PATH: /tmp/graph/store
+      GRAPH_NAMESPACE: commons
+      GRAPH_ID: commons
+      GRAPH_CELL_ID: cell-0
+      GRAPH_CELLS: cell-0
+      GRAPH_NODE_ID: node-0
+      GRAPH_BOLT_ADDR: 0.0.0.0:7687
+      GRAPH_HTTP_ADDR: 0.0.0.0:8443
+      GRAPH_ADMIN_ADDR: 0.0.0.0:9090
+      GRAPH_BOLT_NODE_ADDRESSES: node-0=127.0.0.1:7687
+      GRAPH_ADVERTISED_BOLT_ADDR: 127.0.0.1:17687
+      GRAPH_DATA_CACHE_DIR: /tmp/graph/cache
+      GRAPH_AUTH_TOKEN_FILE: /run/secrets/hydra_token
+      GRAPH_ALLOW_PLAINTEXT: "true"
+      GRAPH_USAGE_REPORT_ENABLED: "false"
+      RUST_MIN_STACK: "33554432"
+    ports:
+      - "127.0.0.1:18443:8443"
+      - "127.0.0.1:19090:9090"
+      - "127.0.0.1:17687:7687"
+    volumes:
+      - hydra_data:/tmp/graph
+    secrets:
+      - hydra_token
+secrets:
+  hydra_token:
+    file: ./data/hydradb/auth-token
+
+volumes:
+  postgres_data:
+  hydra_data:
