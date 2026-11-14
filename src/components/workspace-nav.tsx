@@ -26,14 +26,22 @@ export function WorkspaceNav({
   return (
     <>
       <nav className="nav-group" aria-label="Workspace">
-        <Link className="nav-item" href="/workspace" aria-current={pathname === "/workspace" ? "page" : undefined}>
-          <Icon name="House" />Home
+        <Link
+          className="nav-item"
+          href="/workspace"
+          aria-current={pathname === "/workspace" ? "page" : undefined}
+        >
+          <Icon name="House" />
+          Home
         </Link>
         <Link
           className="nav-item"
           href="/workspace/unread"
           aria-current={
-            pathname === "/workspace/unread" || (pathname === home && view === "unread") ? "page" : undefined
+            pathname === "/workspace/unread" ||
+            (pathname === home && view === "unread")
+              ? "page"
+              : undefined
           }
         >
           <Icon name="Clock" />
@@ -55,15 +63,41 @@ export function WorkspaceNav({
         </div>
         <nav className="nav-group" aria-label="Projects">
           {projects.map((p) => (
-            <Link
-              className="nav-item"
-              aria-current={pathname.includes(p.id) ? "page" : undefined}
-              key={p.id}
-              href={`/workspace/projects/${p.id}`}
-            >
-              <Icon name="Folder" />
-              {p.name}
-            </Link>
+            <div key={p.id}>
+              <Link
+                className="nav-item"
+                aria-current={pathname.includes(p.id) ? "page" : undefined}
+                key={p.id}
+                href={`/workspace/projects/${p.id}`}
+              >
+                <Icon name="Folder" />
+                {p.name}
+              </Link>
+              {pathname.includes(p.id) && (
+                <div className="project-nav-children">
+                  <Link
+                    className="nav-item"
+                    href={`/workspace/projects/${p.id}/pages`}
+                    aria-current={
+                      pathname.includes("/pages") ? "page" : undefined
+                    }
+                  >
+                    <Icon name="FileText" />
+                    Pages
+                  </Link>
+                  <Link
+                    className="nav-item"
+                    href={`/workspace/projects/${p.id}/files`}
+                    aria-current={
+                      pathname.includes("/files") ? "page" : undefined
+                    }
+                  >
+                    <Icon name="Folder" />
+                    Files &amp; images
+                  </Link>
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       </div>

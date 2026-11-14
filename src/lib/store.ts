@@ -59,9 +59,31 @@ export type Note = {
   createdAt: number;
   read: boolean;
 };
+export type PageInput = {
+  title: string;
+  body: string;
+  parentId: string | null;
+};
+export type WorkspacePage = PageInput & {
+  id: string;
+  projectId: string;
+  workspaceId: string;
+  authorId: string;
+  authorName: string;
+  version: number;
+  createdAt: number;
+  editedAt: number | null;
+};
+const pageSchema = z.object({
+  title: z.string().trim().min(1, "Give the page a title.").max(160),
+  body: z.string().max(100000),
+  parentId: z.uuid().nullable(),
+});
+const pageSelect =
+  "SELECT d.*,p.name AS author_name FROM pages d JOIN participants p ON p.id=d.author_id";
 export type SearchResult = {
   id: string;
-  kind: "note" | "project" | "agent";
+  kind: "note" | "project" | "agent" | "page" | "file";
   title: string;
   description: string;
   href: string;
@@ -969,6 +991,176 @@ export class Store {
     await this.owner(actor);
     return { nodes, edges, available, sync };
   }
+  async listPages(
+    actor: Principal,
+    projectId: string,
+    options: { query?: string; offset?: number } = {},
+  ) {
+    await this.getProject(actor, projectId);
+    const offset = z
+      .number()
+      .int()
+      .min(0)
+      .max(1000000)
+      .parse(options.offset || 0);
+    const query = z
+      .string()
+      .max(200)
+      .parse(options.query || "");
+    const pages = await this.rows<WorkspacePage>(
+      `${pageSelect} WHERE d.project_id=$1 AND (d.title ILIKE $2 OR d.body ILIKE $2) ORDER BY d.created_at DESC,d.id DESC LIMIT 51 OFFSET $3`,
+      [projectId, `%${query}%`, offset],
+    );
+    return {
+      pages: pages.slice(0, 50),
+      nextOffset: pages.length > 50 ? offset + 50 : null,
+    };
+  }
+  async getPage(actor: Principal, pageId: string) {
+    const page = await this.one<WorkspacePage>(`${pageSelect} WHERE d.id=$1`, [
+      idSchema.parse(pageId),
+    ]);
+    if (!page) throw new CommonsError("This page is unavailable.", 404);
+    await this.getProject(actor, page.projectId);
+    return page;
+  }
+  private async pageParent(
+    actor: Principal,
+    projectId: string,
+    parentId: string | null,
+    pageId?: string,
+  ) {
+    if (!parentId) return;
+    const parent = await this.getPage(actor, parentId);
+    if (parent.projectId !== projectId)
+      throw new CommonsError("Choose a parent page in this project.");
+    if (pageId) {
+      const cycle = await this.one(
+        "WITH RECURSIVE ancestors AS (SELECT id,parent_id FROM pages WHERE id=$1 UNION SELECT p.id,p.parent_id FROM pages p JOIN ancestors a ON p.id=a.parent_id) SELECT 1 FROM ancestors WHERE id=$2",
+        [parentId, pageId],
+      );
+      if (cycle)
+        throw new CommonsError(
+          "A page cannot be placed inside itself or its children.",
+        );
+    }
+  }
+  async createPage(
+    actor: Principal,
+    projectId: string,
+    input: PageInput,
+    clientKey: string = randomUUID(),
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id);
+      await tx.getProject(current, projectId);
+      const data = pageSchema.parse(input);
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [projectId],
+      );
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "page:" + current.id + idSchema.parse(clientKey),
+      ]);
+      const prior = await tx.one<{ id: string }>(
+        "SELECT id FROM pages WHERE author_id=$1 AND client_key=$2",
+        [current.id, clientKey],
+      );
+      if (prior) {
+        const page = await tx.getPage(current, prior.id);
+        if (page.projectId !== projectId)
+          throw new CommonsError(
+            "This save key belongs to another project.",
+            409,
+          );
+        return page;
+      }
+      await tx.pageParent(current, projectId, data.parentId);
+      const id = randomUUID();
+      await tx.connection.query(
+        "INSERT INTO pages(id,workspace_id,project_id,author_id,parent_id,title,body,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        [
+          id,
+          current.workspaceId,
+          projectId,
+          current.id,
+          data.parentId,
+          data.title,
+          data.body,
+          clientKey,
+          this.clock(),
+        ],
+      );
+      await tx.record(current, projectId, "Created a page", id);
+      return tx.getPage(current, id);
+    });
+  }
+  async updatePage(
+    actor: Principal,
+    pageId: string,
+    input: PageInput,
+    version: number,
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        page = await tx.getPage(current, pageId);
+      if (current.kind !== "owner" && page.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can edit this page.",
+          403,
+        );
+      const data = pageSchema.parse(input);
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [page.projectId],
+      );
+      await tx.pageParent(current, page.projectId, data.parentId, pageId);
+      const changed = await tx.connection.query(
+        "UPDATE pages SET title=$1,body=$2,parent_id=$3,edited_at=$4,version=version+1 WHERE id=$5 AND version=$6",
+        [
+          data.title,
+          data.body,
+          data.parentId,
+          this.clock(),
+          pageId,
+          z.number().int().positive().parse(version),
+        ],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This page changed since you opened it. Your draft is kept below. Open the latest page in another tab to compare before saving.",
+          409,
+        );
+      await tx.record(current, page.projectId, "Updated a page", page.id);
+      return tx.getPage(current, pageId);
+    });
+  }
+  async deletePage(actor: Principal, pageId: string, version: number) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        page = await tx.getPage(current, pageId);
+      if (current.kind !== "owner" && page.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can delete this page.",
+          403,
+        );
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [page.projectId],
+      );
+      const changed = await tx.connection.query(
+        "DELETE FROM pages WHERE id=$1 AND version=$2",
+        [pageId, z.number().int().positive().parse(version)],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This page changed. Open the latest version before deleting it.",
+          409,
+        );
+      await tx.record(current, page.projectId, "Deleted a page", pageId);
+      return { projectId: page.projectId };
+    });
+  }
   async searchProject(
     actor: Principal,
     projectId: string,
@@ -976,9 +1168,10 @@ export class Store {
   ): Promise<SearchResult[]> {
     const query = z.string().trim().max(200).parse(input);
     const project = await this.getProject(actor, projectId);
-    const [notes, people] = await Promise.all([
+    const [notes, people, pages] = await Promise.all([
       this.listNotes(actor, projectId, { query }),
       this.listParticipants(actor, projectId),
+      this.listPages(actor, projectId, { query }),
     ]);
     const base = `/workspace/projects/${projectId}`;
     const results: SearchResult[] = [];
@@ -992,6 +1185,17 @@ export class Store {
         description: "Project brief",
         href: base,
       });
+    results.push(
+      ...pages.pages
+        .slice(0, 8)
+        .map((page) => ({
+          id: page.id,
+          kind: "page" as const,
+          title: page.title,
+          description: `Page by ${page.authorName}`,
+          href: `${base}/pages/${page.id}`,
+        })),
+    );
     results.push(
       ...notes.notes.slice(0, 8).map((note) => ({
         id: note.id,

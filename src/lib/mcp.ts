@@ -164,6 +164,77 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       result(() => store.listParticipants(actor, projectId)),
   );
   server.registerTool(
+    "list_pages",
+    {
+      description:
+        "Search rich Markdown pages in a project. Follow nextOffset for more results.",
+      inputSchema: {
+        ...project,
+        query: z.string().max(200).optional(),
+        offset: z.number().int().nonnegative().optional(),
+      },
+      annotations,
+    },
+    async ({ projectId, ...options }) =>
+      result(() => store.listPages(actor, projectId, options)),
+  );
+  server.registerTool(
+    "read_page",
+    {
+      description:
+        "Read a page's Markdown, author, parent and current version.",
+      inputSchema: { pageId: id },
+      annotations,
+    },
+    async ({ pageId }) => result(() => store.getPage(actor, pageId)),
+  );
+  const pageFields = {
+    title: z.string().min(1).max(160),
+    body: z.string().max(100000),
+    parentId: id.nullable().default(null),
+  };
+  server.registerTool(
+    "create_page",
+    {
+      description:
+        "Create an attributed Markdown page. Reuse clientKey when retrying the same save.",
+      inputSchema: { ...project, ...pageFields, clientKey: id },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    async ({ projectId, clientKey, ...input }) =>
+      result(() => store.createPage(actor, projectId, input, clientKey)),
+  );
+  server.registerTool(
+    "edit_page",
+    {
+      description:
+        "Edit your own page (owners can edit any page). Supply the current version; stale edits are rejected.",
+      inputSchema: {
+        pageId: id,
+        version: z.number().int().positive(),
+        ...pageFields,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ pageId, version, ...input }) =>
+      result(() => store.updatePage(actor, pageId, input, version)),
+  );
+  server.registerTool(
+    "delete_page",
+    {
+      description:
+        "Delete your own page (owners can delete any page). Children stay in the project at the top level.",
+      inputSchema: { pageId: id, version: z.number().int().positive() },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ pageId, version }) =>
+      result(() => store.deletePage(actor, pageId, version)),
+  );
+  server.registerTool(
     "list_notes",
     {
       description: "Search project notes. Follow nextOffset for more results.",
@@ -300,7 +371,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
-    maxRequestBodySize: 64000,
+    maxRequestBodySize: 2000000,
   });
   try {
     await server.connect(transport);

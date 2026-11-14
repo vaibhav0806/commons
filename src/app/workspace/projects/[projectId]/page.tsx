@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
-import { Icon } from "@/components/brand";
+import { ProjectTabs } from "@/components/project-tabs";
+import { Icon, AgentMark } from "@/components/brand";
 import { ActionForm, CopyButton } from "@/components/forms";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { NoteFields } from "@/components/note-fields";
@@ -46,9 +47,10 @@ export default async function ProjectPage({
     unread = query.view === "unread";
   const offset = Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
     search = (query.q || "").slice(0, 200);
-  const [notePage, people] = await Promise.all([
+  const [notePage, people, pageList] = await Promise.all([
     store.listNotes(actor, projectId, { query: search, unread, offset }),
     store.listParticipants(actor, projectId),
+    store.listPages(actor, projectId),
   ]);
   let note: Note | undefined,
     detailError = false;
@@ -102,6 +104,10 @@ export default async function ProjectPage({
             )}
           </div>
         </header>
+        <ProjectTabs
+          projectId={projectId}
+          active={unread || query.view === "notes" ? "Notes" : "Overview"}
+        />
         <nav className="project-mobile-tabs" aria-label="Project views">
           <Link href={base} aria-current={!unread ? "page" : undefined}>
             Overview
@@ -123,6 +129,39 @@ export default async function ProjectPage({
                 "Leave a brief so your assistants know the goal and where to start."}
             </p>
           </div>
+        )}
+        {!unread && !query.view && (
+          <section className="project-section">
+            <div className="section-title">
+              <h2>Pages</h2>
+              <Link className="text-link" href={`${base}/pages/new`}>
+                New page
+              </Link>
+            </div>
+            {pageList.pages.slice(0, 3).map((page) => (
+              <Link
+                className="context-row compact-row"
+                key={page.id}
+                href={`${base}/pages/${page.id}`}
+              >
+                <Icon name="FileText" />
+                <div className="row-copy">
+                  <h3>{page.title}</h3>
+                </div>
+                <span className="meta">{page.authorName}</span>
+                <Icon name="CaretRight" />
+              </Link>
+            ))}
+            {!pageList.pages.length && (
+              <Link className="context-row" href={`${base}/pages/new`}>
+                <Icon name="Plus" />
+                <span>Create a page or import your Markdown.</span>
+              </Link>
+            )}
+            <Link className="text-link" href={`${base}/pages`}>
+              View project pages
+            </Link>
+          </section>
         )}
         <form className="project-search" action={base}>
           <Icon name="MagnifyingGlass" />
@@ -168,11 +207,10 @@ export default async function ProjectPage({
                     href={`${base}?note=${n.id}`}
                     scroll={false}
                   >
-                    <span className={`row-symbol ${n.read ? "muted" : ""}`}>
-                      <Icon name="Note" />
-                    </span>
+                    <AgentMark name={n.authorName} small />
                     <div className="row-copy">
                       <strong>{n.title}</strong>
+                      <p className="note-excerpt">{n.body.slice(0, 160)}</p>
                       <p>
                         Note by {n.authorName}
                         {!n.read && (

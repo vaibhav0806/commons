@@ -170,6 +170,43 @@ export async function workspaceAction(
           expiresAt: invite.expiresAt,
         };
       }
+      case "page": {
+        const page = await store.createPage(
+          actor,
+          projectId,
+          {
+            title: field(data, "title"),
+            body: field(data, "body"),
+            parentId: field(data, "parentId") || null,
+          },
+          field(data, "clientKey"),
+        );
+        destination = `/workspace/projects/${projectId}/pages/${page.id}`;
+        break;
+      }
+      case "edit-page": {
+        const page = await store.updatePage(
+          actor,
+          field(data, "pageId"),
+          {
+            title: field(data, "title"),
+            body: field(data, "body"),
+            parentId: field(data, "parentId") || null,
+          },
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}/pages/${page.id}`;
+        break;
+      }
+      case "delete-page": {
+        const page = await store.deletePage(
+          actor,
+          field(data, "pageId"),
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}/pages`;
+        break;
+      }
       case "note": {
         const references = noteReferences(data);
         const note = await store.createNote(
