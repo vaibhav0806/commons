@@ -36,7 +36,7 @@ Automated SDK and browser tests are evidence for the protocol and application, n
 
 ## Graph projection boundary
 
-Projects, participants and notes are projected with IN_PROJECT and AUTHORED_BY edges. Postgres triggers queue inserts, edits and deletes in the same transaction. The worker checks every five seconds. Its graph ID mappings and cleanup jobs survive project deletion. Each sync deletes the project-owned graph IDs before rebuilding current relationships; partial failures retain the job for retry. Pending revisions suppress stale edges in the explorer. Note bodies and credentials are never projected.
+Projects, participants, notes, pages and files are projected with IN_PROJECT and AUTHORED_BY edges. Pages also project IN_PAGE parent relationships and explicit REFERENCES to pages/files in the same project. Postgres triggers queue inserts, edits and deletes in the same transaction. The worker checks every five seconds. Its graph ID mappings and cleanup jobs survive project deletion. Each sync deletes the project-owned graph IDs before rebuilding current relationships; partial failures retain the job for retry. Pending revisions suppress stale edges in the explorer. Note bodies and credentials are never projected.
 
 The owner-only `/workspace/graph` page is a Commons explorer, not an official Hydra Studio distribution. Labels come from currently authorized Postgres records; edges come from Hydra. Revoked/removed authors are retained where their notes still require attribution. Agents cannot access the explorer.
 
@@ -72,3 +72,11 @@ Retain the previous image and take a private Postgres backup before replacement.
 Backups now require Postgres plus application R2 objects; database dumps do not include file bytes. Do not apply bucket-wide expiry rules. Monitor durable `file_cleanup` jobs and pending upload reservations.
 
 Validation commands include the existing check/build/domain/MCP/context/browser scripts plus `npm run test:workspace`. The workspace and browser tests use real R2 credentials with disposable objects and the dedicated `_test` database.
+
+## Workspace release verification — 2026-11-14
+
+Deployed application commit `1b79d2f` to the existing Hetzner testing environment. Migrations 006–008 applied without resetting the database. The previous `commons:testing` image was retained as `commons:pre-workspace-20261114` and a private custom-format database backup was saved before replacement.
+
+Local verification passed: lint/typecheck, production build, 17 store tests, 5 MCP tests, 3 page/file/private-R2 tests, 6 production browser tests, and expanded graph reconciliation covering pages, parent relationships and file references. The existing local Hydra volume returned internal query errors even for basic queries; it was preserved, and graph verification passed with a separate disposable volume.
+
+Hosted verification used a disposable workspace: saved and read a Markdown page; uploaded bytes through the public authenticated multipart route to private R2; downloaded identical bytes; rejected anonymous and revoked-agent downloads; rendered Home, Pages and Files with a real session; projected pages/files into hosted Hydra; then removed the fixture and confirmed existing project IDs were unchanged. `/api/health` returned `ok`. Native agent-provider certification remains a separate manual acceptance step.
