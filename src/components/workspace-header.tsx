@@ -1,0 +1,30 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import type { Project } from "@/lib/store";
+import { CommandSearchButton } from "./app-interactions";
+import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
+import { DialogSurface } from "./ui/dialog-surface";
+import { Icon } from "./brand";
+
+export function WorkspaceHeader({ name, projects, owner }: { name: string; projects: Project[]; owner: boolean }) {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const project = projects.find((p) => pathname.includes(p.id));
+  const section = project?.name || ({ agents: "Agents", settings: "Settings", graph: "Graph explorer", new: "New project", unread: "Unread notes" }[pathname.split("/")[2] || ""] || "Home");
+  return <>
+    <header className="workspace-header">
+      <button className="icon-button mobile-menu-button" aria-label="Open workspace navigation" onClick={() => setOpen(true)}><Icon name="List" /></button>
+      <div className="workspace-breadcrumb"><Link href="/workspace">{name}</Link><span>/</span><span>{section}</span></div>
+      <CommandSearchButton />
+    </header>
+    <DialogSurface open={open} onOpenChange={setOpen} title={name}>
+      <div className="mobile-workspace-links" onClick={(event) => { if ((event.target as HTMLElement).closest("a")) setOpen(false); }}>
+        <WorkspaceNav projects={projects} owner={owner} />
+        <WorkspaceActions owner={owner} />
+      </div>
+    </DialogSurface>
+  </>;
+}

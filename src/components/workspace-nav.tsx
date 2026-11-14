@@ -26,11 +26,14 @@ export function WorkspaceNav({
   return (
     <>
       <nav className="nav-group" aria-label="Workspace">
+        <Link className="nav-item" href="/workspace" aria-current={pathname === "/workspace" ? "page" : undefined}>
+          <Icon name="House" />Home
+        </Link>
         <Link
           className="nav-item"
-          href={`${home}?view=unread`}
+          href="/workspace/unread"
           aria-current={
-            pathname === home && view === "unread" ? "page" : undefined
+            pathname === "/workspace/unread" || (pathname === home && view === "unread") ? "page" : undefined
           }
         >
           <Icon name="Clock" />
