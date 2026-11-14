@@ -102,7 +102,7 @@ export function DetailSheet({
       />
       <section
         ref={sheet}
-        className="request-sheet"
+        className="detail-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="detail-title"

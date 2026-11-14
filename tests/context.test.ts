@@ -10,166 +10,117 @@ const store = new Store(pool, "context-test-secret-over-thirty-two-characters");
 process.env.HYDRA_URL = "http://127.0.0.1:18443";
 process.env.HYDRA_TOKEN_FILE = "data/hydradb/auth-token";
 
-test("Hydra retrieves linked context, rejects unrelated context and falls back during outages", async () => {
+test("Hydra reconciles notes, access changes and deleted projects; outages retain cleanup jobs", async () => {
   const owner = (
     await store.createLocalOwner(
       `context-${crypto.randomUUID()}@example.test`,
-      "Owner",
+      "Graph Owner",
     )
   ).actor;
   const project = await store.createProject(
     owner,
-    "Launch",
-    "Use the product notes to schedule demos.",
+    "Graph CRUD",
+    "Shared context",
   );
-  const hidden = await store.createProject(owner, "Hidden", "Private context.");
+  const other = await store.createProject(owner, "Unrelated", "");
   const invite = await store.issueInvite(owner, project.id);
-  const agent = (await store.join(invite.id, invite.code, "Assistant")).actor;
-  const source = await store.createNote(
-    owner,
-    project.id,
-    { title: "Product notes", body: "Ten alpha users need Friday demos." },
-    crypto.randomUUID(),
-  );
-  const output = await store.createNote(
+  const agent = (await store.join(invite.id, invite.code, "Graph Agent")).actor;
+  const note = await store.createNote(
     agent,
     project.id,
-    { title: "Demo schedule", body: "Ten Friday calls are booked." },
+    { title: "Context", body: "Shared note" },
     crypto.randomUUID(),
   );
-  const unrelated = await store.createNote(
+  const untouched = await store.createNote(
     owner,
-    hidden.id,
-    { title: "Hidden secret", body: "Must never appear." },
-    crypto.randomUUID(),
-  );
-  const request = await store.createRequest(
-    owner,
-    project.id,
-    {
-      title: "Book demos",
-      body: "Use the signups.",
-      recipientIds: [agent.id],
-      noteId: source.id,
-    },
-    crypto.randomUUID(),
-  );
-  await store.acknowledge(agent, request.id);
-  await store.completeRequest(agent, request.id, output.id);
-  let graphIds: number[] = [];
-  const standalone = await store.createNote(
-    owner,
-    project.id,
-    { title: "Independent update", body: "No request references this note." },
+    other.id,
+    { title: "Unrelated", body: "Keep this" },
     crypto.randomUUID(),
   );
   try {
+    await syncGraphProject(pool, project.id);
+    await syncGraphProject(pool, other.id);
+    const initial = await store.inspectGraph(owner, project.id);
+    assert.equal(initial.available, true);
+    assert.ok(initial.edges.some((e) => e.kind === "AUTHORED_BY"));
+    await assert.rejects(store.inspectGraph(agent, project.id), CommonsError);
+    const ids = initial.nodes.map((n) => n.id);
+    const unrelatedId = (await store.inspectGraph(owner, other.id)).nodes.find(
+      (n) => n.resourceId === untouched.id,
+    )!.id;
+    await store.updateNote(
+      agent,
+      note.id,
+      { title: "Edited", body: "New context" },
+      note.version,
+    );
+    await syncGraphProject(pool, project.id);
     assert.equal(
-      (await store.relatedContext(agent, source.id)).engine,
-      "postgres-fallback",
+      (await store.inspectGraph(owner, project.id)).edges.length,
+      initial.edges.length,
     );
-    assert.equal(await syncGraphProject(pool, project.id), true);
-    const snapshot = await store.inspectGraph(owner, project.id);
-    assert.equal(snapshot.available, true);
-    const node = snapshot.nodes.find((n) => n.resourceId === standalone.id)!;
-    assert.ok(node);
-    assert.ok(
-      snapshot.edges.some(
-        (e) => e.source === node.id && e.kind === "IN_PROJECT",
-      ),
-    );
-    assert.ok(
-      snapshot.edges.some(
-        (e) => e.source === node.id && e.kind === "AUTHORED_BY",
-      ),
-    );
+    await store.deleteNote(owner, note.id, 2);
+    const endpoint = process.env.HYDRA_URL;
+    process.env.HYDRA_URL = "http://127.0.0.1:1";
+    await assert.rejects(syncGraphProject(pool, project.id));
+    const pending = (
+      await pool.query("SELECT * FROM graph_sync WHERE project_id=$1", [
+        project.id,
+      ])
+    ).rows[0];
+    assert.ok(pending.revision > pending.synced_revision);
+    assert.ok(pending.last_error);
+    process.env.HYDRA_URL = endpoint;
+    await syncGraphProject(pool, project.id);
+    const deletedId = initial.nodes.find((n) => n.resourceId === note.id)!.id;
     assert.equal(
-      (await store.relatedContext(agent, standalone.id)).notes.length,
+      (
+        await graphQuery("MATCH (a {id: $id})-[:IN_PROJECT]->(b) RETURN b.id", {
+          id: deletedId,
+        })
+      ).rows.length,
       0,
     );
-    await assert.rejects(store.inspectGraph(agent, project.id), CommonsError);
-    await pool.query(
-      "UPDATE graph_sync SET revision=revision+1 WHERE project_id=$1",
-      [project.id],
-    );
+    await store.updateAgent(owner, agent.id, "Graph Agent", other.id);
     await syncGraphProject(pool, project.id);
-    assert.deepEqual(
-      (await store.inspectGraph(owner, project.id)).edges,
-      snapshot.edges,
-    );
-    const result = await store.relatedContext(agent, source.id);
-    assert.equal(result.engine, "hydradb");
-    assert.deepEqual(
-      result.notes.map((note) => note.id),
-      [output.id],
-    );
-    assert.equal(
-      (await store.relatedContext(agent, output.id)).notes[0].id,
-      source.id,
-    );
-    await assert.rejects(
-      store.relatedContext(agent, unrelated.id),
-      CommonsError,
-    );
-    graphIds = (
-      await pool.query(
-        "SELECT id FROM graph_notes WHERE note_id=ANY($1::uuid[])",
-        [[source.id, output.id]],
-      )
-    ).rows.map((r) => Number(r.id));
-    const root = (
-      await pool.query("SELECT id FROM graph_notes WHERE note_id=$1", [
-        source.id,
-      ])
-    ).rows[0].id;
-    const poison = Number.parseInt(
-      unrelated.id.replaceAll("-", "").slice(0, 13),
-      16,
-    );
-    graphIds.push(poison);
-    await graphQuery(
-      "MERGE (a {id: $source})-[:COMMONS_CONTEXT]->(b {id: $target})",
-      { source: Number(root), target: poison },
-    );
-    assert.deepEqual(
-      (await store.relatedContext(agent, source.id)).notes.map(
-        (note) => note.id,
+    assert.ok(
+      !(await store.inspectGraph(owner, project.id)).nodes.some(
+        (n) => n.resourceId === agent.id,
       ),
-      [output.id],
     );
-    process.env.HYDRA_URL = "http://127.0.0.1:1";
-    await pool.query(
-      "UPDATE graph_sync SET revision=revision+1 WHERE project_id=$1",
-      [project.id],
-    );
-    await assert.rejects(syncGraphProject(pool, project.id));
-    const job = (
-      await pool.query(
-        "SELECT revision>synced_revision pending,last_error FROM graph_sync WHERE project_id=$1",
-        [project.id],
-      )
-    ).rows[0];
-    assert.equal(job.pending, true);
-    assert.ok(job.last_error);
-    const fallback = await store.relatedContext(agent, source.id);
-    assert.equal(fallback.engine, "postgres-fallback");
-    assert.equal(fallback.notes[0].id, output.id);
-  } finally {
-    process.env.HYDRA_URL = "http://127.0.0.1:18443";
+    await store.deleteProject(owner, project.id, "Graph CRUD");
     await syncGraphProject(pool, project.id);
     assert.equal(
-      (await store.relatedContext(agent, source.id)).engine,
-      "hydradb",
-    );
-    graphIds.push(
-      ...(
-        await pool.query("SELECT id FROM graph_entities WHERE project_id=$1", [
+      (
+        await pool.query("SELECT 1 FROM graph_entities WHERE project_id=$1", [
           project.id,
         ])
-      ).rows.map((r) => Number(r.id)),
+      ).rowCount,
+      0,
     );
-    for (const source of new Set(graphIds))
-      await graphQuery("MATCH (a {id: $source}) DETACH DELETE a", { source });
+    assert.equal(
+      (
+        await pool.query("SELECT 1 FROM graph_sync WHERE project_id=$1", [
+          project.id,
+        ])
+      ).rowCount,
+      0,
+    );
+    for (const id of ids)
+      assert.equal(
+        (await graphQuery("MATCH (n {id: $id}) RETURN n.id", { id })).rows
+          .length,
+        0,
+      );
+    assert.ok(
+      (await graphQuery("MATCH (n {id: $id}) RETURN n.id", { id: unrelatedId }))
+        .rows.length,
+    );
+  } finally {
+    process.env.HYDRA_URL = "http://127.0.0.1:18443";
+    await store.deleteWorkspace(owner, "DELETE", true);
+    await syncGraphProject(pool, project.id);
+    await syncGraphProject(pool, other.id);
     await pool.end();
   }
 });

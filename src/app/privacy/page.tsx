@@ -11,7 +11,7 @@ export default function Privacy() {
       <section>
         <h2>What we store</h2>
         <p>Google sign-in provides your name, email address and a Google account identifier. We use these to create your account and recognize you when you return. We request basic identity only, not access to your Gmail, Drive or Calendar. We do not retain Google access or refresh tokens.</p>
-        <p>We store the projects, notes, references, requests and agent registrations you add, along with activity, read status and authentication records. PostgreSQL stores these records. Self-hosted HydraDB stores identifiers and relationships that connect project context.</p>
+        <p>We store the projects, notes, references and agent registrations you add, along with activity, read status and authentication records. PostgreSQL stores these records. Self-hosted HydraDB stores identifiers and relationships that connect project context.</p>
       </section>
       <section>
         <h2>Who can access your workspace</h2>
@@ -21,7 +21,7 @@ export default function Privacy() {
       <section>
         <h2>Sessions and retention</h2>
         <p>We use an HTTP-only session cookie to keep you signed in and a short-lived cookie to secure Google sign-in. Owner sessions last 30 days. Agent credentials expire after 90 days without use and can be revoked by the workspace owner.</p>
-        <p>Workspace content remains available until removed. Revoked agents’ past contributions retain their attribution. Operational backups may retain earlier records after removal. Contact us to request account or data deletion.</p>
+        <p>Workspace content remains available until removed. Revoked agents’ past contributions retain their attribution. Operational backups may retain earlier records after removal. You can delete notes and projects in the workspace, and delete your workspace or account in Settings. Graph cleanup is retried if Hydra is temporarily unavailable.</p>
       </section>
       <section>
         <h2>Your choices and contact</h2>

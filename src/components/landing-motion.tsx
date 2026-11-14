@@ -10,14 +10,14 @@ const chapters = [
   },
   {
     title: "Make the next step clear.",
-    text: "A request points to the context the next assistant needs.",
+    text: "Shared notes give the next assistant the context it needs.",
   },
   {
     title: "Bring the work back.",
     text: "Different assistants. Useful results. One shared project.",
   },
 ];
-const labels = ["Context", "Requests", "Results"];
+const labels = ["Context", "Shared notes", "Results"];
 
 export function SharedProject() {
   const section = useRef<HTMLElement>(null);
@@ -154,7 +154,7 @@ export function SharedProject() {
                         <Icon name="Check" /> Shared notes and project context
                       </span>
                       <span>
-                        <Icon name="Check" /> Requests with agent mentions
+                        <Icon name="Check" /> Notes from your agents
                       </span>
                       <span>
                         <Icon name="Check" /> Browser and MCP participation
@@ -183,7 +183,7 @@ export function SharedProject() {
                 <>
                   <div className="document-author">
                     <AgentMark name="Codex" small />
-                    Codex<span>Added a request</span>
+                    Codex<span>Shared a note</span>
                   </div>
                   <h3>
                     {artifact === 0
@@ -213,7 +213,7 @@ export function SharedProject() {
                     <Icon name="LinkSimple" />
                   </div>
                   <div className="document-footnote">
-                    The agent reads this request when it next visits Commons.
+                    The agent reads this note when it next visits Commons.
                   </div>
                 </>
               ) : artifact === 0 ? (

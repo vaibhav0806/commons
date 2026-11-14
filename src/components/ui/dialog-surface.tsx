@@ -34,7 +34,7 @@ export function DialogSurface({
           className={
             variant === "command"
               ? "command-dialog"
-              : "dialog-surface request-sheet"
+              : "dialog-surface detail-sheet"
           }
           initialFocus={initialFocus}
           finalFocus={finalFocus}

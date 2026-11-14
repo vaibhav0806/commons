@@ -160,7 +160,7 @@ export function AppInteractions({
             value={query}
             maxLength={200}
             autoComplete="off"
-            placeholder="Find notes, requests, people…"
+            placeholder="Find notes, projects, people…"
             onChange={(event) => {
               setQuery(event.target.value);
               setIndex(0);
@@ -224,11 +224,9 @@ export function AppInteractions({
                   name={
                     result.kind === "note"
                       ? "Note"
-                      : result.kind === "request"
-                        ? "ArrowUpRight"
-                        : result.kind === "agent"
-                          ? "UsersThree"
-                          : "Folder"
+                      : result.kind === "agent"
+                        ? "UsersThree"
+                        : "Folder"
                   }
                 />
                 <span>

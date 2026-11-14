@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import type { Pool } from "pg";
+import { types, type Pool } from "pg";
 import { graphQuery } from "./graph.ts";
 
+types.setTypeParser(20, Number);
 export async function syncGraphProject(pool: Pool, projectId: string) {
   const db = await pool.connect();
   try {
@@ -23,35 +24,31 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
     const project = (
       await db.query("SELECT * FROM projects WHERE id=$1", [projectId])
     ).rows[0];
-    const notes = (
-      await db.query("SELECT id,author_id FROM notes WHERE project_id=$1", [
-        projectId,
-      ])
-    ).rows;
-    const requests = (
-      await db.query(
-        "SELECT id,author_id,note_id,result_note_id,completed_at FROM requests WHERE project_id=$1",
-        [projectId],
-      )
-    ).rows;
-    const recipients = (
-      await db.query(
-        "SELECT request_id,participant_id FROM recipients WHERE project_id=$1",
-        [projectId],
-      )
-    ).rows;
-    const people = (
-      await db.query(
-        "SELECT id FROM participants WHERE workspace_id=$1 AND (project_id IS NULL OR project_id=$2)",
-        [project.workspace_id, projectId],
-      )
-    ).rows;
-    const entities = [
-      { kind: "project", resource: projectId },
-      ...people.map((r) => ({ kind: "participant", resource: r.id as string })),
-      ...notes.map((r) => ({ kind: "note", resource: r.id as string })),
-      ...requests.map((r) => ({ kind: "request", resource: r.id as string })),
-    ];
+    const notes = project
+      ? (
+          await db.query("SELECT id,author_id FROM notes WHERE project_id=$1", [
+            projectId,
+          ])
+        ).rows
+      : [];
+    const people = project
+      ? (
+          await db.query(
+            "SELECT id FROM participants WHERE workspace_id=$1 AND ((removed_at IS NULL AND (project_id IS NULL OR project_id=$2)) OR id IN (SELECT author_id FROM notes WHERE project_id=$2))",
+            [project.workspace_id, projectId],
+          )
+        ).rows
+      : [];
+    const entities = project
+      ? [
+          { kind: "project", resource: projectId },
+          ...people.map((p) => ({
+            kind: "participant",
+            resource: p.id as string,
+          })),
+          ...notes.map((n) => ({ kind: "note", resource: n.id as string })),
+        ]
+      : [];
     const ids = new Map<string, number>();
     for (const entity of entities) {
       const id =
@@ -71,78 +68,64 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
         "INSERT INTO graph_entities(id,project_id,resource_id,kind) VALUES($1,$2,$3,$4) ON CONFLICT(project_id,kind,resource_id) DO NOTHING",
         [id, projectId, entity.resource, entity.kind],
       );
-      if (entity.kind === "note")
-        await db.query(
-          "INSERT INTO graph_notes(id,note_id) VALUES($1,$2) ON CONFLICT(note_id) DO NOTHING",
-          [id, entity.resource],
-        );
       ids.set(`${entity.kind}:${entity.resource}`, id);
     }
+    const owned = (
+      await db.query("SELECT id FROM graph_entities WHERE project_id=$1", [
+        projectId,
+      ])
+    ).rows;
     await db.query("COMMIT");
+    // Keep mappings until cleanup succeeds, including after the project is deleted.
+    for (let offset = 0; offset < owned.length; offset += 100) {
+      await graphQuery(
+        "UNWIND $rows AS row MATCH (n {id: row.id}) DETACH DELETE n",
+        { rows: owned.slice(offset, offset + 100) },
+      );
+    }
+    const edges: Record<string, { source: number; target: number }[]> = {
+      IN_PROJECT: [],
+      AUTHORED_BY: [],
+    };
     const id = (kind: string, resource: string) =>
       ids.get(`${kind}:${resource}`)!;
-    const edges: Record<string, { source: number; target: number }[]> = {};
-    const edge = (type: string, source: number, target: number) => {
-      if (source === undefined || target === undefined)
-        throw new Error("Incomplete graph mapping");
-      (edges[type] ??= []).push({ source, target });
-    };
-    for (const entity of entities)
+    for (const entity of entities) {
       if (entity.kind !== "project")
-        edge(
-          "IN_PROJECT",
-          id(entity.kind, entity.resource),
-          id("project", projectId),
-        );
-    for (const note of notes)
-      edge(
-        "AUTHORED_BY",
-        id("note", note.id),
-        id("participant", note.author_id),
-      );
-    for (const request of requests) {
-      edge(
-        "AUTHORED_BY",
-        id("request", request.id),
-        id("participant", request.author_id),
-      );
-      if (request.note_id)
-        edge(
-          "SOURCE_NOTE",
-          id("request", request.id),
-          id("note", request.note_id),
-        );
-      if (request.result_note_id)
-        edge(
-          "RESULT_NOTE",
-          id("request", request.id),
-          id("note", request.result_note_id),
-        );
-      if (request.completed_at && request.note_id && request.result_note_id)
-        edge(
-          "COMMONS_CONTEXT",
-          id("note", request.note_id),
-          id("note", request.result_note_id),
-        );
+        edges.IN_PROJECT.push({
+          source: id(entity.kind, entity.resource),
+          target: id("project", projectId),
+        });
     }
-    for (const recipient of recipients)
-      edge(
-        "REQUESTED_FROM",
-        id("request", recipient.request_id),
-        id("participant", recipient.participant_id),
-      );
-    for (const [type, rows] of Object.entries(edges)) {
+    for (const note of notes)
+      edges.AUTHORED_BY.push({
+        source: id("note", note.id),
+        target: id("participant", note.author_id),
+      });
+    for (const [kind, rows] of Object.entries(edges)) {
       for (let offset = 0; offset < rows.length; offset += 100) {
         await graphQuery(
-          `UNWIND $rows AS row CREATE (a {id: row.source})-[:${type}]->(b {id: row.target})`,
+          `UNWIND $rows AS row CREATE (a {id: row.source})-[:${kind}]->(b {id: row.target})`,
           { rows: rows.slice(offset, offset + 100) },
         );
       }
     }
+    await db.query("BEGIN");
     await db.query(
-      "UPDATE graph_sync SET synced_revision=$2,synced_at=now(),last_error=NULL WHERE project_id=$1",
-      [projectId, job.revision],
+      "DELETE FROM graph_entities WHERE project_id=$1 AND NOT (id=ANY($2::bigint[]))",
+      [projectId, [...ids.values()]],
     );
+    if (project) {
+      await db.query(
+        "UPDATE graph_sync SET synced_revision=$2,synced_at=now(),last_error=NULL WHERE project_id=$1",
+        [projectId, job.revision],
+      );
+    } else {
+      await db.query(
+        "DELETE FROM graph_sync WHERE project_id=$1 AND revision=$2",
+        [projectId, job.revision],
+      );
+    }
+    await db.query("COMMIT");
     return true;
   } catch (error) {
     await db.query("ROLLBACK");

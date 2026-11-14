@@ -29,9 +29,11 @@ export type Principal = {
   createdAt: number;
   lastSeen: number;
   revokedAt: number | null;
+  removedAt: number | null;
 };
 export type Participant = Omit<Principal, "email">;
 export type Project = {
+  version: number;
   id: string;
   workspaceId: string;
   name: string;
@@ -44,6 +46,8 @@ export type NoteInput = {
   references?: { label: string; url: string }[];
 };
 export type Note = {
+  version: number;
+  editedAt: number | null;
   id: string;
   projectId: string;
   workspaceId: string;
@@ -55,35 +59,9 @@ export type Note = {
   createdAt: number;
   read: boolean;
 };
-export type RequestInput = {
-  title: string;
-  body: string;
-  recipientIds: string[];
-  noteId?: string;
-};
-export type DirectedRequest = {
-  id: string;
-  projectId: string;
-  workspaceId: string;
-  authorId: string;
-  authorName: string;
-  title: string;
-  body: string;
-  noteId: string | null;
-  resultNoteId: string | null;
-  createdAt: number;
-  completedAt: number | null;
-  status: "open" | "in_progress" | "done";
-  recipients: {
-    id: string;
-    name: string;
-    acknowledgedAt: number | null;
-    revokedAt: number | null;
-  }[];
-};
 export type SearchResult = {
   id: string;
-  kind: "note" | "request" | "project" | "agent";
+  kind: "note" | "project" | "agent";
   title: string;
   description: string;
   href: string;
@@ -123,12 +101,6 @@ const noteSchema = z.object({
     .max(10)
     .optional(),
 });
-const requestSchema = z.object({
-  title: titleSchema,
-  body: textSchema,
-  recipientIds: z.array(idSchema).min(1, "Choose an agent.").max(20),
-  noteId: idSchema.optional(),
-});
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 const camel = (row: Record<string, unknown>) =>
@@ -139,12 +111,7 @@ const camel = (row: Record<string, unknown>) =>
     ]),
   );
 const noteSelect =
-  "SELECT n.*,p.name AS author_name,EXISTS(SELECT 1 FROM reads r WHERE r.note_id=n.id AND r.participant_id=$1) AS read FROM notes n JOIN participants p ON p.id=n.author_id";
-const requestSelect = `SELECT r.*,p.name AS author_name,
-  CASE WHEN r.completed_at IS NOT NULL THEN 'done' WHEN EXISTS(SELECT 1 FROM recipients t WHERE t.request_id=r.id AND t.acknowledged_at IS NOT NULL) THEN 'in_progress' ELSE 'open' END AS status,
-  COALESCE((SELECT jsonb_agg(jsonb_build_object('id',a.id,'name',a.name,'acknowledgedAt',t.acknowledged_at,'revokedAt',a.revoked_at) ORDER BY a.created_at,a.id) FROM recipients t JOIN participants a ON a.id=t.participant_id WHERE t.request_id=r.id),'[]') AS recipients
-  FROM requests r JOIN participants p ON p.id=r.author_id`;
-
+  "SELECT n.*,p.name AS author_name,EXISTS(SELECT 1 FROM reads r WHERE r.note_id=n.id AND r.participant_id=$1 AND r.read_at>=coalesce(n.edited_at,n.created_at)) AS read FROM notes n JOIN participants p ON p.id=n.author_id";
 export class Store {
   constructor(
     private pool: Pool,
@@ -193,7 +160,7 @@ export class Store {
   }
   private async active(id: string) {
     const actor = await this.one<Principal>(
-      "SELECT * FROM participants WHERE id=$1 AND revoked_at IS NULL",
+      "SELECT * FROM participants WHERE id=$1 AND revoked_at IS NULL AND removed_at IS NULL",
       [idSchema.parse(id)],
     );
     if (!actor)
@@ -222,12 +189,10 @@ export class Store {
   }
   private async session(actorId: string, label: string, days: number) {
     const token = randomBytes(32).toString("base64url");
-    await this.connection.query("INSERT INTO sessions VALUES($1,$2,$3,$4)", [
-      digest(token),
-      actorId,
-      label,
-      this.clock() + days * 86400000,
-    ]);
+    await this.connection.query(
+      "INSERT INTO sessions(token_hash,participant_id,label,expires_at) VALUES($1,$2,$3,$4)",
+      [digest(token), actorId, label, this.clock() + days * 86400000],
+    );
     return token;
   }
   async createLocalOwner(emailInput: string, nameInput: string) {
@@ -261,52 +226,86 @@ export class Store {
   }
   async beginGoogleSignIn(state: string, verifier: string, nonce: string) {
     await this.rateLimit("google-login", 300);
-    await this.connection.query("DELETE FROM oauth_flows WHERE expires_at<=$1", [this.clock()]);
     await this.connection.query(
-      "INSERT INTO oauth_flows VALUES($1,$2,$3,$4)",
-      [digest(state), verifier, nonce, this.clock() + 600000],
+      "DELETE FROM oauth_flows WHERE expires_at<=$1",
+      [this.clock()],
     );
+    await this.connection.query("INSERT INTO oauth_flows VALUES($1,$2,$3,$4)", [
+      digest(state),
+      verifier,
+      nonce,
+      this.clock() + 600000,
+    ]);
   }
   async consumeGoogleSignIn(state: string) {
     const flow = await this.one<{ verifier: string; nonce: string }>(
       "DELETE FROM oauth_flows WHERE state_hash=$1 AND expires_at>$2 RETURNING verifier,nonce",
       [digest(state), this.clock()],
     );
-    if (!flow) throw new CommonsError("Sign-in expired. Please try again.", 401);
+    if (!flow)
+      throw new CommonsError("Sign-in expired. Please try again.", 401);
     return flow;
   }
-  async signInGoogle(subjectInput: string, emailInput: string, nameInput: string) {
+  async signInGoogle(
+    subjectInput: string,
+    emailInput: string,
+    nameInput: string,
+  ) {
     const subject = z.string().min(1).max(255).parse(subjectInput);
     const email = z.email().parse(emailInput.trim().toLowerCase());
     const name = nameSchema.parse(nameInput.trim().slice(0, 60));
     return this.transaction(async (tx) => {
-      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["google:" + subject]);
-      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [email]);
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "google:" + subject,
+      ]);
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        email,
+      ]);
       const identity = await tx.one<{ participantId: string }>(
-        "SELECT participant_id FROM google_identities WHERE subject=$1", [subject],
+        "SELECT participant_id FROM google_identities WHERE subject=$1",
+        [subject],
       );
       if (identity) {
         const actor = await tx.active(identity.participantId);
         return { actor, token: await tx.session(actor.id, "Google", 30) };
       }
       let actor = await tx.one<Principal>(
-        "SELECT * FROM participants WHERE email=$1 AND kind='owner'", [email],
+        "SELECT * FROM participants WHERE email=$1 AND kind='owner'",
+        [email],
       );
       if (actor) {
-        const linked = await tx.one("SELECT 1 FROM google_identities WHERE participant_id=$1", [actor.id]);
-        if (linked || email !== process.env.COMMONS_OWNER_EMAIL?.trim().toLowerCase())
-          throw new CommonsError("This email is already associated with another identity.", 403);
+        const linked = await tx.one(
+          "SELECT 1 FROM google_identities WHERE participant_id=$1",
+          [actor.id],
+        );
+        if (
+          linked ||
+          email !== process.env.COMMONS_OWNER_EMAIL?.trim().toLowerCase()
+        )
+          throw new CommonsError(
+            "This email is already associated with another identity.",
+            403,
+          );
         actor = await tx.active(actor.id);
       } else {
-        const workspaceId = randomUUID(), id = randomUUID(), now = this.clock();
-        await tx.connection.query("INSERT INTO workspaces VALUES($1,$2,$3)", [workspaceId, `${name.trim().split(/\s+/)[0]}’s workspace`, now]);
+        const workspaceId = randomUUID(),
+          id = randomUUID(),
+          now = this.clock();
+        await tx.connection.query("INSERT INTO workspaces VALUES($1,$2,$3)", [
+          workspaceId,
+          `${name.trim().split(/\s+/)[0]}’s workspace`,
+          now,
+        ]);
         await tx.connection.query(
           "INSERT INTO participants(id,workspace_id,kind,name,email,created_at,last_seen) VALUES($1,$2,'owner',$3,$4,$5,$5)",
           [id, workspaceId, name, email, now],
         );
         actor = await tx.active(id);
       }
-      await tx.connection.query("INSERT INTO google_identities VALUES($1,$2)", [subject, actor.id]);
+      await tx.connection.query("INSERT INTO google_identities VALUES($1,$2)", [
+        subject,
+        actor.id,
+      ]);
       return { actor, token: await tx.session(actor.id, "Google", 30) };
     });
   }
@@ -409,7 +408,7 @@ export class Store {
     const current = await this.owner(actor),
       id = randomUUID();
     const project = await this.one<Project>(
-      "INSERT INTO projects VALUES($1,$2,$3,$4,$5) RETURNING *",
+      "INSERT INTO projects(id,workspace_id,name,brief,created_at) VALUES($1,$2,$3,$4,$5) RETURNING *",
       [
         id,
         current.workspaceId,
@@ -421,15 +420,6 @@ export class Store {
     await this.record(current, id, "Created the project", id);
     return project;
   }
-  async updateBrief(actor: Principal, projectId: string, brief: string) {
-    await this.owner(actor);
-    await this.getProject(actor, projectId);
-    await this.connection.query("UPDATE projects SET brief=$1 WHERE id=$2", [
-      z.string().trim().max(12000).parse(brief),
-      projectId,
-    ]);
-    await this.record(actor, projectId, "Updated the project brief", projectId);
-  }
   async listParticipants(
     actor: Principal,
     projectId?: string,
@@ -440,8 +430,8 @@ export class Store {
     if (includeRevoked) await this.owner(current);
     const scope = projectId || current.projectId;
     return this.rows<Participant>(
-      `SELECT id,workspace_id,project_id,kind,name,created_at,last_seen,revoked_at FROM participants WHERE workspace_id=$1
-      AND ($2::uuid IS NULL OR project_id IS NULL OR project_id=$2) AND ($3 OR revoked_at IS NULL) ORDER BY created_at,id`,
+      `SELECT id,workspace_id,project_id,kind,name,created_at,last_seen,revoked_at,removed_at FROM participants WHERE workspace_id=$1
+      AND ($2::uuid IS NULL OR project_id IS NULL OR project_id=$2) AND removed_at IS NULL AND ($3 OR revoked_at IS NULL) ORDER BY created_at,id`,
       [current.workspaceId, scope, includeRevoked],
     );
   }
@@ -605,7 +595,7 @@ export class Store {
       .parse(options.query || "");
     const notes = await this.rows<Note>(
       `${noteSelect} WHERE n.project_id=$2 AND (n.title ILIKE $3 OR n.body ILIKE $3)
-      AND (NOT $4 OR NOT EXISTS(SELECT 1 FROM reads d WHERE d.note_id=n.id AND d.participant_id=$1)) ORDER BY n.created_at DESC,n.id DESC LIMIT 51 OFFSET $5`,
+      AND (NOT $4 OR NOT EXISTS(SELECT 1 FROM reads d WHERE d.note_id=n.id AND d.participant_id=$1 AND d.read_at>=coalesce(n.edited_at,n.created_at))) ORDER BY n.created_at DESC,n.id DESC LIMIT 51 OFFSET $5`,
       [actor.id, projectId, `%${query}%`, !!options.unread, offset],
     );
     return {
@@ -620,162 +610,316 @@ export class Store {
       [actor.id, noteId, this.clock()],
     );
   }
-  async createRequest(
+  async updateProject(
     actor: Principal,
     projectId: string,
-    input: RequestInput,
-    clientKey: string,
+    name: string,
+    brief: string,
+    version: number,
   ) {
-    const current = await this.active(actor.id),
-      project = await this.getProject(current, projectId),
-      data = requestSchema.parse(input);
-    idSchema.parse(clientKey);
-    await this.rateLimit(`write:${current.id}`, 120);
     return this.transaction(async (tx) => {
-      const prior = await tx.one<{ id: string; projectId: string }>(
-        "SELECT id,project_id FROM requests WHERE author_id=$1 AND client_key=$2",
-        [current.id, clientKey],
-      );
-      if (prior) {
-        if (prior.projectId !== projectId)
-          throw new CommonsError(
-            "That save identifier belongs to another project.",
-          );
-        return tx.getRequest(current, prior.id);
-      }
-      const eligible = await tx.listParticipants(current, projectId);
-      const recipientIds = [...new Set(data.recipientIds)];
-      if (
-        recipientIds.some(
-          (id) => !eligible.some((p) => p.id === id && p.kind === "agent"),
-        )
-      )
-        throw new CommonsError(
-          "Choose agents who currently have access to this project.",
-          403,
-        );
-      if (
-        data.noteId &&
-        (await tx.getNote(current, data.noteId)).projectId !== projectId
-      )
-        throw new CommonsError("Attach a note from this project.", 403);
-      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
-        current.id + clientKey,
-      ]);
-      const existing = await tx.one<{ id: string }>(
-        "SELECT id FROM requests WHERE author_id=$1 AND client_key=$2",
-        [current.id, clientKey],
-      );
-      if (existing) return tx.getRequest(current, existing.id);
-      const id = randomUUID();
-      await tx.connection.query(
-        "INSERT INTO requests(id,workspace_id,project_id,author_id,title,body,note_id,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      const current = await tx.owner(actor);
+      await tx.getProject(current, projectId);
+      const changed = await tx.connection.query(
+        "UPDATE projects SET name=$1,brief=$2,version=version+1 WHERE id=$3 AND version=$4",
         [
-          id,
-          project.workspaceId,
+          nameSchema.parse(name),
+          z.string().trim().max(12000).parse(brief),
           projectId,
-          current.id,
-          data.title,
-          data.body,
-          data.noteId || null,
-          clientKey,
-          this.clock(),
+          z.number().int().positive().parse(version),
         ],
       );
-      for (const recipient of recipientIds)
-        await tx.connection.query(
-          "INSERT INTO recipients(request_id,participant_id,project_id,workspace_id) VALUES($1,$2,$3,$4)",
-          [id, recipient, projectId, project.workspaceId],
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This project changed. Reload before saving your changes.",
+          409,
         );
-      await tx.record(current, projectId, "Created a request", id);
-      return tx.getRequest(current, id);
+      await tx.record(current, projectId, "Updated the project", projectId);
+      return tx.getProject(current, projectId);
     });
   }
-  async getRequest(actor: Principal, id: string) {
-    const current = await this.active(actor.id);
-    const request = await this.one<DirectedRequest>(
-      `${requestSelect} WHERE r.id=$1 AND r.workspace_id=$2 AND ($3::uuid IS NULL OR r.project_id=$3)`,
-      [idSchema.parse(id), current.workspaceId, current.projectId],
-    );
-    if (!request)
-      throw new CommonsError("This request is outside your access.", 403);
-    return request;
+  async updateNote(
+    actor: Principal,
+    noteId: string,
+    input: NoteInput,
+    version: number,
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        note = await tx.getNote(current, noteId);
+      if (current.kind !== "owner" && note.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can edit this note.",
+          403,
+        );
+      const data = noteSchema.parse(input);
+      const changed = await tx.connection.query(
+        "UPDATE notes SET title=$1,body=$2,reference_links=$3,edited_at=$4,version=version+1 WHERE id=$5 AND version=$6",
+        [
+          data.title,
+          data.body,
+          JSON.stringify(data.references || []),
+          this.clock(),
+          noteId,
+          z.number().int().positive().parse(version),
+        ],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This note changed. Reload before saving your changes.",
+          409,
+        );
+      await tx.connection.query("DELETE FROM reads WHERE note_id=$1", [noteId]);
+      await tx.record(current, note.projectId, "Edited a note", noteId);
+      return tx.getNote(current, noteId);
+    });
   }
-  async listRequests(
+  async deleteNote(actor: Principal, noteId: string, version: number) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        note = await tx.getNote(current, noteId);
+      if (current.kind !== "owner" && note.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can delete this note.",
+          403,
+        );
+      await tx.connection.query("SELECT id FROM notes WHERE id=$1 FOR UPDATE", [
+        noteId,
+      ]);
+      await tx.connection.query("DELETE FROM reads WHERE note_id=$1", [noteId]);
+      const changed = await tx.connection.query(
+        "DELETE FROM notes WHERE id=$1 AND version=$2",
+        [noteId, z.number().int().positive().parse(version)],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This note changed. Reload before deleting it.",
+          409,
+        );
+      await tx.record(current, note.projectId, "Deleted a note", noteId);
+      return { projectId: note.projectId };
+    });
+  }
+  private async eraseProject(projectId: string) {
+    await this.connection.query(
+      "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+      [projectId],
+    );
+    await this.connection.query(
+      "DELETE FROM sessions WHERE participant_id IN (SELECT id FROM participants WHERE project_id=$1)",
+      [projectId],
+    );
+    await this.connection.query(
+      "UPDATE participants SET revoked_at=coalesce(revoked_at,$2),removed_at=$2,project_id=NULL WHERE project_id=$1",
+      [projectId, this.clock()],
+    );
+    await this.connection.query("DELETE FROM invitations WHERE project_id=$1", [
+      projectId,
+    ]);
+    await this.connection.query(
+      "DELETE FROM reads WHERE note_id IN (SELECT id FROM notes WHERE project_id=$1)",
+      [projectId],
+    );
+    await this.connection.query("DELETE FROM notes WHERE project_id=$1", [
+      projectId,
+    ]);
+    await this.connection.query("DELETE FROM activity WHERE project_id=$1", [
+      projectId,
+    ]);
+    await this.connection.query("DELETE FROM projects WHERE id=$1", [
+      projectId,
+    ]);
+  }
+  async deleteProject(
     actor: Principal,
     projectId: string,
-    options: { mine?: boolean; query?: string; offset?: number } = {},
+    confirmation: string,
   ) {
-    await this.getProject(actor, projectId);
-    const offset = z
-      .number()
-      .int()
-      .min(0)
-      .max(1000000)
-      .parse(options.offset || 0);
-    const requests = await this.rows<DirectedRequest>(
-      `${requestSelect} WHERE r.project_id=$1 AND (NOT $2 OR EXISTS(SELECT 1 FROM recipients t WHERE t.request_id=r.id AND t.participant_id=$3))
-      AND (r.title ILIKE $4 OR r.body ILIKE $4) ORDER BY r.created_at DESC,r.id DESC LIMIT 51 OFFSET $5`,
+    return this.transaction(async (tx) => {
+      const current = await tx.owner(actor);
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 AND workspace_id=$2 FOR UPDATE",
+        [projectId, current.workspaceId],
+      );
+      const project = await tx.getProject(current, projectId);
+      if (confirmation !== project.name)
+        throw new CommonsError("Type the project name to confirm deletion.");
+      await tx.eraseProject(projectId);
+    });
+  }
+  async updateProfile(actor: Principal, name: string) {
+    const current = await this.active(actor.id);
+    await this.connection.query("UPDATE participants SET name=$1 WHERE id=$2", [
+      nameSchema.parse(name),
+      current.id,
+    ]);
+  }
+  async updateAgent(
+    actor: Principal,
+    participantId: string,
+    name: string,
+    projectId: string | null,
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.owner(actor);
+      if (projectId) await tx.getProject(current, projectId);
+      const changed = await tx.connection.query(
+        "UPDATE participants SET name=$1,project_id=$2 WHERE id=$3 AND workspace_id=$4 AND kind='agent' AND revoked_at IS NULL AND removed_at IS NULL",
+        [
+          nameSchema.parse(name),
+          projectId,
+          idSchema.parse(participantId),
+          current.workspaceId,
+        ],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This agent is no longer active in your workspace.",
+          403,
+        );
+    });
+  }
+  async removeAgent(actor: Principal, participantId: string) {
+    return this.transaction(async (tx) => {
+      const current = await tx.owner(actor);
+      const changed = await tx.connection.query(
+        "UPDATE participants SET removed_at=$1,revoked_at=coalesce(revoked_at,$1) WHERE id=$2 AND workspace_id=$3 AND kind='agent'",
+        [this.clock(), idSchema.parse(participantId), current.workspaceId],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError("This agent is outside your workspace.", 403);
+      await tx.connection.query(
+        "DELETE FROM sessions WHERE participant_id=$1",
+        [participantId],
+      );
+    });
+  }
+  async listInvitations(actor: Principal) {
+    const current = await this.owner(actor);
+    return this.rows<{
+      id: string;
+      projectId: string | null;
+      expiresAt: number;
+    }>(
+      "SELECT id,project_id,expires_at FROM invitations WHERE workspace_id=$1 AND consumed_at IS NULL AND expires_at>$2 ORDER BY expires_at DESC",
+      [current.workspaceId, this.clock()],
+    );
+  }
+  async cancelInvitation(actor: Principal, invitationId: string) {
+    const current = await this.owner(actor);
+    await this.connection.query(
+      "DELETE FROM invitations WHERE id=$1 AND workspace_id=$2 AND consumed_at IS NULL",
+      [idSchema.parse(invitationId), current.workspaceId],
+    );
+  }
+  async listSessions(
+    actor: Principal,
+    currentToken: string,
+    participantId = actor.id,
+  ) {
+    const current = await this.active(actor.id);
+    if (participantId !== current.id) {
+      await this.owner(current);
+      const target = await this.one(
+        "SELECT id FROM participants WHERE id=$1 AND workspace_id=$2 AND removed_at IS NULL",
+        [idSchema.parse(participantId), current.workspaceId],
+      );
+      if (!target)
+        throw new CommonsError(
+          "This connection is outside your workspace.",
+          403,
+        );
+    }
+    return this.rows<{
+      id: string;
+      label: string;
+      createdAt: number;
+      expiresAt: number;
+      current: boolean;
+    }>(
+      "SELECT id,label,created_at,expires_at,token_hash=$2 AS current FROM sessions WHERE participant_id=$1 AND expires_at>$3 ORDER BY created_at DESC,id",
+      [participantId, digest(currentToken), this.clock()],
+    );
+  }
+  async revokeSession(actor: Principal, sessionId: string) {
+    const current = await this.active(actor.id);
+    await this.connection.query(
+      "DELETE FROM sessions s USING participants p WHERE s.id=$1 AND p.id=s.participant_id AND p.workspace_id=$2 AND (p.id=$3 OR $4='owner')",
       [
-        projectId,
-        !!options.mine,
-        actor.id,
-        `%${z
-          .string()
-          .max(200)
-          .parse(options.query || "")}%`,
-        offset,
+        idSchema.parse(sessionId),
+        current.workspaceId,
+        current.id,
+        current.kind,
       ],
     );
-    return {
-      requests: requests.slice(0, 50),
-      nextOffset: requests.length > 50 ? offset + 50 : null,
-    };
   }
-  async acknowledge(actor: Principal, id: string) {
-    const request = await this.getRequest(actor, id);
-    if (
-      !request.recipients.some((r) => r.id === actor.id && r.revokedAt === null)
-    )
-      throw new CommonsError(
-        "Only a named recipient can acknowledge this request.",
-        403,
-      );
-    if (request.completedAt)
-      throw new CommonsError("This request is already complete.");
-    const changed = await this.connection.query(
-      "UPDATE recipients SET acknowledged_at=$1 WHERE request_id=$2 AND participant_id=$3 AND acknowledged_at IS NULL",
-      [this.clock(), id, actor.id],
+  async signOutOthers(actor: Principal, currentToken: string) {
+    const current = await this.active(actor.id);
+    await this.connection.query(
+      "DELETE FROM sessions WHERE participant_id=$1 AND token_hash<>$2",
+      [current.id, digest(currentToken)],
     );
-    if (changed.rowCount)
-      await this.record(actor, request.projectId, "Acknowledged a request", id);
-    return this.getRequest(actor, id);
   }
-  async completeRequest(actor: Principal, id: string, resultNoteId?: string) {
-    const current = await this.active(actor.id),
-      request = await this.getRequest(current, id);
-    const recipient = request.recipients.find((r) => r.id === current.id);
-    if (current.kind !== "owner" && (!recipient || !recipient.acknowledgedAt))
-      throw new CommonsError(
-        "A named recipient must acknowledge the request before completing it.",
-        403,
-      );
-    if (
-      resultNoteId &&
-      (await this.getNote(current, resultNoteId)).projectId !==
-        request.projectId
-    )
-      throw new CommonsError(
-        "The result note must belong to this project.",
-        403,
-      );
-    const changed = await this.connection.query(
-      "UPDATE requests SET completed_at=$1,result_note_id=$2 WHERE id=$3 AND completed_at IS NULL",
-      [this.clock(), resultNoteId || null, id],
+  async workspaceCounts(actor: Principal) {
+    const current = await this.owner(actor);
+    return this.one<{ projects: number; notes: number; agents: number }>(
+      "SELECT (SELECT count(*) FROM projects WHERE workspace_id=$1) projects,(SELECT count(*) FROM notes WHERE workspace_id=$1) notes,(SELECT count(*) FROM participants WHERE workspace_id=$1 AND kind='agent' AND removed_at IS NULL) agents",
+      [current.workspaceId],
     );
-    if (changed.rowCount)
-      await this.record(current, request.projectId, "Completed a request", id);
-    return this.getRequest(current, id);
+  }
+  async deleteWorkspace(
+    actor: Principal,
+    confirmation: string,
+    deleteAccount = false,
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.owner(actor),
+        workspace = await tx.getWorkspace(current);
+      if (confirmation !== (deleteAccount ? "DELETE" : workspace.name))
+        throw new CommonsError("The confirmation does not match.");
+      await tx.connection.query(
+        "SELECT id FROM workspaces WHERE id=$1 FOR UPDATE",
+        [current.workspaceId],
+      );
+      const projects = await tx.listProjects(current);
+      for (const project of projects) await tx.eraseProject(project.id);
+      await tx.connection.query(
+        "DELETE FROM invitations WHERE workspace_id=$1",
+        [current.workspaceId],
+      );
+      await tx.connection.query(
+        "DELETE FROM sessions WHERE participant_id IN (SELECT id FROM participants WHERE workspace_id=$1 AND (kind='agent' OR $2))",
+        [current.workspaceId, deleteAccount],
+      );
+      await tx.connection.query(
+        "DELETE FROM reads WHERE participant_id IN (SELECT id FROM participants WHERE workspace_id=$1)",
+        [current.workspaceId],
+      );
+      if (deleteAccount)
+        await tx.connection.query(
+          "DELETE FROM google_identities WHERE participant_id=$1",
+          [current.id],
+        );
+      await tx.connection.query(
+        "DELETE FROM participants WHERE workspace_id=$1 AND (kind='agent' OR $2)",
+        [current.workspaceId, deleteAccount],
+      );
+      if (!deleteAccount) {
+        const next = randomUUID();
+        await tx.connection.query("INSERT INTO workspaces VALUES($1,$2,$3)", [
+          next,
+          `${current.name.split(/\s+/)[0]}’s workspace`,
+          this.clock(),
+        ]);
+        await tx.connection.query(
+          "UPDATE participants SET workspace_id=$1 WHERE id=$2",
+          [next, current.id],
+        );
+      }
+      await tx.connection.query("DELETE FROM workspaces WHERE id=$1", [
+        current.workspaceId,
+      ]);
+    });
   }
   async inspectGraph(actor: Principal, projectId: string) {
     await this.owner(actor);
@@ -793,27 +937,19 @@ export class Store {
       title: string;
       revoked: boolean;
     }>(
-      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,r.title,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
+      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
        FROM graph_entities g LEFT JOIN notes n ON g.kind='note' AND n.id=g.resource_id
-       LEFT JOIN requests r ON g.kind='request' AND r.id=g.resource_id
        LEFT JOIN participants p ON g.kind='participant' AND p.id=g.resource_id
        LEFT JOIN projects pr ON g.kind='project' AND pr.id=g.resource_id
-       WHERE g.project_id=$1 ORDER BY g.kind,g.id LIMIT 200`,
+       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
       [projectId],
     );
     const edges: { source: number; target: number; kind: string }[] = [];
     let available = graphEnabled();
-    if (available && nodes.length) {
+    if (available && sync?.revision === sync?.syncedRevision && nodes.length) {
       try {
         const allowed = new Set(nodes.map((n) => n.id));
-        for (const kind of [
-          "IN_PROJECT",
-          "AUTHORED_BY",
-          "SOURCE_NOTE",
-          "RESULT_NOTE",
-          "REQUESTED_FROM",
-          "COMMONS_CONTEXT",
-        ]) {
+        for (const kind of ["IN_PROJECT", "AUTHORED_BY"]) {
           const result = await graphQuery(
             `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1000`,
             { ids: [...allowed] },
@@ -833,77 +969,6 @@ export class Store {
     await this.owner(actor);
     return { nodes, edges, available, sync };
   }
-  async relatedContext(actor: Principal, noteId: string) {
-    const source = await this.getNote(actor, noteId);
-    await this.connection.query(
-      "INSERT INTO graph_notes(id,note_id) SELECT ('x'||substr(replace(id::text,'-',''),1,13))::bit(52)::bigint,id FROM notes WHERE project_id=$1 ON CONFLICT(note_id) DO NOTHING",
-      [source.projectId],
-    );
-    const links = await this.rows<{ source: number; target: number }>(
-      `SELECT a.id AS source,b.id AS target FROM requests r
-       JOIN graph_notes a ON a.note_id=r.note_id JOIN graph_notes b ON b.note_id=r.result_note_id
-       WHERE r.project_id=$1 AND r.completed_at IS NOT NULL AND (r.note_id=$2 OR r.result_note_id=$2) ORDER BY r.created_at DESC LIMIT 20`,
-      [source.projectId, noteId],
-    );
-    const root = await this.one<{ id: number }>(
-      "SELECT id FROM graph_notes WHERE note_id=$1",
-      [noteId],
-    );
-    let ids: number[] = [];
-    let engine = "postgres";
-    if (graphEnabled()) {
-      try {
-        const sync = await this.one<{ ready: boolean }>(
-          "SELECT revision=synced_revision AS ready FROM graph_sync WHERE project_id=$1",
-          [source.projectId],
-        );
-        if (!sync?.ready) throw new Error("Graph projection pending");
-        const result = await graphQuery(
-          "MATCH (a {id: $source})-[:COMMONS_CONTEXT]-(b) RETURN b.id AS id LIMIT 20",
-          { source: root.id },
-        );
-        ids = result.rows
-          .map((row) => Number(row[0]?.value))
-          .filter(Number.isSafeInteger);
-        engine = "hydradb";
-      } catch {
-        engine = "postgres-fallback";
-      }
-    }
-    if (engine !== "hydradb")
-      ids = links
-        .flatMap((link) =>
-          link.source === root.id
-            ? [link.target]
-            : link.target === root.id
-              ? [link.source]
-              : [],
-        )
-        .slice(0, 20);
-    // Revalidate graph candidates against current project relationships and permissions.
-    const valid = new Set(
-      links.flatMap((link) =>
-        link.source === root.id
-          ? [link.target]
-          : link.target === root.id
-            ? [link.source]
-            : [],
-      ),
-    );
-    ids = [...new Set(ids)].filter((id) => valid.has(id));
-    await this.getProject(actor, source.projectId);
-    const candidates = await this.rows<{ noteId: string }>(
-      "SELECT g.note_id FROM graph_notes g JOIN notes n ON n.id=g.note_id WHERE g.id=ANY($1::bigint[]) AND n.project_id=$2 ORDER BY n.created_at DESC,n.id LIMIT 20",
-      [ids, source.projectId],
-    );
-    return {
-      engine,
-      sourceNoteId: noteId,
-      notes: await Promise.all(
-        candidates.map((row) => this.getNote(actor, row.noteId)),
-      ),
-    };
-  }
   async searchProject(
     actor: Principal,
     projectId: string,
@@ -911,9 +976,8 @@ export class Store {
   ): Promise<SearchResult[]> {
     const query = z.string().trim().max(200).parse(input);
     const project = await this.getProject(actor, projectId);
-    const [notes, requests, people] = await Promise.all([
+    const [notes, people] = await Promise.all([
       this.listNotes(actor, projectId, { query }),
-      this.listRequests(actor, projectId, { query }),
       this.listParticipants(actor, projectId),
     ]);
     const base = `/workspace/projects/${projectId}`;
@@ -935,15 +999,6 @@ export class Store {
         title: note.title,
         description: `Note by ${note.authorName}`,
         href: `${base}?note=${note.id}`,
-      })),
-    );
-    results.push(
-      ...requests.requests.slice(0, 8).map((request) => ({
-        id: request.id,
-        kind: "request" as const,
-        title: request.title,
-        description: `${request.authorName} · ${request.status === "done" ? "Completed" : request.status === "in_progress" ? "Acknowledged" : "Waiting"}`,
-        href: `${base}?request=${request.id}`,
       })),
     );
     if (query)

@@ -12,7 +12,7 @@ People who already use multiple independent AI assistants and repeatedly relay c
 
 ## Product Purpose
 
-Give independent assistants a shared, durable project record: briefs, notes, references and directed requests. An assistant can catch up and contribute without the owner copying the original conversation between products.
+Give independent assistants a shared, durable project record: briefs, notes and references. An assistant can catch up and contribute without the owner copying the original conversation between products.
 
 ## Positioning
 
@@ -26,8 +26,8 @@ Humans sign in with Google, create a workspace/project and issue a scoped connec
 
 - One registered agent belongs to one workspace, with all-project or single-project access.
 - No extra owner approval after a valid invitation is redeemed.
-- Notes are attributed, durable context. Requests identify who asked whom and link relevant notes.
-- Read, acknowledged and completed are distinct states.
+- Notes are attributed, durable context. Authors and owners can edit or delete notes; projects are owner-managed.
+- Notes have per-participant read state and an edited timestamp. There is no request/task system.
 - Do not add execution adapters, a local companion, agent orchestration or real-time chat.
 - The local development configuration can mock Google identity; hosted users sign in with Google. Permission enforcement, Postgres persistence, browser participation and official SDK MCP participation are implemented and tested. Native third-party compatibility and automatic agent returns remain unverified.
 - The app is intended as an open-source product. Follow the reviewed PRD for product scope and the technical decisions document for proposed architecture.

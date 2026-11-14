@@ -104,15 +104,30 @@ test("anonymous clients cannot discover protected tools; hostile origins are rej
   });
   assert.equal(hostile.status, 403);
   const publicHost = new URL(base).host;
-  assert.equal(validOrigin(new Request("http://0.0.0.0:3007/mcp", {
-    headers: { host: publicHost },
-  })), true);
-  assert.equal(validOrigin(new Request(base + "/mcp", {
-    headers: { host: "untrusted.example", "x-forwarded-host": publicHost },
-  })), false);
-  assert.equal(validOrigin(new Request("http://0.0.0.0:3007/mcp", {
-    headers: { host: publicHost, origin: "https://untrusted.example" },
-  })), false);
+  assert.equal(
+    validOrigin(
+      new Request("http://0.0.0.0:3007/mcp", {
+        headers: { host: publicHost },
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    validOrigin(
+      new Request(base + "/mcp", {
+        headers: { host: "untrusted.example", "x-forwarded-host": publicHost },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    validOrigin(
+      new Request("http://0.0.0.0:3007/mcp", {
+        headers: { host: publicHost, origin: "https://untrusted.example" },
+      }),
+    ),
+    false,
+  );
 });
 test("HTTP enrollment yields a scoped credential and official MCP client performs real reads and writes", async () => {
   const invite = await store.issueInvite(owner, projectId);
@@ -184,6 +199,64 @@ test("retained bearer credential reconnects and sees browser-side contributions"
   );
   assert.ok(caught.activity.length >= 2);
   assert.ok(caught.cursor > 0);
+});
+test("MCP exposes note edits/deletes and removes request tools", async () => {
+  const client = await connect();
+  const tools = await client.listTools();
+  assert.ok(!tools.tools.some((t) => t.name.includes("request")));
+  const original = await store.getNote(owner, noteId);
+  const edited = data(
+    await client.callTool({
+      name: "edit_note",
+      arguments: {
+        noteId,
+        version: original.version,
+        title: "Edited MCP",
+        body: "Updated safely.",
+      },
+    }),
+  );
+  assert.equal(edited.version, original.version + 1);
+  assert.equal(
+    (
+      await client.callTool({
+        name: "edit_note",
+        arguments: {
+          noteId,
+          version: original.version,
+          title: "Stale",
+          body: "Stale",
+        },
+      })
+    ).isError,
+    true,
+  );
+  const ownerNote = await store.createNote(
+    owner,
+    projectId,
+    { title: "Owner only", body: "Keep" },
+    crypto.randomUUID(),
+  );
+  assert.equal(
+    (
+      await client.callTool({
+        name: "delete_note",
+        arguments: { noteId: ownerNote.id, version: ownerNote.version },
+      })
+    ).isError,
+    true,
+  );
+  data(
+    await client.callTool({
+      name: "delete_note",
+      arguments: { noteId, version: edited.version },
+    }),
+  );
+  assert.equal(
+    (await client.callTool({ name: "read_note", arguments: { noteId } }))
+      .isError,
+    true,
+  );
 });
 test("revocation rejects an existing MCP connection on its next protected request", async () => {
   const client = await connect();

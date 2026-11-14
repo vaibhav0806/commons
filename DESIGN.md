@@ -254,3 +254,7 @@ Document transitions take 500ms, with 80ms staggered rows for lists. The heading
 The invitation preview has three directly selectable steps. Its code is explicitly illustrative. The working application and onboarding retain their existing behavior. Onboarding's quiet particle field and shared-context illustration remain separate: Codex uses the 14px reflective surface, and the finished sequence holds for five seconds. Offscreen and hidden-tab pausing and completed reduced-motion state remain intact.
 
 A standalone Toolcraft starter exists at `../commons-material-lab` for future material studies. No Toolcraft-generated material is currently shipped in the landing; its interactions use CSS and React. The current landing composition is implemented for owner review, not final visual approval.
+
+## Entity management
+
+Project actions use a compact menu beside the project heading. Note actions live inside the detail panel. Settings separates Profile, Workspace and Connections. Use the shared surface, field, action-group and custom-select components; preserve the same spacing and focus behavior as onboarding. Destructive actions use the existing danger color on a graphite control and a separate confirmation panel with explicit impact. Project/workspace deletion asks for the resource name; account deletion asks for DELETE. Do not add archive/restore or request/task controls. Related actions have visible spacing; forms show pending, saved, error and stale-edit states.

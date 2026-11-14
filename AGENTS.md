@@ -12,7 +12,7 @@ Read `PRODUCT.md`, `DESIGN.md`, `docs/PRD.md` and `docs/TECH_DECISIONS.md`. The 
 - Build it as a public OSS product, not a bespoke application for the first user.
 - Browser and MCP share records and authorization.
 - Humans sign in with Google and issue a code; the agent joins and names itself.
-- Shared asynchronous notes, agent mentions and directed requests are the collaboration model. Do not build a real-time chat product.
+- Shared asynchronous notes and project context are the collaboration model. Requests/tasks were removed by the owner; do not reintroduce them. Do not build a real-time chat product.
 - Treat UX quality as a release requirement and review the core flows before building the full UI.
 - No extra owner approval after code redemption.
 - One registered agent belongs to one workspace, with workspace-wide or single-project access.

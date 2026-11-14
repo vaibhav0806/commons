@@ -7,451 +7,210 @@ function resultData(result: Awaited<ReturnType<Client["callTool"]>>) {
   const content = result.content as { type: string; text?: string }[];
   return JSON.parse(content.find((c) => c.type === "text")!.text!);
 }
-test("owner, MCP participant and independent browser agent complete a durable handoff", async ({
+test("owner and independent agent share, edit and delete context with real CRUD controls", async ({
   page,
   browser,
   baseURL,
 }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
-  await page
-    .getByRole("link", { name: "Create your workspace" })
-    .first()
-    .click();
-  await expect(page).toHaveURL(/\/start$/);
-  await expect(page.locator(".study-bar")).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/start");
   await page.getByRole("button", { name: "Continue with Google" }).click();
-  await page.waitForURL(/\/(setup|workspace)/);
-  if (!page.url().endsWith("/setup")) await page.goto("/setup");
-  await page.getByLabel("Workspace name").fill("Vaibhav’s workspace");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Project name").fill("Commons launch");
+  await page.waitForURL(/\/(workspace|setup)/);
+  await page.goto("/workspace/new");
+  const name = `CRUD ${Date.now()}`;
+  await page.getByLabel("Project name", { exact: true }).fill(name);
   await page
-    .getByLabel("Project brief")
-    .fill(
-      "Launch the shared workspace. Use product notes and existing alpha signups for the first handoff.",
-    );
-  await page.getByRole("button", { name: "Create workspace" }).click();
-  await page.waitForURL(/\/connect\?project=/);
-  const projectId = new URL(page.url()).searchParams.get("project")!;
-  const access = page.getByRole("combobox", {
-    name: "Agent access",
-    exact: true,
-  });
-  await expect(access).toHaveJSProperty("tagName", "BUTTON");
-  await access.click();
-  await expect(page.getByRole("listbox")).toBeVisible();
-  await expect(page.getByRole("option", { selected: true })).toBeFocused();
-  await page.getByRole("listbox").evaluate(async (element) => {
-    await Promise.all(
-      element
-        .closest("[data-select-popup]")!
-        .getAnimations({ subtree: true })
-        .map((animation) => animation.finished),
-    );
-  });
-  await page.screenshot({ path: "test-results/connect-picker.png" });
+    .getByLabel("Project brief", { exact: true })
+    .fill("Context for our agents.");
   await page
-    .getByRole("option", { name: "Entire workspace", exact: true })
+    .getByRole("button", { name: "Create project", exact: true })
     .click();
-  await expect(access).toHaveText("Entire workspace");
-  expect(
-    await access.evaluate((element) =>
-      new FormData(element.closest("form")!).get("projectId"),
-    ),
-  ).toBe("");
-  await access.focus();
-  await access.press("ArrowDown");
-  await expect(access).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("listbox")).toBeVisible();
-  await expect(page.getByRole("option", { selected: true })).toBeFocused();
-  await page.keyboard.press("End");
-  await expect(page.getByRole("option").last()).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(access).toContainText("Commons launch only");
-  await expect(access).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("listbox")).toBeHidden();
-  await access.click();
-  await expect(page.getByRole("option", { selected: true })).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(access).toBeFocused();
-  await expect(page.getByRole("listbox")).toBeHidden();
-  const actionGap = await page.evaluate(() => {
-    const primary = document.querySelector<HTMLButtonElement>(
-      'button[type="submit"]',
-    )!;
-    const secondary = [
-      ...document.querySelectorAll<HTMLAnchorElement>('a[href="/workspace"]'),
-    ].find((link) => link.textContent?.includes("Continue to workspace"))!;
-    return (
-      secondary.getBoundingClientRect().top -
-      primary.getBoundingClientRect().bottom
-    );
-  });
-  expect(actionGap).toBeGreaterThanOrEqual(12);
-
-  await page.getByRole("button", { name: "Generate connection code" }).click();
+  await page.waitForURL(/\/workspace\/projects\//);
+  const projectUrl = page.url(),
+    projectId = new URL(projectUrl).pathname.split("/").at(-1)!;
   await expect(
-    page.getByRole("button", { name: "Copy agent instructions", exact: true }),
+    page.getByRole("link", { name: "New request", exact: true }),
+  ).toHaveCount(0);
+  await page.getByLabel("Project actions", { exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Edit project", exact: true })
+    .click();
+  await page
+    .getByLabel("Project name", { exact: true })
+    .fill(`${name} renamed`);
+  await page.getByRole("button", { name: "Save project", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: `${name} renamed`, exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".segmented, .instruction")).toHaveCount(0);
-  await page.screenshot({
-    path: "test-results/connect-invitation.png",
-    fullPage: true,
-  });
-  const firstCode = (
-    await page.getByTestId("connection-code").innerText()
-  ).trim();
-  const firstLink = await page
-    .getByRole("link", { name: "Open joining page" })
-    .getAttribute("href");
-  const agentContext = await browser.newContext(),
-    agent = await agentContext.newPage();
-  await agent.goto(new URL(firstLink!, baseURL).href);
-  await agent.getByLabel("Connection code").fill("000000");
-  await agent.getByLabel("What should we call you?").fill("Grok Bot");
-  await agent
-    .getByRole("button", { name: "Join workspace", exact: true })
+  await page.getByRole("link", { name: "New note", exact: true }).click();
+  await page.getByLabel("Title", { exact: true }).fill("Shared context");
+  await page
+    .getByRole("textbox", { name: "Context", exact: true })
+    .fill("The first context.");
+  await page
+    .getByRole("button", { name: "Add reference", exact: true })
     .click();
-  await expect(agent.locator(".error[role=alert]")).toContainText("invalid");
-  await agent.getByLabel("Connection code").fill(firstCode);
-  await agent
-    .getByRole("button", { name: "Join workspace", exact: true })
-    .click();
-  await agent.waitForURL(/\/workspace\/projects\//);
-  await expect(agent.locator(".project-purpose")).toContainText(
-    "existing alpha signups",
-  );
-  await page.getByRole("button", { name: "Generate another code" }).click();
+  await page.getByLabel("Label 1").fill("Documentation");
+  await page.getByLabel("URL 1").fill("https://example.com/docs");
+  await page.getByRole("button", { name: "Share note", exact: true }).click();
   await expect(
-    page.getByRole("link", { name: "Open joining page" }),
-  ).not.toHaveAttribute("href", firstLink!);
-  const secondCode = (
-    await page.getByTestId("connection-code").innerText()
-  ).trim();
-  const secondLink = await page
-    .getByRole("link", { name: "Open joining page" })
-    .getAttribute("href");
-  const invitationId = secondLink!.split("/").at(-1);
-  const enrollment = await fetch(`${baseURL}/api/agent/join`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ invitationId, code: secondCode, name: "Codex MCP" }),
-  });
-  expect(enrollment.status).toBe(201);
-  const credentials = await enrollment.json();
-  expect(credentials.participant.projectId).toBe(projectId);
-  let mcp = new Client({ name: "commons-browser-handoff", version: "1.0.0" });
-  const connect = () =>
-    mcp.connect(
-      new StreamableHTTPClientTransport(new URL(`${baseURL}/mcp`), {
-        requestInit: {
-          headers: { Authorization: `Bearer ${credentials.token}` },
+    page.getByRole("heading", { name: "Shared context", exact: true }),
+  ).toBeVisible();
+  const noteId = new URL(page.url()).searchParams.get("note")!;
+  await page.getByRole("link", { name: "Edit note", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Context", exact: true })
+    .fill("The revised context.");
+  await page.getByRole("button", { name: "Save note", exact: true }).click();
+  await expect(page.locator(".document-body")).toHaveText(
+    "The revised context.",
+  );
+  await expect(page.locator(".detail-intro")).toContainText("Edited");
+  await page.screenshot({ path: "test-results/crud-note-desktop.png" });
+  await page.keyboard.press("Escape");
+
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const invite = await store.issueInvite(owner, projectId);
+  const agent = await store.join(invite.id, invite.code, "CRUD assistant");
+  const context = await browser.newContext({ baseURL });
+  const client = new Client({ name: "crud-browser-test", version: "1" });
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(baseURL + "/mcp"), {
+        requestInit: { headers: { Authorization: `Bearer ${agent.token}` } },
+      }),
+    );
+    const tools = await client.listTools();
+    expect(tools.tools.some((t) => t.name.includes("request"))).toBe(false);
+    const own = resultData(
+      await client.callTool({
+        name: "publish_note",
+        arguments: {
+          projectId,
+          title: "Agent contribution",
+          body: "Agent context",
+          clientKey: crypto.randomUUID(),
         },
       }),
     );
-  await connect();
-  const people = resultData(
-    await mcp.callTool({ name: "list_participants", arguments: { projectId } }),
-  );
-  const grok = people.find((p: { name: string }) => p.name === "Grok Bot");
-  const note = resultData(
-    await mcp.callTool({
-      name: "publish_note",
-      arguments: {
-        projectId,
-        title: "Product ready for launch",
-        body: "Commons is ready for launch. Product notes and ten alpha signups are shared here for the next assistant.",
-        clientKey: crypto.randomUUID(),
-      },
-    }),
-  );
-  const request = resultData(
-    await mcp.callTool({
-      name: "create_request",
-      arguments: {
-        projectId,
-        title: "Draft our launch post",
-        body: "Use the product notes to prepare a launch post for review. Do not publish externally.",
-        recipientIds: [grok.id],
-        noteId: note.id,
-        clientKey: crypto.randomUUID(),
-      },
-    }),
-  );
-  await mcp.close();
-  mcp = new Client({ name: "commons-reconnected-client", version: "1.0.0" });
-  await connect();
-  await agent.reload();
-  await agent
-    .getByRole("link", { name: "Draft our launch post", exact: false })
-    .first()
-    .click();
-  await expect(agent.getByRole("dialog")).toContainText("Codex MCP");
-  await agent
-    .getByRole("dialog")
-    .getByRole("link", { name: "Product ready for launch", exact: false })
-    .click();
-  await expect(agent.getByRole("dialog")).toContainText("ten alpha signups");
-  await agent
-    .getByRole("button", { name: "Mark as read", exact: true })
-    .click();
-  await expect(
-    agent.getByText("Marked as read", { exact: true }),
-  ).toBeVisible();
-  await agent.keyboard.press("Escape");
-  await expect(agent.getByRole("dialog")).toHaveCount(0);
-  await agent
-    .getByRole("link", { name: "Draft our launch post", exact: false })
-    .first()
-    .click();
-  await agent
-    .getByRole("button", { name: "Acknowledge request", exact: true })
-    .click();
-  await expect(
-    agent.getByRole("button", { name: "Mark complete", exact: true }),
-  ).toBeVisible();
-  await agent.keyboard.press("Escape");
-  await agent.getByRole("link", { name: "New note", exact: true }).click();
-  await agent.getByLabel("Note title").fill("Launch post for review");
-  await agent
-    .getByLabel("Context", { exact: true })
-    .fill(
-      "Launching Commons. My AI assistants now share one workspace to leave notes, pass context and pick up where another left off.",
+    resultData(
+      await client.callTool({
+        name: "edit_note",
+        arguments: {
+          noteId: own.id,
+          version: own.version,
+          title: "Agent contribution",
+          body: "Updated through MCP",
+        },
+      }),
     );
-  await agent
-    .getByRole("button", { name: "Publish note", exact: true })
-    .click();
-  await expect(
-    agent.getByRole("heading", { name: "Launch post for review", exact: true }),
-  ).toBeVisible();
-  await agent.keyboard.press("Escape");
-  await agent
-    .getByRole("link", { name: "Draft our launch post", exact: false })
-    .first()
-    .click();
-  await agent
-    .getByRole("combobox", {
-      name: "Link a result note (optional)",
-      exact: true,
-    })
-    .click();
-  await agent
-    .getByRole("option", { name: "Launch post for review", exact: true })
-    .click();
-  await agent
-    .getByRole("button", { name: "Mark complete", exact: true })
-    .click();
-  await expect(agent.getByRole("dialog")).toContainText("What came back");
-  const finished = resultData(
-    await mcp.callTool({
-      name: "read_request",
-      arguments: { requestId: request.id },
-    }),
-  );
-  expect(finished.status).toBe("done");
-  expect(finished.resultNoteId).toBeTruthy();
-  const output = resultData(
-    await mcp.callTool({
-      name: "read_note",
-      arguments: { noteId: finished.resultNoteId },
-    }),
-  );
-  expect(output.authorName).toBe("Grok Bot");
-  expect(output.body).toContain("Launching Commons");
-  await agent.reload();
-  await expect(agent.getByRole("dialog")).toContainText("What came back");
-  await page.goto(`/workspace/projects/${projectId}?view=unread`);
-  await expect(
-    page
-      .getByRole("navigation", { name: "Workspace", exact: true })
-      .getByRole("link", { name: "Unread notes", exact: true }),
-  ).toHaveAttribute("aria-current", "page");
-  await page
-    .getByLabel("Search project notes and requests")
-    .fill("Launching Commons");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-  await page.waitForURL(
-    (url) =>
-      url.searchParams.get("view") === "unread" &&
-      url.searchParams.get("q") === "Launching Commons",
-  );
-  await page.reload();
-  await expect(
-    page.getByRole("link", { name: /Launch post for review/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Product ready for launch/ }),
-  ).toHaveCount(0);
-  await page.getByRole("link", { name: "Clear", exact: true }).click();
-  await page.waitForURL(
-    (url) =>
-      url.searchParams.get("view") === "unread" && !url.searchParams.has("q"),
-  );
-  await page.goto(`/workspace/projects/${projectId}`);
-  await page.keyboard.press("Meta+k");
-  const command = page.getByRole("dialog");
-  await command
-    .getByRole("combobox", { name: "Search project", exact: true })
-    .fill("Launching Commons");
-  await expect(
-    command.getByRole("option", { name: /Launch post for review/ }),
-  ).toBeVisible();
-  await page.keyboard.press("Enter");
-  await expect(
-    page.getByRole("heading", { name: "Launch post for review", exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  await page.waitForURL(`${baseURL}/workspace/projects/${projectId}`);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  const quickFind = page.getByRole("button", {
-    name: "Open project search",
-    exact: true,
-  });
-  await quickFind.click();
-  await expect(
-    page
-      .getByRole("dialog")
-      .getByRole("combobox", { name: "Search project", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(quickFind).toBeFocused();
-  const beforeInvite = page.url();
-  await page
-    .getByRole("button", {
-      name: "Connect an agent to this project",
-      exact: true,
-    })
-    .click();
-  await expect(
-    page.getByRole("dialog", { name: "Bring an agent", exact: true }),
-  ).toBeVisible();
-  expect(page.url()).toBe(beforeInvite);
-  await expect(page.getByRole("tab")).toHaveCount(0);
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Generate connection code", exact: true })
-    .click();
-  await expect(
-    page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Copy agent instructions", exact: true }),
-  ).toBeVisible();
-  expect(page.url()).toBe(beforeInvite);
-  await page.screenshot({
-    path: "test-results/connect-panel.png",
-    fullPage: true,
-  });
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", {
-      name: "Connect an agent to this project",
-      exact: true,
-    }),
-  ).toBeFocused();
-  await page.getByRole("link", { name: "New request", exact: true }).click();
-  await page.getByLabel("What should they do?").fill("Review the launch draft");
-  await page
-    .getByRole("combobox", { name: "Ask an agent", exact: true })
-    .fill("Grok");
-  await page
-    .getByRole("combobox", { name: "Ask an agent", exact: true })
-    .press("Enter");
-  await expect(page.locator(".mention")).toContainText("Grok Bot");
-  await page.setViewportSize({ width: 390, height: 900 });
-  const mentionName = page.locator(".mention-name");
-  const originalName = await mentionName.textContent();
-  await mentionName.evaluate((element) => {
-    element.textContent = "@" + "a".repeat(60);
-  });
-  expect(
-    await page
-      .getByRole("dialog")
-      .evaluate((element) => element.scrollWidth <= element.clientWidth),
-  ).toBe(true);
-  await mentionName.evaluate((element, text) => {
-    element.textContent = text;
-  }, originalName);
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page
-    .getByLabel("What do they need to know?")
-    .fill("A final pass for clarity.");
-  await page
-    .getByRole("button", { name: "Create request", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Review the launch draft", exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
-  for (const width of [1440, 768, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.evaluate(() => document.fonts.ready);
+    const agentPage = await context.newPage();
+    await agentPage.goto("/return");
+    await agentPage.getByLabel("Saved agent credential").fill(agent.token);
+    await agentPage
+      .getByRole("button", { name: "Return to workspace" })
+      .click();
+    await agentPage.waitForURL(/\/workspace\/projects\//);
+    await agentPage.goto(`${projectUrl}?note=${noteId}`);
+    await expect(
+      agentPage.getByRole("link", { name: "Edit note", exact: true }),
+    ).toHaveCount(0);
+    await agentPage.goto(`${projectUrl}?note=${own.id}`);
+    await expect(agentPage.locator(".document-body")).toHaveText(
+      "Updated through MCP",
+    );
+    await agentPage
+      .getByRole("link", { name: "Edit note", exact: true })
+      .click();
+    await agentPage
+      .getByRole("textbox", { name: "Context", exact: true })
+      .fill("Updated in browser");
+    await agentPage
+      .getByRole("button", { name: "Save note", exact: true })
+      .click();
+    await expect(agentPage.locator(".document-body")).toHaveText(
+      "Updated in browser",
+    );
     expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    if (width === 390) {
-      const switcher = page.getByRole("combobox", {
-        name: "Switch project",
-        exact: true,
-      });
-      await expect(switcher).toBeVisible();
-      await switcher.click();
-      await expect(page.getByRole("listbox")).toBeVisible();
-      const firstProject = page.getByRole("option").first();
-      const selectedProjectId =
-        await firstProject.getAttribute("data-option-value");
-      await firstProject.click();
-      await page.waitForURL(`**/workspace/projects/${selectedProjectId}`);
-      await page.goto(`/workspace/projects/${projectId}`);
-      await page
-        .getByRole("navigation", { name: "Project views" })
-        .getByRole("link", { name: "Unread notes", exact: true })
-        .click();
+      resultData(
+        await client.callTool({
+          name: "read_note",
+          arguments: { noteId: own.id },
+        }),
+      ).body,
+    ).toBe("Updated in browser");
+    await page.goto(`/workspace/agents?agent=${agent.actor.id}`);
+    await page
+      .getByLabel("Agent name", { exact: true })
+      .fill("Renamed assistant");
+    await page.getByRole("button", { name: "Save agent", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Renamed assistant", exact: true }),
+    ).toBeVisible();
+    await page.goto("/workspace/settings");
+    await page.getByLabel("Display name", { exact: true }).fill("CRUD Owner");
+    await page
+      .getByRole("button", { name: "Save profile", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText("Saved");
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/workspace/settings?tab=connections");
       await expect(
-        page.getByRole("heading", { name: "Unread notes", exact: true }),
+        page.getByRole("heading", { name: "Your sessions and credentials" }),
       ).toBeVisible();
-      await page
-        .getByRole("navigation", { name: "Project views" })
-        .getByRole("link", { name: "Overview", exact: true })
-        .click();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth,
+        ),
+      ).toBe(false);
       await page.screenshot({
-        path: "test-results/commons-handoff-mobile.png",
-        fullPage: true,
+        path: `test-results/crud-settings-${width}.png`,
       });
     }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto(`${projectUrl}?note=${noteId}`);
+    await page.getByRole("link", { name: "Delete note", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Delete note", exact: true })
+      .click();
+    await expect(page).toHaveURL(projectUrl);
+    await expect(
+      page.locator(".row-copy strong").filter({ hasText: "Shared context" }),
+    ).toHaveCount(0);
+    await page.getByLabel("Project actions", { exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "Delete project", exact: true })
+      .click();
+    await page
+      .getByLabel(`Type ${name} renamed to confirm`, { exact: true })
+      .fill(`${name} renamed`);
+    await page
+      .getByRole("button", { name: "Delete project", exact: true })
+      .click();
+    await expect(page).not.toHaveURL(new RegExp(projectId));
+    await expect
+      .poll(
+        async () =>
+          (
+            await pool.query("SELECT count(*) FROM projects WHERE id=$1", [
+              projectId,
+            ])
+          ).rows[0].count,
+      )
+      .toBe(0);
+    await agentPage.reload();
+    await expect(agentPage).toHaveURL(/sign-in/);
+  } finally {
+    await client.close();
+    await context.close();
+    await pool.end();
   }
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.screenshot({
-    path: "test-results/commons-handoff-desktop.png",
-    fullPage: true,
-  });
-  await page.goto("/workspace/agents");
-  const codexRow = page.locator(
-    `[data-agent-id="${credentials.participant.id}"]`,
-  );
-  await codexRow.getByText("Manage access", { exact: true }).click();
-  await codexRow
-    .getByRole("button", { name: "Revoke access", exact: true })
-    .click();
-  await expect(codexRow).toContainText("Access revoked");
-  await expect(
-    mcp.callTool({ name: "list_projects", arguments: {} }),
-  ).rejects.toThrow();
-  await mcp.close();
-  const grokRow = page.locator(`[data-agent-id="${grok.id}"]`);
-  await grokRow.getByText("Manage access", { exact: true }).click();
-  await grokRow
-    .getByRole("button", { name: "Revoke access", exact: true })
-    .click();
-  await expect(grokRow).toContainText("Access revoked");
-  await agent.reload();
-  await agent.waitForURL(/\/sign-in/);
-  expect(errors).toEqual([]);
-  await agentContext.close();
 });
 
 test("navigation and controls keep their surfaces, spacing and mobile hit areas", async ({
@@ -510,6 +269,8 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     for (const path of [
       "/workspace/agents",
       "/workspace/new",
+      "/workspace/settings",
+      "/workspace/settings?tab=connections",
       "/workspace/connection",
       "/setup",
       "/setup/project",
@@ -621,12 +382,116 @@ test("agent returns in a fresh browser with a saved credential and no invitation
   }
 });
 
-test("Google callback rejects missing or mismatched browser state", async ({ request }) => {
+test("Google callback rejects missing or mismatched browser state", async ({
+  request,
+}) => {
   for (const suffix of ["", "?state=untrusted&code=not-a-google-code"]) {
-    const response = await request.get(`/auth/google/callback${suffix}`, { maxRedirects: 0 });
+    const response = await request.get(`/auth/google/callback${suffix}`, {
+      maxRedirects: 0,
+    });
     expect(response.status()).toBe(307);
-    expect(response.headers().location).toBe("http://localhost:3008/sign-in?error=google");
+    expect(response.headers().location).toBe(
+      "http://localhost:3008/sign-in?error=google",
+    );
     expect(response.headers()["set-cookie"]).not.toContain("commons_session=");
     expect(response.headers()["cache-control"]).toBe("no-store");
+  }
+});
+
+test("settings cancel invitations, revoke sessions and delete workspace/account", async ({
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const login = await store.createLocalOwner(
+    `settings-${crypto.randomUUID()}@example.test`,
+    "Settings Owner",
+  );
+  const workspace = await store.getWorkspace(login.actor);
+  const project = await store.createProject(
+    login.actor,
+    "Settings fixture",
+    "",
+  );
+  const invitation = await store.issueInvite(login.actor, project.id);
+  await store.createLocalOwner(login.actor.email!, "Settings Owner");
+  const context = await browser.newContext({ baseURL });
+  await context.addCookies([
+    {
+      name: "commons_session",
+      value: login.token,
+      url: baseURL!,
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  const page = await context.newPage();
+  try {
+    await page.goto("/workspace/settings?tab=connections");
+    await page
+      .getByRole("button", { name: "Cancel invitation", exact: true })
+      .click();
+    await expect(
+      page.getByText("No pending invitations.", { exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(async () =>
+        (await store.listInvitations(login.actor)).some(
+          (i) => i.id === invitation.id,
+        ),
+      )
+      .toBe(false);
+    await page
+      .getByRole("button", { name: "Sign out other sessions", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Sign out other sessions",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page.getByRole("link", { name: "Workspace", exact: true }).click();
+    await page
+      .getByLabel("Workspace name", { exact: true })
+      .fill("Disposable workspace");
+    await page
+      .getByRole("button", { name: "Save workspace", exact: true })
+      .click();
+    await expect(page.getByRole("status")).toContainText("Saved");
+    await page
+      .getByRole("link", { name: "Delete workspace…", exact: true })
+      .click();
+    await page
+      .getByLabel("Type Disposable workspace to confirm", { exact: true })
+      .fill("Disposable workspace");
+    await page
+      .getByRole("button", { name: "Delete workspace", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/setup$/);
+    const actor = await store.authenticate(login.token);
+    expect(actor.workspaceId).not.toBe(workspace.id);
+    expect(await store.listProjects(actor)).toHaveLength(0);
+    await page.goto("/workspace/settings");
+    await page
+      .getByRole("link", { name: "Delete account…", exact: true })
+      .click();
+    await page
+      .getByLabel("Type DELETE to confirm", { exact: true })
+      .fill("DELETE");
+    await page
+      .getByRole("button", { name: "Delete account", exact: true })
+      .click();
+    await expect(page).toHaveURL(baseURL + "/");
+    expect(await context.cookies()).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "commons_session" }),
+      ]),
+    );
+  } finally {
+    await context.close();
+    await pool.end();
   }
 });

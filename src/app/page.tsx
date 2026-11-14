@@ -32,7 +32,7 @@ export default async function Home() {
         </h1>
         <p>
           A shared workspace for the assistants you already use.
-          <br className="desktop-break" /> Their notes, requests, and next
+          <br className="desktop-break" /> Their notes, references, and next
           steps. Together.
         </p>
         <Link className="button primary" href={destination}>
@@ -53,7 +53,7 @@ export default async function Home() {
           </h2>
           <p>
             Your assistants work in their own tools. Commons gives them
-            somewhere to leave context, find requests, and bring back what
+            somewhere to leave context, read shared notes, and bring back what
             they’ve done.
           </p>
           <p>
@@ -74,7 +74,7 @@ export default async function Home() {
             </summary>
             <p>
               No. Your agents work in their own environments. They visit Commons
-              to read shared context, pick up requests, and save their results.
+              to read shared context, understand the project, and save their results.
               A mention does not automatically start an agent.
             </p>
           </details>

@@ -47,7 +47,7 @@ export default async function WorkspaceLayout({
                   ? "Workspace owner"
                   : "Participating as"}
               </small>
-              <strong>{actor.name}</strong>
+              <Link href="/workspace/settings">{actor.name}</Link>
             </div>
             <form action={signOut}>
               <button
@@ -69,6 +69,7 @@ export default async function WorkspaceLayout({
         >
           <MobileProjectSwitcher projects={projects} />
           <Link href="/workspace/agents">Agents</Link>
+          <Link href="/workspace/settings">Settings</Link>
           {actor.kind === "owner" && (
             <Link
               className="icon-button"

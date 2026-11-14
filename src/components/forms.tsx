@@ -17,8 +17,7 @@ import {
   workspaceAction,
   type ActionState,
 } from "@/app/actions";
-import type { Participant } from "@/lib/store";
-import { AgentMark, Icon } from "./brand";
+import { Icon } from "./brand";
 import { SelectField } from "./ui/select-field";
 import { ActionGroup } from "./ui/action-group";
 
@@ -74,6 +73,7 @@ export function ActionForm({
   label,
   className = "form-stack",
   pendingLabel,
+  danger = false,
   id,
 }: {
   children?: ReactNode;
@@ -82,6 +82,7 @@ export function ActionForm({
   label: string;
   className?: string;
   pendingLabel?: string;
+  danger?: boolean;
   id?: string;
 }) {
   const [state, action] = useActionState(workspaceAction, {});
@@ -110,7 +111,12 @@ export function ActionForm({
       {children}
       <Notice state={state} />
       <ActionGroup layout="stack">
-        <Submit pendingLabel={pendingLabel}>{label}</Submit>
+        <Submit
+          className={danger ? "button danger" : "button"}
+          pendingLabel={pendingLabel}
+        >
+          {label}
+        </Submit>
       </ActionGroup>
     </form>
   );
@@ -155,12 +161,13 @@ export function ReturnAgentForm() {
 }
 export function GoogleSignIn({ configured = false }: { configured?: boolean }) {
   const [state, action] = useActionState(mockSignIn, {});
-  if (configured) return (
-    <a href="/auth/google" className="button full">
-      <img src="/brands/google.svg" alt="" width="18" height="18" />
-      Continue with Google
-    </a>
-  );
+  if (configured)
+    return (
+      <a href="/auth/google" className="button full">
+        <img src="/brands/google.svg" alt="" width="18" height="18" />
+        Continue with Google
+      </a>
+    );
   return (
     <form action={action} className="google-form">
       <Submit className="button full" pendingLabel="Opening your workspace…">
@@ -286,7 +293,7 @@ If you can use a browser, open the invitation link, enter the code and join.
 
 If you use an MCP client, POST ${origin}/api/agent/join with JSON {"invitationId":"${state.invitationId}","code":"${state.code}","name":"YOUR_AGENT_NAME"}. Retain the returned token privately and configure ${origin}/mcp as a Streamable HTTP server with Authorization: Bearer <token>.
 
-Then read the project brief and shared notes, check requests directed at you, and contribute useful context. The invitation expires in 10 minutes. Never put credentials in shared notes. After browser joining, open /workspace/connection and save a return credential in your private credential store. On later visits, open /workspace in the same browser, or /return with the saved credential in a fresh browser. MCP clients must persist the bearer token in their private client configuration, not conversation memory. Active credentials renew for 90 days from use; after 90 days without use, ask for a new invitation. Call who_am_i and catch_up when you return. Never redeem the invitation again.`;
+Then read the project brief and shared notes, and contribute useful context. The invitation expires in 10 minutes. Never put credentials in shared notes. After browser joining, open /workspace/connection and save a return credential in your private credential store. On later visits, open /workspace in the same browser, or /return with the saved credential in a fresh browser. MCP clients must persist the bearer token in their private client configuration, not conversation memory. Active credentials renew for 90 days from use; after 90 days without use, ask for a new invitation. Call who_am_i and catch_up when you return. Never redeem the invitation again.`;
   return (
     <div className="connection-flow">
       <form
@@ -363,152 +370,6 @@ Then read the project brief and shared notes, check requests directed at you, an
   );
 }
 
-export function RecipientPicker({ people }: { people: Participant[] }) {
-  const [selected, setSelected] = useState<string[]>([]),
-    [query, setQuery] = useState(""),
-    [open, setOpen] = useState(false),
-    [index, setIndex] = useState(0);
-  const available = people.filter(
-    (p) =>
-      !selected.includes(p.id) &&
-      p.name.toLowerCase().includes(query.replace(/^@/, "").toLowerCase()),
-  );
-  const add = (id: string) => {
-    setSelected([...selected, id]);
-    setQuery("");
-    setIndex(0);
-    setOpen(false);
-  };
-  return (
-    <div className="recipient-field">
-      <label htmlFor="recipient-search">Ask an agent</label>
-      <div className="recipient-box">
-        {selected.map((id) => {
-          const person = people.find((p) => p.id === id)!;
-          return (
-            <span
-              className="mention"
-              data-agent-tone={
-                person.name.toLowerCase().includes("grok")
-                  ? "coral"
-                  : person.name.toLowerCase().includes("claude")
-                    ? "lavender"
-                    : person.name.toLowerCase().includes("codex") ||
-                        person.name.toLowerCase().includes("instinct")
-                      ? "blue"
-                      : "silver"
-              }
-              key={id}
-            >
-              <input type="hidden" name="recipientIds" value={id} />
-              <AgentMark name={person.name} small />
-              <span className="mention-name">@{person.name}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${person.name}`}
-                onClick={() => {
-                  setSelected(selected.filter((i) => i !== id));
-                  document.getElementById("recipient-search")?.focus();
-                }}
-              >
-                <Icon name="X" />
-              </button>
-            </span>
-          );
-        })}
-        <input
-          id="recipient-search"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls="recipient-options"
-          aria-activedescendant={
-            open && available[index]
-              ? `recipient-${available[index].id}`
-              : undefined
-          }
-          value={query}
-          onFocus={() => setOpen(true)}
-          onBlur={(e) => {
-            if (
-              !e.currentTarget.parentElement?.parentElement?.contains(
-                e.relatedTarget,
-              )
-            )
-              setOpen(false);
-          }}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIndex(0);
-            setOpen(true);
-          }}
-          placeholder={
-            people.length ? "Choose an agent…" : "Connect an agent first"
-          }
-          autoComplete="off"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setOpen(false);
-              e.stopPropagation();
-            }
-            if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-              e.preventDefault();
-              setOpen(true);
-              setIndex(
-                (i) =>
-                  (i + (e.key === "ArrowDown" ? 1 : -1) + available.length) %
-                  Math.max(1, available.length),
-              );
-            }
-            if (e.key === "Enter" && open && available[index]) {
-              e.preventDefault();
-              add(available[index].id);
-            }
-          }}
-        />
-      </div>
-      {open && (
-        <div
-          className="picker"
-          id="recipient-options"
-          role="listbox"
-          aria-label="Agents in this project"
-        >
-          {available.length ? (
-            available.map((p, i) => (
-              <button
-                type="button"
-                key={p.id}
-                id={`recipient-${p.id}`}
-                role="option"
-                aria-selected={index === i}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => add(p.id)}
-              >
-                <AgentMark name={p.name} />
-                <span>
-                  {p.name}
-                  <small>
-                    {p.projectId ? "Project access" : "Workspace access"}
-                  </small>
-                </span>
-              </button>
-            ))
-          ) : (
-            <p>
-              {people.length
-                ? "No matching agents."
-                : "Connect an agent before creating a request."}
-            </p>
-          )}
-        </div>
-      )}
-      <small className="recipient-help">
-        Only agents with access to this project can be mentioned.
-      </small>
-    </div>
-  );
-}
 export function CredentialForm({ endpoint }: { endpoint: string }) {
   const [state, action] = useActionState(workspaceAction, {});
   return (

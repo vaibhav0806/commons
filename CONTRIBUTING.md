@@ -19,7 +19,7 @@ The local owner is configured by `COMMONS_OWNER_EMAIL` and `COMMONS_OWNER_NAME`.
 
 ## Optional graph engine
 
-Use `npm run hydra:up` to start the free self-hosted HydraDB service. `npm run hydra:status` and `npm run hydra:logs` inspect it; `npm run hydra:down` stops only that service. `npm run test:hydra` restarts HydraDB while verifying persistence, so avoid running it during graph work. Postgres is unaffected. The graph engine receives project, participant, note and request relationships through a durable Postgres queue. Run `npm run graph:watch` to process it locally. See the [README](README.md).
+Use `npm run hydra:up` to start the free self-hosted HydraDB service. `npm run hydra:status` and `npm run hydra:logs` inspect it; `npm run hydra:down` stops only that service. `npm run test:hydra` restarts HydraDB while verifying persistence, so avoid running it during graph work. Postgres is unaffected. The graph engine receives project membership and note authorship relationships through a durable Postgres queue. Run `npm run graph:watch` to process it locally. See the [README](README.md).
 
 ## Check changes
 
@@ -51,13 +51,13 @@ docker compose exec -T db pg_dump -U commons commons > commons-backup.sql
 
 Keep backups private and outside Git. Restoring/importing data is an explicit operator operation. `.env.local`, credentials, database files, backups, browser traces and generated reports must not be committed.
 
-Notes and requests render contributed content as text. Reference URLs allow HTTP/HTTPS only. Browser actions and MCP use the same Store methods; do not add a second permission implementation to an HTTP handler or UI component. Keep registered agents bound to their workspace and optional single project.
+Notes render contributed content as text. Reference URLs allow HTTP/HTTPS only. Browser actions and MCP use the same Store methods; do not add a second permission implementation to an HTTP handler or UI component. Keep registered agents bound to their workspace and optional single project.
 
 ## Local verification
 
 The implementation includes database tests for atomic invitation redemption, project/workspace boundaries, eligible mentions, retry-safe writes, separate read/acknowledge/complete states and credential revocation. MCP tests connect the official SDK over HTTP, enroll, publish/read, reconnect and verify revoked credentials fail.
 
-The end-to-end browser test signs in the local owner, creates a project, joins a separate browser agent, enrolls an MCP participant, publishes context and a directed request through MCP, reads/acknowledges/publishes/completes in the browser, then retrieves the result through a reconnected MCP client. It also creates a request through the keyboard mention picker, checks four viewport widths and revokes both agent identities.
+The browser suite exercises project/note creation, editing and deletion, an independent agent and official MCP client sharing notes, settings, scope changes, return credentials, responsive controls and revocation. Store tests cover stale writes, author/owner permissions, account deletion and session management. `npm run test:context` verifies Hydra cleanup and retry after an outage.
 
 These tests establish the local application and protocol path. They do not establish native Codex, Claude Code, Grok Bot, Instinct or other third-party provider compatibility, automatic agent returns, external posting/calendar actions or a security certification. Hosted Google sign-in has separate live verification recorded in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 

@@ -17,7 +17,6 @@ let first: typeof owner;
 let second: typeof owner;
 let firstToken: string;
 let noteId: string;
-let requestId: string;
 before(async () => {
   const local = await store.createLocalOwner(
     `owner-${crypto.randomUUID()}@example.test`,
@@ -138,86 +137,6 @@ test("notes are persistent, idempotent, searchable and isolated", async () => {
     ),
   );
 });
-test("directed requests validate recipients, link context, and separate read/ack/completion", async () => {
-  const secretAgent = (await store.listParticipants(owner, hidden.id)).find(
-    (p) => p.name === "Hidden participant",
-  )!;
-  await assert.rejects(
-    store.createRequest(
-      first,
-      project.id,
-      {
-        title: "Illegal",
-        body: "Hidden mention",
-        recipientIds: [secretAgent.id],
-      },
-      crypto.randomUUID(),
-    ),
-    CommonsError,
-  );
-  const request = await store.createRequest(
-    first,
-    project.id,
-    {
-      title: "Draft a launch post",
-      body: "Use the product notes.",
-      recipientIds: [second.id],
-      noteId,
-    },
-    crypto.randomUUID(),
-  );
-  requestId = request.id;
-  assert.equal(
-    (await store.listRequests(second, project.id, { mine: true })).requests[0]
-      .id,
-    requestId,
-  );
-  await store.markRead(second, noteId);
-  assert.equal((await store.getRequest(second, requestId)).status, "open");
-  assert.equal(
-    (await store.listNotes(second, project.id, { unread: true })).notes.length,
-    0,
-  );
-  await assert.rejects(store.acknowledge(first, requestId), CommonsError);
-  await store.acknowledge(second, requestId);
-  assert.equal(
-    (await store.getRequest(first, requestId)).status,
-    "in_progress",
-  );
-  const result = await store.createNote(
-    second,
-    project.id,
-    {
-      title: "Launch draft",
-      body: "Launching Commons. A shared workspace for independent assistants.",
-    },
-    crypto.randomUUID(),
-  );
-  await store.completeRequest(second, requestId, result.id);
-  assert.equal(
-    (await store.getRequest(first, requestId)).resultNoteId,
-    result.id,
-  );
-  assert.equal((await store.getRequest(first, requestId)).status, "done");
-});
-test("agents cannot modify owner briefs and unmentioned agents cannot complete requests", async () => {
-  await assert.rejects(
-    store.updateBrief(first, project.id, "Changed"),
-    CommonsError,
-  );
-  const request = await store.createRequest(
-    owner,
-    project.id,
-    {
-      title: "For Codex",
-      body: "A directed request.",
-      recipientIds: [first.id],
-    },
-    crypto.randomUUID(),
-  );
-  await assert.rejects(store.completeRequest(second, request.id), CommonsError);
-  await assert.rejects(store.completeRequest(first, request.id), CommonsError);
-});
 test("expired invitations and wrong pairing contexts do not enroll", async () => {
   const invite = await store.issueInvite(owner, project.id);
   await assert.rejects(
@@ -242,36 +161,14 @@ test("revocation immediately invalidates all credentials and stale actors while 
   assert.equal((await store.getNote(owner, noteId)).authorName, "Codex");
 });
 
-test("request retries do not duplicate acknowledgement or completion activity", async () => {
-  const request = await store.createRequest(
+test("project search finds body text and the brief without leaking other projects", async () => {
+  await store.updateProject(
     owner,
     project.id,
-    {
-      title: "Retry-safe handoff",
-      body: "Acknowledge and complete once.",
-      recipientIds: [second.id],
-    },
-    crypto.randomUUID(),
+    "Launch",
+    "Quartz launch plan.",
+    (await store.getProject(owner, project.id)).version,
   );
-  await store.acknowledge(second, request.id);
-  await store.acknowledge(second, request.id);
-  await store.completeRequest(second, request.id);
-  await store.completeRequest(second, request.id);
-  const events = (await store.activity(owner, project.id)).filter(
-    (e) => e.resourceId === request.id,
-  );
-  assert.equal(
-    events.filter((e) => e.description === "Acknowledged a request").length,
-    1,
-  );
-  assert.equal(
-    events.filter((e) => e.description === "Completed a request").length,
-    1,
-  );
-});
-
-test("project search finds body text, requests and the brief without leaking other projects", async () => {
-  await store.updateBrief(owner, project.id, "Quartz launch plan.");
   const note = await store.createNote(
     owner,
     project.id,
@@ -284,19 +181,8 @@ test("project search finds body text, requests and the brief without leaking oth
     { title: "Quartz private notes", body: "Do not expose this project." },
     crypto.randomUUID(),
   );
-  const request = await store.createRequest(
-    owner,
-    project.id,
-    {
-      title: "Schedule calls",
-      body: "Quartz alpha demos.",
-      recipientIds: [second.id],
-    },
-    crypto.randomUUID(),
-  );
   const results = await store.searchProject(second, project.id, "quartz");
   assert.ok(results.some((result) => result.id === note.id));
-  assert.ok(results.some((result) => result.id === request.id));
   assert.ok(results.some((result) => result.kind === "project"));
   assert.ok(!results.some((result) => result.title === "Quartz private notes"));
   await assert.rejects(
@@ -364,17 +250,34 @@ test("Google identity links the configured owner, persists by subject, and rejec
   process.env.COMMONS_OWNER_EMAIL = owner.email!;
   const subject = crypto.randomUUID();
   try {
-    const linked = await store.signInGoogle(subject, owner.email!, "Google Owner");
+    const linked = await store.signInGoogle(
+      subject,
+      owner.email!,
+      "Google Owner",
+    );
     assert.equal(linked.actor.id, owner.id);
     assert.equal(linked.actor.workspaceId, owner.workspaceId);
     assert.equal((await store.authenticate(linked.token)).id, owner.id);
-    const returning = await store.signInGoogle(subject, `changed-${crypto.randomUUID()}@example.test`, "New name");
+    const returning = await store.signInGoogle(
+      subject,
+      `changed-${crypto.randomUUID()}@example.test`,
+      "New name",
+    );
     assert.equal(returning.actor.id, owner.id);
-    await assert.rejects(store.signInGoogle(crypto.randomUUID(), owner.email!, "Impostor"), CommonsError);
-    await assert.rejects(store.signInGoogle(crypto.randomUUID(), other.email!, "Other"), CommonsError);
+    await assert.rejects(
+      store.signInGoogle(crypto.randomUUID(), owner.email!, "Impostor"),
+      CommonsError,
+    );
+    await assert.rejects(
+      store.signInGoogle(crypto.randomUUID(), other.email!, "Other"),
+      CommonsError,
+    );
     const email = `google-${crypto.randomUUID()}@example.test`;
     const newSubject = crypto.randomUUID();
-    const results = await Promise.all([store.signInGoogle(newSubject, email, "New owner"), store.signInGoogle(newSubject, email, "New owner")]);
+    const results = await Promise.all([
+      store.signInGoogle(newSubject, email, "New owner"),
+      store.signInGoogle(newSubject, email, "New owner"),
+    ]);
     assert.equal(results[0].actor.id, results[1].actor.id);
     assert.notEqual(results[0].actor.workspaceId, owner.workspaceId);
   } finally {
@@ -386,11 +289,207 @@ test("Google identity links the configured owner, persists by subject, and rejec
 test("Google sign-in state is one-use and expires", async () => {
   const state = crypto.randomUUID();
   await store.beginGoogleSignIn(state, "verifier", "nonce");
-  const result = await Promise.allSettled([store.consumeGoogleSignIn(state), store.consumeGoogleSignIn(state)]);
+  const result = await Promise.allSettled([
+    store.consumeGoogleSignIn(state),
+    store.consumeGoogleSignIn(state),
+  ]);
   assert.equal(result.filter((r) => r.status === "fulfilled").length, 1);
   const expired = crypto.randomUUID();
-  const pastStore = new Store(pool, "commons-test-secret-with-more-than-32-characters", () => Date.now() - 700000);
+  const pastStore = new Store(
+    pool,
+    "commons-test-secret-with-more-than-32-characters",
+    () => Date.now() - 700000,
+  );
   await pastStore.beginGoogleSignIn(expired, "verifier", "nonce");
   await assert.rejects(store.consumeGoogleSignIn(expired), CommonsError);
   await assert.rejects(store.consumeGoogleSignIn("unknown"), CommonsError);
+});
+
+test("project and note CRUD enforce ownership, stale edits and permanent deletion", async () => {
+  const p = await store.createProject(owner, "Editable", "Original brief");
+  const invite = await store.issueInvite(owner, p.id);
+  const a = (await store.join(invite.id, invite.code, "Writer")).actor;
+  const n = await store.createNote(
+    a,
+    p.id,
+    { title: "Draft", body: "Original" },
+    crypto.randomUUID(),
+  );
+  await assert.rejects(
+    store.updateProject(a, p.id, "No", "No", p.version),
+    CommonsError,
+  );
+  await assert.rejects(
+    store.updateProject(other, p.id, "No", "No", p.version),
+    CommonsError,
+  );
+  const renamed = await store.updateProject(
+    owner,
+    p.id,
+    "Renamed",
+    "Updated brief",
+    p.version,
+  );
+  assert.equal(renamed.name, "Renamed");
+  await assert.rejects(
+    store.updateProject(owner, p.id, "Stale", "", p.version),
+    (e: unknown) => e instanceof CommonsError && e.status === 409,
+  );
+  await assert.rejects(
+    store.updateNote(other, n.id, { title: "Bad", body: "No" }, n.version),
+    CommonsError,
+  );
+  await assert.rejects(
+    store.updateNote(second, n.id, { title: "Bad", body: "No" }, n.version),
+    CommonsError,
+  );
+  const edited = await store.updateNote(
+    a,
+    n.id,
+    {
+      title: "Final",
+      body: "Updated",
+      references: [{ label: "Docs", url: "https://example.com" }],
+    },
+    n.version,
+  );
+  assert.ok(edited.editedAt);
+  assert.equal(edited.version, 2);
+  assert.equal(edited.referenceLinks.length, 1);
+  await assert.rejects(
+    store.updateNote(a, n.id, { title: "Stale", body: "No" }, n.version),
+    CommonsError,
+  );
+  await assert.rejects(store.deleteNote(a, n.id, n.version), CommonsError);
+  await store.deleteNote(owner, n.id, edited.version);
+  await assert.rejects(store.getNote(a, n.id), CommonsError);
+  assert.equal((await store.searchProject(owner, p.id, "Final")).length, 0);
+  await assert.rejects(store.deleteProject(owner, p.id, "Wrong"), CommonsError);
+  await store.deleteProject(owner, p.id, "Renamed");
+  await assert.rejects(store.getProject(owner, p.id), CommonsError);
+  await assert.rejects(store.listProjects(a), CommonsError);
+  assert.ok(
+    (await pool.query("SELECT 1 FROM graph_sync WHERE project_id=$1", [p.id]))
+      .rowCount,
+  );
+});
+
+test("concurrent note edits accept one version and reject a lost update", async () => {
+  const n = await store.createNote(
+    owner,
+    project.id,
+    { title: "Concurrent", body: "Initial" },
+    crypto.randomUUID(),
+  );
+  const results = await Promise.allSettled([
+    store.updateNote(owner, n.id, { title: "First", body: "A" }, n.version),
+    store.updateNote(owner, n.id, { title: "Second", body: "B" }, n.version),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal((await store.getNote(owner, n.id)).version, 2);
+});
+
+test("agent access changes apply to saved credentials and removal retains note attribution", async () => {
+  const invite = await store.issueInvite(owner, null);
+  const a = await store.join(invite.id, invite.code, "Original agent");
+  const n = await store.createNote(
+    a.actor,
+    project.id,
+    { title: "Authored", body: "Retain this." },
+    crypto.randomUUID(),
+  );
+  await assert.rejects(
+    store.updateAgent(other, a.actor.id, "Wrong", null),
+    CommonsError,
+  );
+  await store.updateAgent(owner, a.actor.id, "Renamed agent", hidden.id);
+  const returned = await store.authenticate(a.token);
+  assert.equal(returned.name, "Renamed agent");
+  await assert.rejects(store.getNote(a.actor, n.id), CommonsError);
+  assert.equal((await store.getNote(owner, n.id)).authorName, "Renamed agent");
+  await store.removeAgent(owner, a.actor.id);
+  await assert.rejects(store.authenticate(a.token), CommonsError);
+  assert.ok(
+    !(await store.listParticipants(owner, undefined, true)).some(
+      (p) => p.id === a.actor.id,
+    ),
+  );
+  assert.equal((await store.getNote(owner, n.id)).authorName, "Renamed agent");
+});
+
+test("pending invitations can be cancelled and credentials revoked individually", async () => {
+  const invite = await store.issueInvite(owner, project.id);
+  assert.ok(
+    (await store.listInvitations(owner)).some((i) => i.id === invite.id),
+  );
+  await store.cancelInvitation(other, invite.id);
+  await store.cancelInvitation(owner, invite.id);
+  await assert.rejects(
+    store.join(invite.id, invite.code, "Late agent"),
+    CommonsError,
+  );
+  const joinInvite = await store.issueInvite(owner, null);
+  const a = await store.join(
+    joinInvite.id,
+    joinInvite.code,
+    "Connection agent",
+  );
+  const extra = await store.createCredential(a.actor, "Independent client");
+  const connections = await store.listSessions(a.actor, a.token);
+  assert.equal(connections.filter((s) => s.current).length, 1);
+  assert.ok(!JSON.stringify(connections).includes(extra));
+  const target = connections.find((s) => !s.current)!;
+  await store.revokeSession(other, target.id);
+  await store.authenticate(extra);
+  await store.revokeSession(owner, target.id);
+  await assert.rejects(store.authenticate(extra), CommonsError);
+  await store.authenticate(a.token);
+  const next = await store.createCredential(a.actor, "Another client");
+  await store.signOutOthers(a.actor, a.token);
+  await assert.rejects(store.authenticate(next), CommonsError);
+  await store.authenticate(a.token);
+});
+
+test("workspace deletion preserves account; account deletion removes identity and all scoped data", async () => {
+  const login = await store.signInGoogle(
+    `sub-${crypto.randomUUID()}`,
+    `delete-${crypto.randomUUID()}@example.test`,
+    "Delete Owner",
+  );
+  let a = login.actor;
+  const workspace = await store.getWorkspace(a);
+  const p = await store.createProject(a, "Disposable", "");
+  const invite = await store.issueInvite(a, p.id);
+  const agent = await store.join(invite.id, invite.code, "Disposable agent");
+  await store.createNote(
+    agent.actor,
+    p.id,
+    { title: "Disposable", body: "Context" },
+    crypto.randomUUID(),
+  );
+  await assert.rejects(store.deleteWorkspace(a, "Wrong"), CommonsError);
+  await store.deleteWorkspace(a, workspace.name);
+  a = await store.authenticate(login.token);
+  assert.notEqual(a.workspaceId, workspace.id);
+  assert.equal((await store.listProjects(a)).length, 0);
+  await assert.rejects(store.authenticate(agent.token), CommonsError);
+  await store.updateProfile(a, "New Name");
+  assert.equal((await store.authenticate(login.token)).name, "New Name");
+  await store.deleteWorkspace(a, "DELETE", true);
+  await assert.rejects(store.authenticate(login.token), CommonsError);
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT 1 FROM google_identities WHERE participant_id=$1",
+        [a.id],
+      )
+    ).rowCount,
+    0,
+  );
+  assert.equal(
+    (await pool.query("SELECT 1 FROM workspaces WHERE id=$1", [a.workspaceId]))
+      .rowCount,
+    0,
+  );
+  assert.ok((await store.listProjects(owner)).length > 0);
 });

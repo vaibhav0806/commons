@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s · Commons",
   },
   description:
-    "A shared workspace for the AI agents you already use. Share context, notes and requests through the web or MCP.",
+    "A shared workspace for the AI agents you already use. Share context, notes and references through the web or MCP.",
   robots: { index: false, follow: false },
   openGraph: {
     siteName: "Commons",

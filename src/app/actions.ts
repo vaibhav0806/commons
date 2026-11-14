@@ -25,6 +25,16 @@ export type ActionState = {
   token?: string;
 };
 const field = (data: FormData, name: string) => String(data.get(name) ?? "");
+function noteReferences(data: FormData) {
+  const urls = data.getAll("referenceUrl").map(String);
+  const labels = data.getAll("referenceLabel").map(String);
+  return urls
+    .map((url, i) => ({
+      url: url.trim(),
+      label: labels[i]?.trim() || "Reference",
+    }))
+    .filter((r) => r.url);
+}
 function errorState(error: unknown): ActionState {
   if (error instanceof CommonsError) return { error: error.message };
   if (error instanceof ZodError)
@@ -161,14 +171,7 @@ export async function workspaceAction(
         };
       }
       case "note": {
-        const references = field(data, "referenceUrl")
-          ? [
-              {
-                label: field(data, "referenceLabel") || "Reference",
-                url: field(data, "referenceUrl"),
-              },
-            ]
-          : [];
+        const references = noteReferences(data);
         const note = await store.createNote(
           actor,
           projectId,
@@ -182,37 +185,97 @@ export async function workspaceAction(
         destination = `/workspace/projects/${projectId}?note=${note.id}`;
         break;
       }
-      case "request": {
-        const request = await store.createRequest(
-          actor,
-          projectId,
-          {
-            title: field(data, "title"),
-            body: field(data, "body"),
-            recipientIds: data.getAll("recipientIds").map(String),
-            noteId: field(data, "noteId") || undefined,
-          },
-          field(data, "clientKey"),
-        );
-        destination = `/workspace/projects/${projectId}?request=${request.id}`;
-        break;
-      }
       case "read":
         await store.markRead(actor, field(data, "noteId"));
         break;
-      case "acknowledge":
-        await store.acknowledge(actor, field(data, "requestId"));
-        break;
-      case "complete":
-        await store.completeRequest(
+      case "edit-project":
+        await store.updateProject(
           actor,
-          field(data, "requestId"),
-          field(data, "resultNoteId") || undefined,
+          projectId,
+          field(data, "name"),
+          field(data, "brief"),
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${projectId}`;
+        break;
+      case "delete-project":
+        await store.deleteProject(
+          actor,
+          projectId,
+          field(data, "confirmation"),
+        );
+        destination = "/workspace";
+        break;
+      case "edit-note": {
+        const note = await store.updateNote(
+          actor,
+          field(data, "noteId"),
+          {
+            title: field(data, "title"),
+            body: field(data, "body"),
+            references: noteReferences(data),
+          },
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${note.projectId}?note=${note.id}`;
+        break;
+      }
+      case "delete-note": {
+        const note = await store.deleteNote(
+          actor,
+          field(data, "noteId"),
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${note.projectId}`;
+        break;
+      }
+      case "profile":
+        await store.updateProfile(actor, field(data, "name"));
+        break;
+      case "rename-workspace":
+        await store.renameWorkspace(actor, field(data, "name"));
+        break;
+      case "edit-agent":
+        await store.updateAgent(
+          actor,
+          field(data, "participantId"),
+          field(data, "name"),
+          projectId || null,
+        );
+        destination = "/workspace/agents";
+        break;
+      case "remove-agent":
+        await store.removeAgent(actor, field(data, "participantId"));
+        destination = "/workspace/agents";
+        break;
+      case "cancel-invitation":
+        await store.cancelInvitation(actor, field(data, "invitationId"));
+        break;
+      case "revoke-session":
+        await store.revokeSession(actor, field(data, "sessionId"));
+        if (!(await currentParticipant())) {
+          (await cookies()).delete(sessionCookie);
+          destination = "/sign-in";
+        }
+        break;
+      case "sign-out-others":
+        await store.signOutOthers(
+          actor,
+          (await cookies()).get(sessionCookie)?.value || "",
         );
         break;
-      case "brief":
-        await store.updateBrief(actor, projectId, field(data, "brief"));
+      case "delete-workspace":
+      case "delete-account": {
+        const account = field(data, "operation") === "delete-account";
+        await store.deleteWorkspace(
+          actor,
+          field(data, "confirmation"),
+          account,
+        );
+        if (account) (await cookies()).delete(sessionCookie);
+        destination = account ? "/" : "/setup";
         break;
+      }
       case "revoke":
         await store.revoke(actor, field(data, "participantId"));
         break;
@@ -222,7 +285,7 @@ export async function workspaceAction(
         throw new CommonsError("Unknown action.");
     }
     revalidatePath("/workspace", "layout");
-    if (field(data, "operation") === "project") revalidatePath("/", "layout");
+    revalidatePath("/", "layout");
   } catch (error) {
     return errorState(error);
   }

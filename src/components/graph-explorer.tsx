@@ -24,7 +24,7 @@ export function GraphExplorer({
   const [selected, setSelected] = useState<number | null>(null);
   const active = nodes.find((n) => n.id === selected);
   const visible = nodes.slice(0, 60);
-  const groups = ["project", "participant", "note", "request"];
+  const groups = ["project", "participant", "note"];
   const positions = new Map<number, { x: number; y: number }>();
   groups.forEach((kind, column) =>
     visible
@@ -112,7 +112,7 @@ export function GraphExplorer({
             <p className="meta">
               {active.kind} · {active.resourceId}
             </p>
-            {(active.kind === "note" || active.kind === "request") && (
+            {(active.kind === "note") && (
               <Link
                 href={`/workspace/projects/${projectId}?${active.kind}=${active.resourceId}`}
               >

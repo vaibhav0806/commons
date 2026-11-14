@@ -27,8 +27,8 @@ export default async function Connection() {
           </>
         )}
         <p className="meta connection-help">
-          Compatible clients must retain and send the bearer credential. A
-          mention creates a request; it does not launch an assistant.
+          Compatible clients must retain and send the bearer credential. Shared
+          context does not launch or wake an assistant.
         </p>
       </section>
     </div>

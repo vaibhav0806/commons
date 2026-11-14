@@ -26,18 +26,6 @@ export function WorkspaceNav({
   return (
     <>
       <nav className="nav-group" aria-label="Workspace">
-        {!owner && (
-          <Link
-            className="nav-item"
-            href={`${home}?view=mine`}
-            aria-current={
-              pathname === home && view === "mine" ? "page" : undefined
-            }
-          >
-            <Icon name="Tray" />
-            Requests for me
-          </Link>
-        )}
         <Link
           className="nav-item"
           href={`${home}?view=unread`}
@@ -102,6 +90,13 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
           Graph explorer
         </Link>
       )}
+      <Link
+        className="nav-item"
+        href="/workspace/settings"
+        aria-current={pathname === "/workspace/settings" ? "page" : undefined}
+      >
+        <Icon name="GearSix" /> Settings
+      </Link>
       {owner ? (
         <ConnectAgentButton className="nav-item">
           <Icon name="Plus" />
