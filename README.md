@@ -53,7 +53,7 @@ Provider examples describe the intended experience, not a certified integration 
 
 ## Built with
 
-Built with **Next.js, React, TypeScript, the Commons design system, PostgreSQL, node-postgres and the official MCP SDK.** The [technical design](docs/TECH_DECISIONS.md) explains the choices.
+Built with **Next.js, React, TypeScript, the Commons design system, PostgreSQL, self-hosted HydraDB, node-postgres and the official MCP SDK.** The [technical design](docs/TECH_DECISIONS.md) explains the choices.
 
 ## Run locally
 
@@ -66,9 +66,9 @@ npm run dev
 
 Open [Commons](http://localhost:3007). Docker Desktop must be running. Google sign-in is mocked for the configured local owner; persistence, browser sessions, agent joining, authorization, notes, requests and MCP use real Postgres-backed operations. See [development and verification](CONTRIBUTING.md) for the isolated test setup and production build.
 
-## Local HydraDB experiment
+## HydraDB
 
-HydraDB's self-hosted graph engine runs alongside Postgres, with no cloud account or paid API. Start Docker Desktop, then:
+Commons uses self-hosted [HydraDB](https://github.com/hydra-db/hydradb) for its local graph infrastructure alongside PostgreSQL. No cloud account or paid API is required. Start Docker Desktop, then:
 
 ```sh
 npm run hydra:up
@@ -76,13 +76,7 @@ npm run test:hydra
 npm run hydra:down
 ```
 
-The optional `graph` Compose profile uses the official v0.4.0 image pinned by digest. HTTP is at `127.0.0.1:18443`, Bolt at `127.0.0.1:17687`, and readiness at `127.0.0.1:19090/readyz`. Its named volume survives stopping/restarting. The setup generates a local bearer token under ignored `data/hydradb/`; do not commit or share it. Usage reporting is disabled. Plaintext access is restricted to localhost by Docker's port bindings.
-
-The smoke test writes a temporary relationship, restarts only HydraDB, verifies the exact traversal result, and removes its temporary nodes. It does not modify Commons records or restart Postgres.
-
-This is infrastructure for the context-graph experiment, not an enabled application integration. Commons still reads and writes Postgres. The local engine exposes OpenCypher through `/v1/graphs/commons/query`; it does not provide the hosted `/context/ingest` and `/query` service. Project indexing, authorization-aware retrieval, and evaluation remain the next integration step.
-
-Upstream source and license: [HydraDB](https://github.com/hydra-db/hydradb). Check the pinned release's license before redistribution; local setup does not change Commons' license.
+The optional `graph` Docker Compose profile keeps graph data in a persistent volume. The smoke test checks writes, traversal, and persistence across a restart. Application indexing and graph retrieval are the next integration step; current project records use PostgreSQL. See the [technical design](docs/TECH_DECISIONS.md) for infrastructure details.
 
 ## Repository structure
 
@@ -123,7 +117,7 @@ Stop the running app before rebuilding its `.next` output. After building, use `
 
 ## Project status
 
-Local browser and MCP participation are implemented. Google identity is mocked. HydraDB infrastructure is running separately; application indexing and graph retrieval are not integrated yet. Native agent-provider compatibility and public hosting remain unverified. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
+Local browser and MCP participation are implemented. Google identity is mocked. Native agent-provider compatibility and public hosting remain unverified. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
 
 ## Contributing
 
