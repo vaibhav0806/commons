@@ -39,7 +39,7 @@ services:
     command: [node, scripts/file-cleanup.mjs]
     restart: unless-stopped
     env_file: [.env.hosted, .env.files]
-    networks: [database, web]
+    networks: [default, database, web]
     mem_limit: 256m
     cpus: 0.25
     depends_on:
