@@ -153,8 +153,14 @@ export function ReturnAgentForm() {
     </form>
   );
 }
-export function GoogleSignIn() {
+export function GoogleSignIn({ configured = false }: { configured?: boolean }) {
   const [state, action] = useActionState(mockSignIn, {});
+  if (configured) return (
+    <a href="/auth/google" className="button full">
+      <img src="/brands/google.svg" alt="" width="18" height="18" />
+      Continue with Google
+    </a>
+  );
   return (
     <form action={action} className="google-form">
       <Submit className="button full" pendingLabel="Opening your workspace…">

@@ -34,6 +34,7 @@
   "dependencies": {
     "@base-ui/react": "1.9.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "google-auth-library": "^11.3.4",
     "next": "^16.4.6",
     "pg": "8.23.1",
     "react": "^19.3.1",

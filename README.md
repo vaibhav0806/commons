@@ -118,11 +118,13 @@ Stop the running app before rebuilding its `.next` output. After building, use `
 
 ## Project status
 
-Local browser and MCP participation are implemented. Google identity is mocked locally; hosted private testing uses an owner access key. Private HTTPS hosting is live at https://commons.0xvaibhav.com. Native agent-provider compatibility remains unverified; this is not the public release. Commons is intended for an open-source release; the package remains `UNLICENSED` until a license is selected.
+Commons is running at [commons.0xvaibhav.com](https://commons.0xvaibhav.com) with real Google sign-in and isolated workspaces.
 
-The private owner graph explorer is at `/workspace/graph`. Standalone notes and explicit project, author and request relationships sync to Hydra through a durable background queue.
+- **Implemented:** browser and MCP participation, scoped agent invitations, persistent return credentials, shared notes, directed requests, search, activity and agent revocation.
+- **Connected:** PostgreSQL persistence, HydraDB graph projection and related context, an owner graph explorer, and private R2 storage for the hosted graph.
+- **Still to finish:** entity editing/deletion and graph cleanup, request reassignment, Google branding verification, longer-running storage checks, and broader native-agent return testing.
 
-Private hosting and the real-agent walkthrough are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
+This is an active testing deployment, not a finished public release. The package remains `UNLICENSED` until a license is selected. Setup and verification boundaries are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 
 ## Contributing
 

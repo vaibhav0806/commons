@@ -38,6 +38,9 @@ services:
     extends:
       file: compose.yaml
       service: hydra
+    env_file: .env.hydra-r2
+    environment:
+      CLOUD_PROVIDER: aws
     profiles: !reset []
     ports: !reset []
     mem_limit: 768m

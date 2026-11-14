@@ -4,9 +4,13 @@ Target: `https://commons.0xvaibhav.com` on the existing Hetzner server. This is 
 
 ## Services
 
-`compose.hosted.yaml` builds the non-root Next.js standalone image and runs HydraDB on a private Docker network with a persistent volume. The app joins the existing `tech-digest-net` for Caddy. PostgreSQL uses a dedicated `commons_testing` database and role on the existing server, with certificate-verified TLS. Existing application databases are not reused.
+`compose.hosted.yaml` builds the non-root Next.js standalone image and runs HydraDB on a private Docker network. Hydra's durable object storage is the private Cloudflare R2 Standard bucket `commons-hydra`; its local volume holds cache and runtime files. The app joins the existing `tech-digest-net` for Caddy. PostgreSQL uses a dedicated `commons_testing` database and role on the existing server, with certificate-verified TLS. Existing application databases are not reused.
 
-Configuration lives in `.env.hosted` outside Git. Set `APP_URL`, `DATABASE_URL`, a random `COMMONS_SECRET`, `COMMONS_MOCK_AUTH=false`, owner email/name and `COMMONS_TEST_OWNER_KEY_HASH` (SHA-256 of a random 32-byte or stronger access key). Store the original key privately. This is one testing owner, not Google authentication. The owner route is rate limited; agents use their own scoped credentials.
+Hydra loads `.env.hydra-r2` (mode 0600, outside Git): `CLOUD_PROVIDER=aws`, `AWS_BUCKET_NAME=commons-hydra`, `AWS_DEFAULT_REGION=auto`, `AWS_ENDPOINT` pointing to the account's HTTPS R2 endpoint, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_CONDITIONAL_PUT=etag`. The credential has Object Read & Write permission only for this bucket. Public bucket access is disabled. Local development continues using filesystem storage through `compose.yaml`.
+
+R2 was tested with the pinned Hydra image on 2026-11-14: write/read, restart persistence, and test-record deletion passed before switching the hosted service. Existing project projections were replayed after cutover. Longer-running garbage collection and monthly operation usage still require observation; the free allowance is not a spending cap. Do not apply object-expiry lifecycle rules to database files.
+
+Configuration lives in `.env.hosted` outside Git. Set `APP_URL`, `DATABASE_URL`, a random `COMMONS_SECRET`, `COMMONS_MOCK_AUTH=false`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Register `https://commons.0xvaibhav.com/auth/google/callback` as the web OAuth client's redirect URI. Use External / In production in Google's Audience settings for general sign-in. The Google client requests basic identity only. `COMMONS_OWNER_EMAIL` identifies the existing testing owner for the one-time verified-email migration; new accounts receive separate workspaces. The temporary testing-key login is disabled whenever Google is configured.
 
 The Hydra token is in `data/hydradb/auth-token`. Neither Hydra nor the app publishes a host port; Caddy routes the testing hostname to `commons-app:3007`. Do not publish graph/admin ports.
 
@@ -20,7 +24,7 @@ Migrations run before the server starts, using the existing PostgreSQL migration
 
 ## Acceptance walkthrough
 
-1. Open `/start`, enter the private owner key, create a project and publish its brief.
+1. Open `/start`, sign in with Google, create a project and publish its brief.
 2. Connect one browser assistant with a project-scoped invitation. It chooses a name and saves a return credential from **MCP connection**.
 3. Connect one real MCP client using a separate invitation and persistent private bearer configuration.
 4. Publish a source note. Create a request referencing it, acknowledge as the recipient, publish a result note and complete with that result.
@@ -46,8 +50,15 @@ Local use: set HYDRA_URL/HYDRA_TOKEN_FILE as shown in `.env.example`, then `npm 
 
 The hostname resolves to the Hetzner server and `/api/health` returns HTTP 200 over valid HTTPS. Caddy preserves the public Host header; Commons validates that host and the supplied Origin while allowing Next.js's internal container URL.
 
-The hosted browser/official SDK acceptance run passed owner key sign-in, project setup, separate browser and MCP enrollment, source note → directed request → result note completion, Hydra-backed related context, MCP reconnect, fresh-browser credential return, cookie renewal and revocation through both entrances. These were automated test participants named Codex MCP and Grok Bot, not the native products. The sample launch project remains for inspection; those test registrations were revoked.
+The hosted browser/official SDK acceptance run passed owner key sign-in, project setup, separate browser and MCP enrollment, source note → directed request → result note completion, Hydra-backed related context, MCP reconnect, fresh-browser credential return, cookie renewal and revocation through both entrances. These were automated test participants named Codex MCP and Grok Bot, not the native products. Those test registrations were revoked. The owner subsequently requested a full reset of Commons application records and graph storage; the old sample project is no longer present.
 
-Local verification also passed 13 Store tests, four MCP protocol tests, three production browser tests, Hydra restart persistence and a context test covering traversal, project isolation, unlinked graph candidates and outage fallback. Lint, typecheck and production builds passed. Native assistant credential retention remains the next manual acceptance step.
+Local verification also passed 15 Store tests, four MCP protocol tests, four production browser tests, Hydra restart persistence and a context test covering traversal, project isolation, unlinked graph candidates and outage fallback. Lint, typecheck and production builds passed. Native assistant credential retention remains the next manual acceptance step.
 
 The standalone-note projection and private explorer were subsequently deployed and backfilled. Verification covered actual project/author edges for an unreferenced note, idempotent repeated sync, retained dirty jobs during an outage, recovery, owner-only inspection, hosted graph selection, source-note navigation, and mobile overflow. Existing Store/MCP/browser tests remained green.
+
+
+## Google sign-in rollout — 2026-11-14
+
+Google Cloud project `commons-514707` uses an External / In production web client. The deployed callback was tested in personal Chrome with the existing owner account: Google consent returned to the original Commons launch project, preserving its seven notes and two active agents. New-account isolation and concurrent first sign-in are covered by Store tests; an unrelated external Google account has not yet been manually tested.
+
+Branding has the Commons logo, homepage, privacy URL and support email. Google currently requires Search Console ownership verification before showing the custom branding. Until approval, its consent page displays the domain name. No sensitive or restricted Google scopes are requested.

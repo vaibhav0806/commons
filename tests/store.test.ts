@@ -358,3 +358,39 @@ test("private testing owner login requires the configured key", async () => {
   );
   assert.equal(result.actor.id, owner.id);
 });
+
+test("Google identity links the configured owner, persists by subject, and rejects email takeover", async () => {
+  const previous = process.env.COMMONS_OWNER_EMAIL;
+  process.env.COMMONS_OWNER_EMAIL = owner.email!;
+  const subject = crypto.randomUUID();
+  try {
+    const linked = await store.signInGoogle(subject, owner.email!, "Google Owner");
+    assert.equal(linked.actor.id, owner.id);
+    assert.equal(linked.actor.workspaceId, owner.workspaceId);
+    assert.equal((await store.authenticate(linked.token)).id, owner.id);
+    const returning = await store.signInGoogle(subject, `changed-${crypto.randomUUID()}@example.test`, "New name");
+    assert.equal(returning.actor.id, owner.id);
+    await assert.rejects(store.signInGoogle(crypto.randomUUID(), owner.email!, "Impostor"), CommonsError);
+    await assert.rejects(store.signInGoogle(crypto.randomUUID(), other.email!, "Other"), CommonsError);
+    const email = `google-${crypto.randomUUID()}@example.test`;
+    const newSubject = crypto.randomUUID();
+    const results = await Promise.all([store.signInGoogle(newSubject, email, "New owner"), store.signInGoogle(newSubject, email, "New owner")]);
+    assert.equal(results[0].actor.id, results[1].actor.id);
+    assert.notEqual(results[0].actor.workspaceId, owner.workspaceId);
+  } finally {
+    if (previous === undefined) delete process.env.COMMONS_OWNER_EMAIL;
+    else process.env.COMMONS_OWNER_EMAIL = previous;
+  }
+});
+
+test("Google sign-in state is one-use and expires", async () => {
+  const state = crypto.randomUUID();
+  await store.beginGoogleSignIn(state, "verifier", "nonce");
+  const result = await Promise.allSettled([store.consumeGoogleSignIn(state), store.consumeGoogleSignIn(state)]);
+  assert.equal(result.filter((r) => r.status === "fulfilled").length, 1);
+  const expired = crypto.randomUUID();
+  const pastStore = new Store(pool, "commons-test-secret-with-more-than-32-characters", () => Date.now() - 700000);
+  await pastStore.beginGoogleSignIn(expired, "verifier", "nonce");
+  await assert.rejects(store.consumeGoogleSignIn(expired), CommonsError);
+  await assert.rejects(store.consumeGoogleSignIn("unknown"), CommonsError);
+});

@@ -128,4 +128,4 @@ Use database backups and test restoration before a hosted pilot. A backup is not
 
 ## Local implementation
 
-The local product implements the shared PostgreSQL service, scoped browser sessions, notes/mentions, directed requests, read state and authenticated MCP. Only the human Google identity is mocked. Explicit SQL migrations and node-postgres replace the earlier ORM recommendation. See [technical decisions](TECH_DECISIONS.md) and [contributor guidance](../CONTRIBUTING.md) for actual setup and proof boundaries.
+The local product implements the shared PostgreSQL service, scoped browser sessions, notes/mentions, directed requests, read state and authenticated MCP. Local development can mock Google identity; hosted sign-in now uses Google OpenID Connect. Explicit SQL migrations and node-postgres replace the earlier ORM recommendation. See [technical decisions](TECH_DECISIONS.md) and [contributor guidance](../CONTRIBUTING.md) for actual setup and proof boundaries.

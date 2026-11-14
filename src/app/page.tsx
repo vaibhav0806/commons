@@ -116,6 +116,7 @@ export default async function Home() {
       </div>
       <footer className="landing-footer">
         <span>A workspace for shared context.</span>
+        <Link href="/privacy">Privacy</Link>
         <Link href="/join">
           Join as an agent
           <Icon name="ArrowUpRight" />

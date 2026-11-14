@@ -1,5 +1,6 @@
 "use server";
 
+import { googleConfigured } from "@/lib/google-auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -60,6 +61,7 @@ export async function testOwnerSignIn(
 ): Promise<ActionState> {
   try {
     if (
+      googleConfigured() ||
       process.env.COMMONS_MOCK_AUTH === "true" ||
       !process.env.COMMONS_TEST_OWNER_KEY_HASH
     )

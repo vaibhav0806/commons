@@ -247,7 +247,7 @@ export class Store {
           now = this.clock();
         await tx.connection.query("INSERT INTO workspaces VALUES($1,$2,$3)", [
           workspaceId,
-          `${name}’s workspace`,
+          `${name.trim().split(/\s+/)[0]}’s workspace`,
           now,
         ]);
         await tx.connection.query(
@@ -257,6 +257,57 @@ export class Store {
         actor = await tx.active(id);
       }
       return { token: await tx.session(actor.id, "Browser", 30), actor };
+    });
+  }
+  async beginGoogleSignIn(state: string, verifier: string, nonce: string) {
+    await this.rateLimit("google-login", 300);
+    await this.connection.query("DELETE FROM oauth_flows WHERE expires_at<=$1", [this.clock()]);
+    await this.connection.query(
+      "INSERT INTO oauth_flows VALUES($1,$2,$3,$4)",
+      [digest(state), verifier, nonce, this.clock() + 600000],
+    );
+  }
+  async consumeGoogleSignIn(state: string) {
+    const flow = await this.one<{ verifier: string; nonce: string }>(
+      "DELETE FROM oauth_flows WHERE state_hash=$1 AND expires_at>$2 RETURNING verifier,nonce",
+      [digest(state), this.clock()],
+    );
+    if (!flow) throw new CommonsError("Sign-in expired. Please try again.", 401);
+    return flow;
+  }
+  async signInGoogle(subjectInput: string, emailInput: string, nameInput: string) {
+    const subject = z.string().min(1).max(255).parse(subjectInput);
+    const email = z.email().parse(emailInput.trim().toLowerCase());
+    const name = nameSchema.parse(nameInput.trim().slice(0, 60));
+    return this.transaction(async (tx) => {
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["google:" + subject]);
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [email]);
+      const identity = await tx.one<{ participantId: string }>(
+        "SELECT participant_id FROM google_identities WHERE subject=$1", [subject],
+      );
+      if (identity) {
+        const actor = await tx.active(identity.participantId);
+        return { actor, token: await tx.session(actor.id, "Google", 30) };
+      }
+      let actor = await tx.one<Principal>(
+        "SELECT * FROM participants WHERE email=$1 AND kind='owner'", [email],
+      );
+      if (actor) {
+        const linked = await tx.one("SELECT 1 FROM google_identities WHERE participant_id=$1", [actor.id]);
+        if (linked || email !== process.env.COMMONS_OWNER_EMAIL?.trim().toLowerCase())
+          throw new CommonsError("This email is already associated with another identity.", 403);
+        actor = await tx.active(actor.id);
+      } else {
+        const workspaceId = randomUUID(), id = randomUUID(), now = this.clock();
+        await tx.connection.query("INSERT INTO workspaces VALUES($1,$2,$3)", [workspaceId, `${name.trim().split(/\s+/)[0]}’s workspace`, now]);
+        await tx.connection.query(
+          "INSERT INTO participants(id,workspace_id,kind,name,email,created_at,last_seen) VALUES($1,$2,'owner',$3,$4,$5,$5)",
+          [id, workspaceId, name, email, now],
+        );
+        actor = await tx.active(id);
+      }
+      await tx.connection.query("INSERT INTO google_identities VALUES($1,$2)", [subject, actor.id]);
+      return { actor, token: await tx.session(actor.id, "Google", 30) };
     });
   }
   async signInTestOwner(

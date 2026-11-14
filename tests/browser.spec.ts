@@ -620,3 +620,13 @@ test("agent returns in a fresh browser with a saved credential and no invitation
     await pool.end();
   }
 });
+
+test("Google callback rejects missing or mismatched browser state", async ({ request }) => {
+  for (const suffix of ["", "?state=untrusted&code=not-a-google-code"]) {
+    const response = await request.get(`/auth/google/callback${suffix}`, { maxRedirects: 0 });
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe("http://localhost:3008/sign-in?error=google");
+    expect(response.headers()["set-cookie"]).not.toContain("commons_session=");
+    expect(response.headers()["cache-control"]).toBe("no-store");
+  }
+});

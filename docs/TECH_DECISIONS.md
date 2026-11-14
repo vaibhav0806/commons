@@ -1,6 +1,6 @@
 # Commons technical decisions
 
-Status: local product implementation · 2026-11-14. Product authority: PRD.md and the owner’s latest authorization. Design authority: ../DESIGN.md.
+Status: local and hosted product implementation · 2026-11-14. Product authority: PRD.md and the owner’s latest authorization. Design authority: ../DESIGN.md.
 
 ## Application
 
@@ -16,7 +16,9 @@ PostgreSQL 17 runs in Docker Compose on a loopback-bound port with a persistent 
 
 ## Human identity
 
-Only Google sign-in is mocked, as explicitly requested for the local product. A configured local owner obtains a real opaque database session. The mock requires an explicit flag and loopback application host/origin. Google OAuth and Better Auth are not installed or claimed to work. A public service must replace this identity boundary with verified Google authentication before exposure.
+Hosted humans sign in with Google OpenID Connect using the official Google authentication library. Authorization uses a ten-minute one-use server-side state record, PKCE and nonce verification. ID tokens are checked for signature, issuer, audience, expiry and verified email. Only openid, email and profile are requested; Google access/refresh tokens are not retained. The stable Google subject maps to a participant. First sign-in may link the configured legacy testing owner's verified email; other email collisions are rejected. New identities receive isolated workspaces, and returning identities keep their workspace.
+
+Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on the server and register APP_URL + /auth/google/callback exactly. Once configured, the temporary owner-key action is disabled. The local mock remains explicitly restricted to loopback hosts and COMMONS_MOCK_AUTH=true. Production sets COMMONS_MOCK_AUTH=false.
 
 ## Agent enrollment and credentials
 
@@ -42,7 +44,7 @@ Browser-generated and MCP-supplied client keys make note/request retries safe. R
 
 Disposable test records live in a separate Postgres database. A real browser session and actual SDK MCP client exchange a complete handoff through the same application. Typecheck, lint, build and desktop/mobile/browser checks are required. See ../CONTRIBUTING.md for reproducible commands and verification scope.
 
-The product runs locally and in a private Hetzner testing deployment. Google identity verification, native provider certification, public OSS licensing and retention/deletion policy remain release decisions. Binary uploads, billing, agent execution and real-time chat remain non-goals.
+The product runs locally and in a private Hetzner testing deployment. Google branding verification, broader native-provider return testing, public OSS licensing and product-level editing/deletion remain outstanding. Binary uploads, billing, agent execution and real-time chat remain non-goals.
 
 ## Local graph evaluation (2026-11-14)
 
@@ -54,6 +56,6 @@ Runtime verification found that default HTTP query IDs can collide with persiste
 
 ## Private hosted testing and graph retrieval (2026-11-14)
 
-The owner authorized a private Hetzner testing deployment at commons.0xvaibhav.com. Google remains deferred. A separate testing-owner access-key form checks a configured hash with constant-time comparison and a durable attempt limit; the loopback-only mock remains disabled on the server. Use a generated high-entropy key, not a human password. This temporary single-owner entrance must be replaced before public release.
+The owner authorized a Hetzner testing deployment at commons.0xvaibhav.com. External Google sign-in is live and replaces the temporary testing-owner key entrance. The loopback-only mock remains disabled on the server. Hydra runs on Hetzner with private Cloudflare R2 Standard object storage; Postgres remains on Hetzner. See TESTING_DEPLOYMENT.md for configuration and verification.
 
 Hydra now powers explicit related-note retrieval through `Store.relatedContext` and the `related_context` MCP tool. A transactional Postgres queue now projects standalone notes, participants, projects and requests through a background worker. Related-note retrieval remains bounded to explicit completed source/result relationships. See TESTING_DEPLOYMENT.md for queue and explorer boundaries. PostgreSQL revalidates returned IDs against both the current relationship and project scope. An outage falls back to the same explicit Postgres relationships and reports that engine to MCP. This does not claim semantic retrieval or graph ranking superiority. See TESTING_DEPLOYMENT.md for operations and the native-agent acceptance walkthrough.

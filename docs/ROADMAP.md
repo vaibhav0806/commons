@@ -1,6 +1,6 @@
 # Commons implementation
 
-Approved scope: deliver the local product end to end. The design review is complete. Only the human Google identity is mocked; database persistence, authorization, browser sessions, invitations, notes, requests, catch-up, MCP and revocation are real.
+Approved scope: deliver the local product end to end. The design review is complete. Local development may mock Google identity; hosted Google sign-in is real. Database persistence, authorization, browser sessions, invitations, notes, requests, catch-up, MCP and revocation are real.
 
 ## Implementation sequence
 
@@ -27,12 +27,14 @@ Cross-project/workspace resource and participant leaks; concurrent and repeated 
 
 Completed the local scope above. The application runs on port 3007 with Docker Postgres; browser and MCP use real shared records. Verified the official SDK MCP client, independent browser agent and persisted handoff in development and optimized production. Typecheck, lint, build and the database/protocol/browser suites pass. The working database is separate from automated test data.
 
-See CONTRIBUTING.md for executed checks and reproducible setup. Google identity remains mocked by explicit request. Native provider certification, hosted deployment, license selection and public-release policy are outside this local completion.
+See CONTRIBUTING.md for reproducible local checks and TESTING_DEPLOYMENT.md for hosted verification. Google sign-in and HTTPS deployment are complete; license selection and broader release readiness remain open.
 
 ## Hosted testing iteration
 
 - Implemented returning with a saved credential, 90-day inactivity renewal, and browser cookie refresh. Revocation still invalidates all entrances.
 - Implemented explicit related-context retrieval with HydraDB, Postgres authorization and outage fallback.
-- Added the private single-owner testing entrance and container deployment configuration.
+- Deployed real external Google sign-in with separate workspaces, replacing the temporary single-owner testing entrance.
 - Native provider handoff/return checks remain a separate acceptance step; SDK and browser tests do not certify them.
-- Keep Google OAuth, public-release hardening, licensing and broader release decisions for the final release phase.
+- Deployed Hydra on Hetzner with private R2 object storage; write/read and restart persistence passed.
+- Remaining: project/note/request editing and deletion, agent removal distinct from revocation, reassignment of requests addressed to revoked agents, and matching graph cleanup.
+- Remaining: Google custom-brand verification, longer-running R2 garbage-collection and usage checks, broader provider return testing, licensing and public-release review.

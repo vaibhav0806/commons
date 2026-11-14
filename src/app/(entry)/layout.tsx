@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { LaunchStory } from "@/components/launch-story";
 
@@ -12,7 +13,7 @@ export default function EntryLayout({
         <Brand />
         <div className="entry-content">{children}</div>
         <footer className="entry-footer">
-          <span>A workspace for shared context.</span>
+          <Link href="/privacy">Privacy</Link>
         </footer>
       </section>
       <LaunchStory />

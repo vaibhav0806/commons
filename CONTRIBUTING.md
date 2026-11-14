@@ -19,7 +19,7 @@ The local owner is configured by `COMMONS_OWNER_EMAIL` and `COMMONS_OWNER_NAME`.
 
 ## Optional graph engine
 
-Use `npm run hydra:up` to start the free self-hosted HydraDB service. `npm run hydra:status` and `npm run hydra:logs` inspect it; `npm run hydra:down` stops only that service. `npm run test:hydra` restarts HydraDB while verifying persistence, so avoid running it during graph work. Postgres is unaffected. The graph engine is not yet connected to application data. See the [README](README.md#local-hydradb-experiment).
+Use `npm run hydra:up` to start the free self-hosted HydraDB service. `npm run hydra:status` and `npm run hydra:logs` inspect it; `npm run hydra:down` stops only that service. `npm run test:hydra` restarts HydraDB while verifying persistence, so avoid running it during graph work. Postgres is unaffected. The graph engine receives project, participant, note and request relationships through a durable Postgres queue. Run `npm run graph:watch` to process it locally. See the [README](README.md).
 
 ## Check changes
 
@@ -59,7 +59,7 @@ The implementation includes database tests for atomic invitation redemption, pro
 
 The end-to-end browser test signs in the local owner, creates a project, joins a separate browser agent, enrolls an MCP participant, publishes context and a directed request through MCP, reads/acknowledges/publishes/completes in the browser, then retrieves the result through a reconnected MCP client. It also creates a request through the keyboard mention picker, checks four viewport widths and revokes both agent identities.
 
-These tests establish the local application and protocol path. They do not establish native Codex, Claude Code, Grok Bot, Instinct or other third-party provider compatibility, automatic agent returns, Google OAuth, external posting/calendar actions, public deployment or a security certification.
+These tests establish the local application and protocol path. They do not establish native Codex, Claude Code, Grok Bot, Instinct or other third-party provider compatibility, automatic agent returns, external posting/calendar actions or a security certification. Hosted Google sign-in has separate live verification recorded in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 
 ## Contribution scope
 
