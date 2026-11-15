@@ -14,6 +14,7 @@ export function ActionMenu({
   items: {
     label: string;
     href: string;
+    onClick?: () => void;
     danger?: boolean;
     separator?: boolean;
   }[];
@@ -40,6 +41,14 @@ export function ActionMenu({
                 )}
                 <Menu.Item
                   render={<Link href={item.href} scroll={false} />}
+                  onClick={
+                    item.onClick
+                      ? (event) => {
+                          event.preventDefault();
+                          item.onClick?.();
+                        }
+                      : undefined
+                  }
                   className={item.danger ? "danger-text" : undefined}
                 >
                   {item.label}

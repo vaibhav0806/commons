@@ -2682,7 +2682,7 @@ input.join-code {
   min-width: 0;
 }
 .context-row:hover {
-  background: var(--hover);
+  background: transparent;
 }
 .project-index-row h2,
 .context-row h3 {
@@ -3368,9 +3368,9 @@ h1 {
 .tree-chevron {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 23px;
+  margin: auto;
+  width: 16px;
+  height: 16px;
   opacity: 0;
   transition: transform 160ms;
 }
@@ -4001,3 +4001,15 @@ textarea.document-title-input:focus {
 .document-save-error p { margin-bottom: 12px; }
 .document-save-error a, .document-save-error button { margin-right: 20px; min-height: 36px; text-decoration: underline; text-underline-offset: 4px; }
 .entity-menu-items [data-disabled] { opacity: .45; }
+
+@media (min-width: 901px) {
+  .workspace[data-sidebar-collapsed] { grid-template-columns: minmax(0, 1fr); }
+  .workspace[data-sidebar-collapsed] > .sidebar { display: none; }
+}
+@media (max-width: 900px) {
+  .desktop-sidebar-toggle { display: none; }
+}
+.command-dialog:has(.file-drop-zone) { padding-bottom: 24px; }
+.command-dialog > .file-drop-zone, .command-dialog > .upload-state,
+.command-dialog > .success-feedback { margin: 20px; }
+.editor-file-picker .file-drop-zone { margin-top: 16px; }

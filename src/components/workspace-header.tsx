@@ -8,6 +8,7 @@ import type { PageTreeItem, Project } from "@/lib/store";
 import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
 import { DialogSurface } from "./ui/dialog-surface";
 import { Icon } from "./brand";
+import { SidebarToggle } from "./workspace-shell";
 
 export function WorkspaceHeader({
   name,
@@ -44,13 +45,14 @@ export function WorkspaceHeader({
     {
       agents: "Agents",
       settings: "Settings",
-      graph: "Graph explorer",
+      graph: "Explorer",
       new: "New project",
     }[pathname.split("/")[2] || ""] ||
     "Home";
   return (
     <>
       <header className="workspace-header">
+        <SidebarToggle />
         <button
           className="icon-button mobile-menu-button"
           aria-label="Open workspace navigation"
