@@ -25,3 +25,21 @@ Each tree row has one ellipsis and a matching right-click menu. Selected and hov
 Create choices are Page, Folder and Upload/import. Page creation/editing and folder items open in the main workspace area, not a side sheet. New pages start with a title and body, with parent/status supplied from context. Folders expose List/Board/Table views. Existing collection records remain compatible and retain their data, but are presented as folders; there is no separate collection or note creation choice in the tree. Discussion and consequential confirmations may still use contextual panels.
 
 Muse was consulted twice through OpenRouter (`meta/muse-wonder`, high reasoning). The latest owner feedback supersedes the earlier suggested check/cancel buttons. Adopted principles: one neutral highlight per row, no nested hover fills, no teaching paragraphs/empty count lists, gesture-based project drafts, real error feedback and clear permission labels. References: [Notion sidebar](https://www.notion.com/help/navigate-with-the-sidebar), [Notion subpages](https://www.notion.com/help/create-a-subpage), and [Linear sidebar customization](https://linear.app/changelog/2024-12-18-personalized-sidebar). These are interaction references, not claims of new November 2026 releases.
+
+## Document canvas and unified creation — November 16
+
+Every New project entry point opens the inline sidebar draft; the former `/workspace/new` form redirects to Home. Project rows on Home have no hover fill. Tree highlights retain a quiet neutral surface with inset action spacing.
+
+Pages use an editable Instrument Serif title and an unboxed Sora document canvas. Formatting appears on selection, and `/` opens a compact filtered block menu near the cursor. A single page-options menu contains source editing, Markdown import, attachments and moving an existing page. There is no permanent Write/Preview/Insert toolbar or instructional footer. Pages autosave after a short pause, with a quiet Saved/Saving indicator and contextual upload/error feedback. Light/dark, keyboard and narrow-screen behavior share the existing design roles.
+
+## Landing content refresh — November 16
+
+The symbol and wordmark appear together in both headers. The agent strip fades and blurs only at its left edge; its right edge stays crisp. The hero says “Bring your agents to the same page.” Workspace creation stays primary, with a secondary Copy setup prompt action that asks for a scoped invitation rather than promising installation or automatic access.
+
+Three illustrative projects use locally hosted Pexels photography: a Kyoto weekend, Sunday Coffee’s launch, and Fieldnotes issue 01. Each includes a brief, a concrete contribution, feedback and a human decision. The pinned story fills the available desktop viewport and advances across 1.1 viewports of scrolling, without the former lead-in/out delays. Narrow screens and reduced motion retain manual tabs. The supporting sections show a shared brief and explain content, contributions and access. Subtle scroll reveals respect reduced motion. Photo sources and license links live in `public/landing/CREDITS.md`.
+
+## Autosave and final workspace polish — November 16
+
+Page titles, body and location save after an 800 ms pause. The document stays editable while a request is in flight; later edits are queued and version conflicts never overwrite another contribution. Empty new pages are not created until there is content. A saved new page gets a durable URL and appears in the sidebar without closing the editor. Done leaves editing; it is not a save button. Internal navigation flushes pending edits first.
+
+Failed edits are recoverable from same-tab session storage. Conflicts show a comparison link and draft download; routine editing carries no instruction text. Joining-page navigation is removed from the invitation result, Settings loses its subtitle, and the document options menu uses the same padded rows as the sidebar menus.

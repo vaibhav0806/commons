@@ -31,25 +31,22 @@ export default async function NewPage({
           </Link>
         )}
         <Link className="text-link" href={closeHref}>
-          Cancel
+          {kind === "page" ? "Back to project" : "Cancel"}
         </Link>
       </div>
       <div className="creation-form">
-        <header className="project-heading">
-          <div>
-            <h1>New {kind}</h1>
-          </div>
-        </header>
+        {kind !== "page" && (
+          <header className="project-heading">
+            <div>
+              <h1>New {kind}</h1>
+            </div>
+          </header>
+        )}
 
-        <ActionForm
-          operation="page"
-          projectId={projectId}
-          label={kind === "page" ? "Save page" : `Create ${kind}`}
-        >
-          <input name="clientKey" type="hidden" value={randomUUID()} />
+        {kind === "page" ? (
           <PageEditor
+            actorId={actor.id}
             pages={pages}
-            kind={kind}
             parentId={parent?.id}
             status={
               query.status === "Drafting" || query.status === "Ready"
@@ -59,7 +56,23 @@ export default async function NewPage({
             projectId={projectId}
             files={(await store.listFiles(actor, projectId)).files}
           />
-        </ActionForm>
+        ) : (
+          <ActionForm
+            className="form-stack"
+            operation="page"
+            projectId={projectId}
+            label={`Create ${kind}`}
+          >
+            <input name="clientKey" type="hidden" value={randomUUID()} />
+            <PageEditor
+              pages={pages}
+              kind={kind}
+              parentId={parent?.id}
+              projectId={projectId}
+              files={[]}
+            />
+          </ActionForm>
+        )}
       </div>
     </div>
   );

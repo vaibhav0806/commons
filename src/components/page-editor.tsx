@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Menu } from "@base-ui/react/menu";
 import type { ProjectFile } from "@/lib/store";
 import type {
   PageKind,
@@ -9,21 +10,10 @@ import type {
   PageTreeItem,
   WorkspacePage,
 } from "@/lib/store";
-import { MarkdownContent } from "./markdown";
+import { DocumentEditor, type DocumentEditorHandle } from "./document-editor";
+import { usePageAutosave } from "./use-page-autosave";
 import { SelectField } from "./ui/select-field";
-import { Icon } from "./brand";
 
-const blocks = [
-  ["Heading", "\n## Heading\n"],
-  ["Bulleted list", "\n- First item\n- Second item\n"],
-  ["Checklist", "\n- [ ] First item\n- [ ] Second item\n"],
-  ["Table", "\n| Item | Details |\n| --- | --- |\n| First item | Context |\n"],
-  ["Code", "\n```text\nYour code here\n```\n"],
-  ["Callout", "\n> Keep the important context close to the work.\n"],
-  ["File or image", "\n[File name](/api/files/FILE_ID)\n"],
-  ["Embed / link", "\n[Linked resource](https://example.com)\n"],
-  ["Divider", "\n---\n"],
-];
 export function PageEditor({
   page,
   pages,
@@ -32,8 +22,10 @@ export function PageEditor({
   kind = "page",
   parentId,
   status = "Idea",
+  actorId,
 }: {
   page?: WorkspacePage;
+  actorId?: string;
   pages: PageTreeItem[];
   kind?: PageKind;
   parentId?: string;
@@ -41,30 +33,87 @@ export function PageEditor({
   files: Pick<ProjectFile, "id" | "name" | "mimeType">[];
   projectId: string;
 }) {
-  const [body, setBody] = useState(page?.body || ""),
-    [preview, setPreview] = useState(false),
-    [menu, setMenu] = useState(false),
-    [error, setError] = useState(""),
-    [filePicker, setFilePicker] = useState(false);
-  const input = useRef<HTMLTextAreaElement>(null),
-    importer = useRef<HTMLInputElement>(null);
-  function insert(value: string) {
-    const node = input.current;
-    const start = node?.selectionStart ?? body.length,
-      end = node?.selectionEnd ?? start;
-    const from = body[start - 1] === "/" ? start - 1 : start;
-    const next = body.slice(0, from) + value + body.slice(end);
-    if (next.length > 100000) {
-      setError("Pages support up to 100,000 characters.");
-      return;
-    }
-    setBody(next);
-    setMenu(false);
-    setPreview(false);
-    requestAnimationFrame(() => {
-      node?.focus();
-      node?.setSelectionRange(from + value.length, from + value.length);
+  const [body, setBody] = useState(page?.body || "");
+  const [source, setSource] = useState(false);
+  const [error, setError] = useState("");
+  const [filePicker, setFilePicker] = useState(false);
+  const [location, setLocation] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const editor = useRef<DocumentEditorHandle | null>(null);
+  const hidden = useRef<HTMLInputElement>(null);
+  const importer = useRef<HTMLInputElement>(null);
+  const title = useRef<HTMLTextAreaElement>(null);
+  const [parent, setParent] = useState(page?.parentId || parentId || "");
+  const autosave = usePageAutosave({
+    enabled: !!actorId && (page?.kind || kind) === "page",
+    ready,
+    uploading,
+    actorId: actorId || "",
+    projectId,
+    page,
+    parentId,
+    read: () => ({
+      title: title.current?.value || "",
+      body: source ? body : (editor.current?.markdown() ?? body),
+      parentId: parent || null,
+      status: page?.status || status,
+    }),
+    restore: (draft) => {
+      if (title.current) {
+        title.current.value = draft.title;
+        title.current.style.height = "auto";
+        title.current.style.height = `${title.current.scrollHeight}px`;
+      }
+      setBody(draft.body);
+      editor.current?.replace(draft.body);
+      setParent(draft.parentId || "");
+    },
+  });
+  const { changed } = autosave;
+  useEffect(() => {
+    changed();
+  }, [body, parent, uploading, ready, changed]);
+  useEffect(() => {
+    const node = title.current;
+    if (!node) return;
+    const resize = () => {
+      node.style.height = "auto";
+      node.style.height = `${node.scrollHeight}px`;
+    };
+    let width = node.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (node.clientWidth !== width) {
+        width = node.clientWidth;
+        resize();
+      }
     });
+    observer.observe(node);
+    resize();
+    void document.fonts.ready.then(resize);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const form = hidden.current?.form;
+    const flush = (event: Event) => {
+      if (uploading) {
+        event.preventDefault();
+        setError("Wait for the image to finish uploading.");
+        return;
+      }
+      const value = source ? body : (editor.current?.markdown() ?? body);
+      if (value.length > 100000) {
+        event.preventDefault();
+        setError("Pages support up to 100,000 characters.");
+      }
+      if (hidden.current) hidden.current.value = JSON.stringify(value);
+    };
+    form?.addEventListener("submit", flush, true);
+    return () => form?.removeEventListener("submit", flush, true);
+  }, [body, source, uploading]);
+  function insert(value: string) {
+    if (source) setBody(body + value);
+    else editor.current?.insert(value);
   }
   if ((page?.kind || kind) !== "page")
     return (
@@ -112,92 +161,122 @@ export function PageEditor({
       </>
     );
   return (
-    <>
-      <input type="hidden" name="kind" value={page?.kind || kind} />
+    <div className="form-stack document-form">
       <input type="hidden" name="status" value={page?.status || status} />
-      <label className="field">
-        <span>{(page?.kind || kind) === "page" ? "Page title" : "Name"}</span>
-        <input
+      <input type="hidden" name="kind" value={page?.kind || kind} />
+      <input
+        ref={hidden}
+        name="bodyJson"
+        type="hidden"
+        value={JSON.stringify(body)}
+      />
+      {actorId && (
+        <div className="document-save-status">
+          <span role="status" data-autosave-status>
+            {autosave.status}
+          </span>
+          {autosave.pageId && (
+            <a
+              href={`/workspace/projects/${projectId}/pages/${autosave.pageId}`}
+            >
+              Done
+            </a>
+          )}
+        </div>
+      )}
+      <div className="document-edit-heading">
+        <textarea
+          ref={title}
+          rows={1}
+          onInput={(event) => {
+            event.currentTarget.value = event.currentTarget.value.replace(
+              /[\r\n]+/g,
+              " ",
+            );
+            event.currentTarget.style.height = "auto";
+            event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+            changed();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              event.currentTarget
+                .closest(".document-page")
+                ?.querySelector<HTMLElement>(
+                  '.document-editor [contenteditable="true"]',
+                )
+                ?.focus();
+            }
+          }}
+          className="document-title-input"
           name="title"
+          aria-label="Page title"
           defaultValue={page?.title}
           maxLength={160}
           required
           autoFocus
           placeholder="Untitled page"
         />
-      </label>
-      {page ? (
-        <SelectField
-          label="Inside"
-          name="parentId"
-          defaultValue={page?.parentId || parentId || ""}
-          options={[
-            { value: "", label: "Top level in this project" },
-            ...pages
-              .filter((p) => p.id !== page?.id)
-              .map((p) => ({ value: p.id, label: p.title })),
-          ]}
-        />
-      ) : (
-        <input type="hidden" name="parentId" value={parentId || ""} />
-      )}
-      <div className="editor-toolbar">
-        <div className="editor-modes">
-          <button
-            type="button"
-            aria-pressed={!preview}
-            onClick={() => setPreview(false)}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            aria-pressed={preview}
-            onClick={() => setPreview(true)}
-          >
-            Preview
-          </button>
-        </div>
-        <div className="editor-insert">
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => {
-              setPreview(false);
-              setMenu(!menu);
-            }}
-            aria-expanded={menu}
-          >
-            <Icon name="Plus" />
-            Insert block
-          </button>
-          {menu && (
-            <div className="block-menu" aria-label="Insert a block">
-              {blocks.map(([label, value]) => (
-                <button
-                  type="button"
-                  key={label}
+        <Menu.Root>
+          <Menu.Trigger className="icon-button" aria-label="Page options">
+            ⋯
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner
+              align="end"
+              sideOffset={8}
+              className="entity-menu-positioner"
+            >
+              <Menu.Popup className="entity-menu-items">
+                <Menu.Item
+                  disabled={source && !ready}
                   onClick={() => {
-                    if (label === "File or image") {
-                      setMenu(false);
-                      setFilePicker(true);
-                    } else insert(value);
+                    if (source) editor.current?.replace(body);
+                    else setBody(editor.current?.markdown() ?? body);
+                    setSource(!source);
                   }}
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => importer.current?.click()}
-        >
-          Import Markdown
-        </button>
+                  {source ? "Document" : "Markdown source"}
+                </Menu.Item>
+                <Menu.Item
+                  disabled={!ready}
+                  onClick={() => importer.current?.click()}
+                >
+                  Import Markdown
+                </Menu.Item>
+                <Menu.Item
+                  disabled={!ready}
+                  onClick={() => setFilePicker(!filePicker)}
+                >
+                  Attach a file
+                </Menu.Item>
+                {page && (
+                  <Menu.Item onClick={() => setLocation(!location)}>
+                    Move to…
+                  </Menu.Item>
+                )}
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </div>
+      {page && (
+        <div hidden={!location}>
+          <SelectField
+            label="Inside"
+            name="parentId"
+            value={parent}
+            onValueChange={setParent}
+            options={[
+              { value: "", label: "Project" },
+              ...pages
+                .filter((p) => p.id !== page.id)
+                .map((p) => ({ value: p.id, label: p.title })),
+            ]}
+          />
+        </div>
+      )}
+      {!page && <input type="hidden" name="parentId" value={parentId || ""} />}
       {filePicker && (
         <section className="editor-file-picker">
           <div className="section-title">
@@ -252,6 +331,7 @@ export function PageEditor({
             if (text.length > 100000)
               throw new Error("Pages support up to 100,000 characters.");
             setBody(text);
+            editor.current?.replace(text);
             setError("");
           } catch (e) {
             setError(
@@ -261,55 +341,72 @@ export function PageEditor({
           event.target.value = "";
         }}
       />
-      {preview ? (
-        <>
-          <input name="body" type="hidden" value={body} />
-          <div className="editor-preview">
-            {body ? (
-              <MarkdownContent body={body} />
-            ) : (
-              <p className="meta">Your page preview will appear here.</p>
-            )}
-          </div>
-        </>
-      ) : (
-        <label className="field">
-          <span className="visually-hidden">Page content</span>
-          <textarea
-            ref={input}
-            name="body"
-            aria-label="Page content"
-            className="markdown-editor"
-            rows={16}
-            maxLength={100000}
-            value={body}
-            onChange={(event) => {
-              setBody(event.target.value);
-              if (
-                event.target.value[event.target.selectionStart - 1] === "/" &&
-                (event.target.selectionStart === 1 ||
-                  /\s/.test(
-                    event.target.value[event.target.selectionStart - 2],
-                  ))
-              )
-                setMenu(true);
+      <div hidden={source}>
+        <DocumentEditor
+          initialValue={page?.body || ""}
+          projectId={projectId}
+          ref={editor}
+          onChange={setBody}
+          onError={setError}
+          onReady={setReady}
+          onUploading={setUploading}
+        />
+      </div>
+      {source && (
+        <textarea
+          className="document-source"
+          aria-label="Markdown source"
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          maxLength={100000}
+          rows={18}
+          spellCheck={false}
+        />
+      )}
+      {actorId && autosave.error && (
+        <div className="document-save-error" role="alert">
+          <p>{autosave.error}</p>
+          {autosave.conflict ? (
+            <a
+              href={`/workspace/projects/${projectId}/pages/${autosave.pageId || page?.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Compare latest page ↗
+            </a>
+          ) : (
+            <button type="button" onClick={() => void autosave.flush()}>
+              Retry save
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const text = source ? body : (editor.current?.markdown() ?? body);
+              const url = URL.createObjectURL(
+                new Blob([text], { type: "text/markdown" }),
+              );
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "commons-draft.md";
+              link.click();
+              URL.revokeObjectURL(url);
             }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setMenu(false);
-            }}
-            placeholder="Start writing…"
-          />
-        </label>
+          >
+            Download draft
+          </button>
+        </div>
+      )}
+      {uploading && (
+        <p className="meta" role="status">
+          Uploading image…
+        </p>
       )}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <p className="meta">
-        Markdown supports headings, lists, tables, code, quotes, images and
-        links. Changes are saved when you choose Save page.
-      </p>
-    </>
+    </div>
   );
 }

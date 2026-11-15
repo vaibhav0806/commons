@@ -49,7 +49,7 @@ export function AgentMarquee() {
         const center = (index * period) / agents.length - offset + 22;
         cell.style.setProperty(
           "--logo-blur",
-          `${Math.max(0, Math.min(4, ((edge - Math.min(center, width - center)) / edge) * 4))}px`,
+          `${Math.max(0, Math.min(4, ((edge - center) / edge) * 4))}px`,
         );
       });
     }
@@ -198,65 +198,79 @@ const stories = [
   {
     key: "kyoto",
     name: "Weekend in Kyoto",
-    path: "Travel / Weekend in Kyoto",
-    title: "A slower kind of weekend.",
+    path: "Travel / Kyoto, 3 days",
+    title: "Less itinerary. More Kyoto.",
     description:
-      "A place to collect the places, compare the plans, and decide together.",
-    label: "Neighborhood notes",
-    visual: "Leave room to wander.",
+      "Two people, three days, no rental car. A shortlist of places, a walkable plan, and room to change our minds.",
+    image: "kyoto.jpg",
+    alt: "A quiet Kyoto storefront with a red lantern and potted plants",
+    label: "Reference / Kyoto streets",
+    visual: "One neighborhood at a time.",
     author: "Muse",
     logo: "muse.svg",
-    contribution: "First draft",
+    contribution: "Itinerary draft",
     rows: [
-      ["Friday", "Arrive. Settle in."],
-      ["Saturday", "Walk. Eat. Wander."],
-      ["Sunday", "Keep it open."],
+      ["Friday evening", "Check in · dinner nearby"],
+      ["Saturday", "Higashiyama on foot"],
+      ["Sunday", "Coffee · river walk"],
     ],
     commenter: "Claude",
     commentLogo: "claude.svg",
-    comment: "One neighborhood each day. Let the rest happen.",
+    comment:
+      "Arashiyama adds another cross-city trip. Save it for next time and keep Saturday walkable.",
+    decision: "You kept the slower route. Arashiyama moved to ‘Next trip’.",
   },
   {
     key: "reading",
-    name: "Reading room",
-    path: "Personal / Reading room",
-    title: "Follow a thought a little further.",
+    name: "Sunday Coffee",
+    path: "Sunday Coffee / Opening week",
+    title: "A little café. A proper launch.",
     description:
-      "Keep the passages, questions, and unexpected connections in one shared place.",
-    label: "A note in the margin",
-    visual: "Stay with the question.",
-    author: "Claude",
-    logo: "claude.svg",
-    contribution: "Reading list",
+      "The menu, the website copy, the opening-day checklist. One brief for everyone helping a neighborhood café get started.",
+    image: "studio.jpg",
+    alt: "Sunlit café windows with a row of wooden counters and white stools",
+    label: "Moodboard / Natural light",
+    visual: "Good coffee. No rush.",
+    author: "Codex",
+    logo: "codex.svg",
+    contribution: "Website scope",
     rows: [
-      ["On the desk", "Ways of Seeing"],
-      ["Up next", "The Creative Act"],
-      ["In the margins", "Your questions"],
+      ["Homepage", "Menu, hours, location"],
+      ["Menu", "One editable page"],
+      ["Reservations", "Leave out of v1"],
     ],
-    commenter: "Muse",
-    commentLogo: "muse.svg",
-    comment: "No single reading. Keep both perspectives.",
+    commenter: "Claude",
+    commentLogo: "claude.svg",
+    comment:
+      "Put opening hours above the story. Someone looking for a morning coffee needs that first.",
+    decision:
+      "You approved the one-page site. The opening brief stays beside it.",
   },
   {
     key: "fieldnotes",
     name: "Fieldnotes",
-    path: "Publishing / Fieldnotes",
-    title: "Three ideas. A point of view.",
+    path: "Fieldnotes / Issue 01",
+    title: "From twelve tabs to one good read.",
     description:
-      "Collect the sources, shape the opening, and give the first issue a clear direction.",
-    label: "First issue / Cover study",
-    visual: "Stay curious.",
-    author: "Codex",
-    logo: "codex.svg",
-    contribution: "Website approach",
+      "A small newsletter about making things. Collect the links, question the first draft, and edit an issue worth opening.",
+    image: "fieldnotes.jpg",
+    alt: "An open notebook, camera and coffee on an editorial worktable",
+    label: "Issue 01 / Research desk",
+    visual: "Make something worth keeping.",
+    author: "Claude",
+    logo: "claude.svg",
+    contribution: "Editorial outline",
     rows: [
-      ["Reading", "One clear column"],
-      ["Stories", "Three useful ideas"],
-      ["Sources", "Beside each claim"],
+      ["Lead story", "A week without metrics"],
+      ["In the margins", "Three reader experiments"],
+      ["Before publishing", "Check sources · cut 200 words"],
     ],
-    commenter: "Claude",
-    commentLogo: "claude.svg",
-    comment: "Connect the three ideas. That’s where the story is.",
+    commenter: "Muse",
+    commentLogo: "muse.svg",
+    comment:
+      "The personal experiment is the strongest opening. Move the tool roundup to the end.",
+    decision:
+      "You rewrote the opening. The sources and feedback stayed attached.",
   },
 ];
 export function ProjectStories() {
@@ -275,7 +289,7 @@ export function ProjectStories() {
       const distance = -stage.current!.getBoundingClientRect().top + 20;
       const progress = Math.max(
         0,
-        Math.min(2, (distance - innerHeight * 0.3) / innerHeight),
+        Math.min(2, distance / (innerHeight * 0.55)),
       );
       track.current!.style.transform = `translate3d(-${progress * 100}%,0,0)`;
       const index = Math.round(progress);
@@ -288,14 +302,21 @@ export function ProjectStories() {
       if (!frame) frame = requestAnimationFrame(update);
     };
     const measure = () => {
+      const available = window.visualViewport?.height || innerHeight;
+      const tabs =
+        pinned.current!.querySelector<HTMLElement>(
+          '[role="tablist"]',
+        )!.offsetHeight;
+      stage.current!.style.setProperty(
+        "--story-panel-height",
+        `${Math.floor(available - tabs - 41)}px`,
+      );
       const fit =
-        !media.matches &&
-        pinned.current!.offsetHeight + 40 <=
-          (window.visualViewport?.height || innerHeight);
+        !media.matches && pinned.current!.offsetHeight + 40 <= available;
       pinnedMode.current = fit;
       stage.current!.dataset.pinned = String(fit);
       stage.current!.style.height = fit
-        ? `${pinned.current!.offsetHeight + innerHeight * 2.6}px`
+        ? `${pinned.current!.offsetHeight + innerHeight * 1.1}px`
         : "auto";
       if (fit) update();
       else
@@ -326,7 +347,7 @@ export function ProjectStories() {
           stage.current!.getBoundingClientRect().top +
           window.scrollY -
           20 +
-          innerHeight * (index + 0.3),
+          innerHeight * 0.55 * index,
         behavior: "instant",
       });
     else track.current!.style.transform = `translate3d(-${index * 100}%,0,0)`;
@@ -396,68 +417,18 @@ export function ProjectStories() {
                     <h2>{story.title}</h2>
                     <p>{story.description}</p>
                     <small className={styles.credit}>
-                      {story.author} contributed.
-                      <br />
-                      {story.commenter} left a note.
-                      <br />
-                      You chose the direction.
+                      Example project · Human + agent contributions
                     </small>
                   </div>
                   <div className={styles.art}>
                     <small>{story.label}</small>
-                    <svg viewBox="0 0 320 180" aria-hidden="true">
-                      {i === 0 ? (
-                        <>
-                          <path d="M0 160 115 28 250 160Z" fill="#AFBDD7" />
-                          <path d="m120 170 120-126 100 126Z" fill="#C7B3C4" />
-                          <circle cx="280" cy="28" r="18" fill="#C7B3C4" />
-                        </>
-                      ) : i === 1 ? (
-                        <>
-                          <rect
-                            x="10"
-                            y="35"
-                            width="85"
-                            height="130"
-                            fill="#AFBDD7"
-                          />
-                          <rect
-                            x="112"
-                            y="15"
-                            width="85"
-                            height="150"
-                            fill="#C7B3C4"
-                          />
-                          <rect
-                            x="214"
-                            y="60"
-                            width="85"
-                            height="105"
-                            fill="#AFBDD7"
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <rect
-                            x="10"
-                            y="5"
-                            width="300"
-                            height="165"
-                            fill="#AFBDD7"
-                          />
-                          <circle cx="250" cy="55" r="32" fill="#C7B3C4" />
-                          <text
-                            x="32"
-                            y="135"
-                            fontFamily="Instrument Serif"
-                            fontSize="110"
-                            fill="#414D63"
-                          >
-                            F / 01
-                          </text>
-                        </>
-                      )}
-                    </svg>
+                    <img
+                      src={`/landing/${story.image}`}
+                      alt={story.alt}
+                      width="900"
+                      height="600"
+                      loading="lazy"
+                    />
                     <strong>{story.visual}</strong>
                   </div>
                   <div className={styles.sharedNote}>
@@ -492,11 +463,52 @@ export function ProjectStories() {
                     </div>
                   </div>
                 </div>
+                <p className={styles.decision}>
+                  <span>Decision</span>
+                  {story.decision}
+                </p>
               </article>
             ))}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+export function SetupPrompt() {
+  const [copied, setCopied] = useState(false);
+  const [manual, setManual] = useState(false);
+  const prompt =
+    "Help me connect you to Commons, a shared workspace for people and their agents. Ask me for a scoped invitation from Agents & access in my workspace. Follow the invitation instructions using your browser or an MCP client. If neither is available, explain what connection capability is missing. Keep credentials private. Once connected, read the project context and summarize what is already there before changing anything.";
+  return (
+    <div className={styles.setupPrompt}>
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(prompt);
+            setCopied(true);
+          } catch {
+            setManual(true);
+          }
+        }}
+      >
+        {copied ? "Prompt copied ✓" : "Copy setup prompt ↗"}
+      </button>
+      {manual && (
+        <textarea
+          aria-label="Agent setup prompt"
+          readOnly
+          value={prompt}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+      )}
+      <span role="status">
+        {copied
+          ? "Paste it into your agent. Then share an invitation."
+          : "For an agent you already use."}
+      </span>
+    </div>
   );
 }

@@ -87,23 +87,27 @@ export default async function PageDocument({
               Edit page
             </Link>
           )}
-          {query.edit && (
+          {query.edit && page.kind !== "page" && (
             <Link className="button secondary" href={base}>
               Cancel editing
             </Link>
           )}
         </div>
       </div>
-      <header className="document-heading">
-        <h1>{query.edit ? "Edit page" : page.title}</h1>
-        <div className="document-byline">
-          <AgentMark name={page.authorName} small />
-          <span>
-            {page.authorName} · {page.editedAt ? "Updated" : "Created"}{" "}
-            {new Date(page.editedAt || page.createdAt).toLocaleString("en-GB")}
-          </span>
-        </div>
-      </header>
+      {!query.edit && (
+        <header className="document-heading">
+          <h1>{query.edit ? "Edit page" : page.title}</h1>
+          <div className="document-byline">
+            <AgentMark name={page.authorName} small />
+            <span>
+              {page.authorName} · {page.editedAt ? "Updated" : "Created"}{" "}
+              {new Date(page.editedAt || page.createdAt).toLocaleString(
+                "en-GB",
+              )}
+            </span>
+          </div>
+        </header>
+      )}
 
       {query.delete ? (
         <section className="project-section">
@@ -121,16 +125,30 @@ export default async function PageDocument({
           </Link>
         </section>
       ) : query.edit ? (
-        <ActionForm operation="edit-page" label="Save page">
-          <input type="hidden" name="pageId" value={page.id} />
-          <input type="hidden" name="version" value={page.version} />
+        page.kind === "page" ? (
           <PageEditor
+            actorId={actor.id}
             page={page}
             projectId={projectId}
             files={(await store.listFiles(actor, projectId)).files}
             pages={await store.pageTree(actor, projectId)}
           />
-        </ActionForm>
+        ) : (
+          <ActionForm
+            operation="edit-page"
+            label="Save folder"
+            className="form-stack"
+          >
+            <input type="hidden" name="pageId" value={page.id} />
+            <input type="hidden" name="version" value={page.version} />
+            <PageEditor
+              page={page}
+              projectId={projectId}
+              files={[]}
+              pages={await store.pageTree(actor, projectId)}
+            />
+          </ActionForm>
+        )
       ) : (
         <>
           {(page.body || page.kind === "page") && (

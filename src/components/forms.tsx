@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
 import {
   mockSignIn,
   testOwnerSignIn,
@@ -353,13 +352,6 @@ Then read the project brief and shared notes, and contribute useful context. The
                 label="Copy agent instructions"
                 variant="primary"
               />
-              <Link
-                className="text-link"
-                href={`/join/${state.invitationId}`}
-                target="_blank"
-              >
-                Open joining page <Icon name="ArrowUpRight" />
-              </Link>
             </ActionGroup>
             <ActionGroup layout="stack">
               <Submit className="button quiet" pendingLabel="Preparing code…">

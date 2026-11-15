@@ -17,14 +17,14 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await page.waitForURL(/\/(workspace|setup)/);
   await page.goto("/workspace/new");
+  await expect(page).toHaveURL(/\/workspace$/);
+  await page
+    .locator(".project-heading")
+    .getByRole("button", { name: "New project", exact: true })
+    .click();
   const name = `CRUD ${Date.now()}`;
   await page.getByLabel("Project name", { exact: true }).fill(name);
-  await page
-    .getByLabel("Project brief", { exact: true })
-    .fill("Context for our agents.");
-  await page
-    .getByRole("button", { name: "Create project", exact: true })
-    .click();
+  await page.getByLabel("Project name", { exact: true }).press("Enter");
   await page.waitForURL(/\/workspace\/projects\//);
   const projectUrl = page.url(),
     projectId = new URL(projectUrl).pathname.split("/").at(-1)!;
@@ -533,7 +533,7 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "New page", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.getByRole("combobox", { name: "Status", exact: true }),
     ).toHaveCount(0);
@@ -546,21 +546,33 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await page
       .getByLabel("Page title", { exact: true })
       .fill("Workspace brief");
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeVisible();
     await page
-      .getByLabel("Page content", { exact: true })
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await page
+      .getByLabel("Markdown source", { exact: true })
       .fill(
         "## Rendering works\n\n- [x] Shared Markdown\n\n| Item | Details |\n| --- | --- |\n| Context | Durable |\n\n```js\nconst shared = true;\n```\n\n<script>window.unsafeMarkdown = true</script>",
       );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "Document", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Rendering works" }),
     ).toBeVisible();
-    await expect(page.locator(".markdown-table table")).toBeVisible();
-    await expect(page.locator(".markdown-content pre")).toContainText(
+    await expect(page.locator(".document-editor table.children")).toBeVisible();
+    await expect(page.locator(".document-editor .cm-editor")).toContainText(
       "const shared",
     );
     expect(await page.evaluate(() => "unsafeMarkdown" in window)).toBe(false);
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const pageUrl = page.url(),
       pageId = new URL(pageUrl).pathname.split("/").at(-1)!;
@@ -631,15 +643,15 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     ).toBeVisible();
     await page.goto(`${pageUrl}?edit=1`);
     await page
-      .getByRole("button", { name: "Insert block", exact: true })
+      .getByRole("button", { name: "Page options", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "File or image", exact: true })
+      .getByRole("menuitem", { name: "Attach a file", exact: true })
       .click();
     await page
       .getByRole("button", { name: "reference.png", exact: true })
       .click();
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     await expect(page.locator(".markdown-content img")).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
@@ -678,9 +690,15 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(
-    page.getByRole("heading", { name: /Your next idea/ }),
+    page.getByRole("heading", { name: /Bring your agents/ }),
   ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator("nav .brandmark")).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy setup prompt" }).first().click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "Ask me for a scoped invitation",
+  );
   await expect(
     page.locator("[data-logo]").filter({ has: page.locator("img") }),
   ).toHaveCount(33);
@@ -694,19 +712,18 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
       document.querySelector("#projects")!.getBoundingClientRect().top +
         scrollY -
         20 +
-        innerHeight * 1.3,
+        innerHeight * 0.55,
     ),
   );
-  await expect(page.getByRole("tab", { name: "Reading room" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await page.evaluate(() => window.scrollBy(0, innerHeight));
+  await expect(
+    page.getByRole("tab", { name: "Sunday Coffee" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.evaluate(() => window.scrollBy(0, innerHeight * 0.55));
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await page.evaluate(() => window.scrollBy(0, -innerHeight * 2));
+  await page.evaluate(() => window.scrollBy(0, -innerHeight * 1.1));
   await expect(
     page.getByRole("tab", { name: /Weekend in Kyoto/ }),
   ).toHaveAttribute("aria-selected", "true");
@@ -717,10 +734,26 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(
-    page.getByRole("heading", { name: /Your next idea/ }),
+    page.getByRole("heading", { name: /Bring your agents/ }),
   ).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: "test-results/mist-landing-dark.png" });
+  const storyHeights = await page.evaluate(async () => {
+    const samples: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      await new Promise(requestAnimationFrame);
+      samples.push(
+        document.querySelector("#projects")!.getBoundingClientRect().height,
+      );
+    }
+    return samples;
+  });
+  expect(Math.max(...storyHeights) - Math.min(...storyHeights)).toBeLessThan(1);
+  await page
+    .getByRole("heading", { name: /Stop starting/ })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/landing-context-dark.png" });
+  await page.evaluate(() => window.scrollTo(0, 0));
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     expect(
@@ -738,11 +771,11 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
     "data-pinned",
     "false",
   );
-  await page.getByRole("tab", { name: "Reading room" }).click();
+  await page.getByRole("tab", { name: "Sunday Coffee" }).click();
   await expect(
-    page.getByRole("heading", { name: "Follow a thought a little further." }),
+    page.getByRole("heading", { name: "A little café. A proper launch." }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Reading room" }).press("ArrowRight");
+  await page.getByRole("tab", { name: "Sunday Coffee" }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
 });
 
@@ -950,18 +983,18 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
     await page.keyboard.press("Control+k");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     for (const width of [1440, 390]) {
+      await page.goto("/workspace");
       await page.setViewportSize({ width, height: 844 });
       const mobile = width === 390;
-      if (mobile)
-        await page
-          .getByRole("button", { name: "Open workspace navigation" })
-          .click();
+      await page
+        .locator(".project-heading")
+        .getByRole("button", { name: "New project", exact: true })
+        .click();
       const surface = mobile ? page.getByRole("dialog") : sidebar;
       const plus = surface.getByRole("button", {
         name: "New project",
         exact: true,
       });
-      await plus.click();
       const input = surface.getByRole("textbox", {
         name: "Project name",
         exact: true,
@@ -1035,6 +1068,7 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
         .locator(".project-index-row")
         .filter({ has: page.getByRole("heading", { name, exact: true }) });
       await indexRow.hover();
+      await expect(indexRow).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
       await expect(
         indexRow.getByRole("heading", { name, exact: true }),
       ).toHaveCSS("color", "rgb(61, 73, 85)");
@@ -1120,6 +1154,357 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
   } finally {
     for (const project of created)
       await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("document editing preserves Markdown and supports contextual keyboard editing", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(15000);
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(owner, `Editor ${Date.now()}`, "");
+  const original =
+    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n";
+  const existingPage = await store.createPage(owner, project.id, {
+    title: "Existing document",
+    parentId: null,
+    body: original,
+    kind: "page",
+  });
+  const base = `/workspace/projects/${project.id}`;
+  const docUrl = `${base}/pages/${existingPage.id}`;
+  const externalRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("private-tracker"))
+      externalRequests.push(request.url());
+  });
+  try {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${docUrl}?edit=1`);
+    const content = page.getByRole("textbox", {
+      name: "Page content",
+      exact: true,
+    });
+    await expect(content).toBeVisible();
+    await expect(
+      content.getByRole("heading", { name: "Existing Markdown" }),
+    ).toBeVisible();
+    await expect(content.locator('span[data-type="html"]')).toContainText(
+      "Keep this HTML",
+    );
+    await page.getByRole("link", { name: "Done", exact: true }).click();
+    await page.waitForURL(docUrl);
+    expect((await store.getPage(owner, existingPage.id)).body).toBe(original);
+    expect(externalRequests).toEqual([]);
+    await page.goto(`${docUrl}?edit=1`);
+    await expect(content).toBeVisible();
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("A new contribution");
+    await page.getByRole("link", { name: "Done", exact: true }).click();
+    await page.waitForURL(docUrl);
+    const changed = (await store.getPage(owner, existingPage.id)).body;
+    expect(changed).toContain(
+      "![External reference](https://example.com/private-tracker.png)",
+    );
+    expect(changed).toContain("Keep this HTML as text");
+    expect(changed).toContain("A new contribution");
+
+    await page.goto(`${base}/pages/new`);
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("A document, not a form");
+    await expect(content).toBeVisible();
+    await content.click();
+    await page.keyboard.type("/heading 2");
+    const slash = page.locator('.milkdown-slash-menu[data-show="true"]');
+    await expect(slash).toBeVisible();
+    await expect(slash.getByText("Heading 2", { exact: true })).toBeVisible();
+    await page.screenshot({ path: "test-results/editor-slash-desktop.png" });
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("A shared decision");
+    await expect(content.locator("h2")).toHaveText("A shared decision");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Useful context");
+    for (let i = 0; i < "Useful context".length; i++)
+      await page.keyboard.press("Shift+ArrowLeft");
+    await page.getByRole("button", { name: "Bold", exact: true }).click();
+    await expect(content.locator("strong")).toHaveText("Useful context");
+    await content.press("ArrowRight");
+    await content.press("End");
+    await page.keyboard.press("Enter");
+    await expect(content.locator("strong")).toHaveText("Useful context");
+    await page.keyboard.type("/table");
+    await expect(slash.getByText("Table", { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(slash).toBeHidden();
+    await expect(content.locator("strong").first()).toHaveText(
+      "Useful context",
+    );
+    await content.locator("p").last().click();
+    await page.keyboard.press("End");
+    for (let i = 0; i < 6; i++) await page.keyboard.press("Backspace");
+    await expect(content.locator("strong").first()).toHaveText(
+      "Useful context",
+    );
+    await page.keyboard.type("/image");
+    await expect(slash.getByText("Image", { exact: true })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await page.locator('.milkdown input[type="file"]').setInputFiles({
+      name: "editor-image.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
+    await expect(content.locator('img[src^="/api/files/"]')).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.screenshot({ path: "test-results/editor-document-light.png" });
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await page.screenshot({ path: "test-results/editor-document-dark.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByLabel("Page title", { exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({ path: "test-results/editor-document-mobile.png" });
+    await page.getByRole("link", { name: "Done", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const createdId = new URL(page.url()).pathname.split("/").at(-1)!;
+    const saved = await store.getPage(owner, createdId);
+    expect(saved.body).toContain("## A shared decision");
+    expect(saved.body).toContain("**Useful context**");
+    await expect(page.locator(".markdown-content strong")).toHaveText(
+      "Useful context",
+    );
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("page autosave queues edits, survives reload and preserves conflicts", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Autosave ${Date.now()}`,
+    "",
+  );
+  const base = `/workspace/projects/${project.id}`;
+  const endpoint = `**/api/projects/${project.id}/pages`;
+  try {
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${base}/pages/new`);
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeVisible();
+    expect((await store.listPages(owner, project.id)).pages).toHaveLength(0);
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("An automatically saved page");
+    await page.getByLabel("Page title", { exact: true }).press("Enter");
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.type("First contribution");
+    await expect(page).toHaveURL(/\/pages\/[a-f0-9-]+\?edit=1$/);
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await expect(
+      page.locator(".sidebar").getByRole("link", {
+        name: "An automatically saved page",
+        exact: true,
+      }),
+    ).toBeVisible();
+    const id = new URL(page.url()).pathname.split("/").at(-1)!;
+    await expect
+      .poll(async () => (await store.getPage(owner, id)).body)
+      .toContain("First contribution");
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("First contribution");
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    const item = page.getByRole("menuitem", {
+      name: "Markdown source",
+      exact: true,
+    });
+    await expect(item).toHaveCSS("padding-left", "10px");
+    await item.click();
+    const source = page.getByLabel("Markdown source", { exact: true });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let delayed = false;
+    await page.route(endpoint, async (route) => {
+      if (!delayed) {
+        delayed = true;
+        const response = await route.fetch();
+        await gate;
+        await route.fulfill({ response });
+      } else await route.continue();
+    });
+    await source.fill("A slow first save");
+    await expect.poll(() => delayed).toBe(true);
+    await source.fill("A newer edit while the first response is delayed");
+    release();
+    await expect
+      .poll(async () => (await store.getPage(owner, id)).body)
+      .toBe("A newer edit while the first response is delayed");
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await page.unroute(endpoint);
+
+    await page.route(endpoint, (route) => route.abort("failed"));
+    await source.fill("Recover this draft after a failed save");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("Recover this draft after a failed save");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    await page.unroute(endpoint);
+    await page.getByRole("button", { name: "Retry save" }).click();
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    expect((await store.listPages(owner, project.id)).pages).toHaveLength(1);
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await page.route(endpoint, async (route) => {
+      await route.fetch();
+      await route.abort("failed");
+    });
+    await source.fill("The server saved this but the acknowledgement was lost");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("The server saved this but the acknowledgement was lost");
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await expect(
+      page.getByRole("link", { name: "Compare latest page" }),
+    ).toHaveCount(0);
+    await page.unroute(endpoint);
+    const saved = await store.getPage(owner, id);
+    await store.updatePage(
+      owner,
+      id,
+      {
+        title: saved.title,
+        body: "Another contributor changed this page",
+        parentId: null,
+      },
+      saved.version,
+    );
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await source.fill("My draft must not overwrite their work");
+    await expect(
+      page.getByRole("link", { name: "Compare latest page" }),
+    ).toBeVisible();
+    expect((await store.getPage(owner, id)).body).toBe(
+      "Another contributor changed this page",
+    );
+    await expect(source).toHaveValue("My draft must not overwrite their work");
+    await expect(page.getByRole("button", { name: "Retry save" })).toHaveCount(
+      0,
+    );
+    const response = await page.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      {
+        headers: { origin: "https://untrusted.example" },
+        data: {
+          id,
+          version: saved.version,
+          clientKey: crypto.randomUUID(),
+          draft: { title: "No", body: "No", parentId: null, status: "Idea" },
+        },
+      },
+    );
+    expect(response.status()).toBe(403);
+    const anonymous = await browser.newContext();
+    const denied = await anonymous.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      { data: {} },
+    );
+    expect(denied.status()).toBe(401);
+    await anonymous.close();
+    const invite = await store.issueInvite(owner, project.id);
+    const agent = await store.join(
+      invite.id,
+      invite.code,
+      "Read-only author check",
+    );
+    const agentContext = await browser.newContext();
+    await agentContext.addCookies([
+      {
+        name: "commons_session",
+        value: agent.token,
+        url: baseURL!,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    const unauthorizedEdit = await agentContext.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      {
+        data: {
+          id,
+          version: saved.version + 1,
+          clientKey: crypto.randomUUID(),
+          draft: {
+            title: saved.title,
+            body: "Another contributor changed this page",
+            parentId: null,
+            status: "Idea",
+          },
+        },
+      },
+    );
+    expect(unauthorizedEdit.status()).toBe(403);
+    await agentContext.close();
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
     await pool.end();
   }
 });

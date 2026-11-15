@@ -1,3 +1,5 @@
+@import "@milkdown/crepe/theme/common/style.css";
+@import "@milkdown/crepe/theme/classic.css";
 @import "../../design/commons.system.css";
 @font-face {
   font-family: Geist;
@@ -2494,7 +2496,7 @@ input.join-code {
   display: grid;
   gap: 0;
 }
-.entity-menu-items a {
+.entity-menu-items [role="menuitem"] {
   display: flex;
   align-items: center;
   min-height: 32px;
@@ -2679,7 +2681,6 @@ input.join-code {
   border-top: 1px solid var(--line);
   min-width: 0;
 }
-.project-index-row:hover,
 .context-row:hover {
   background: var(--hover);
 }
@@ -3775,6 +3776,8 @@ h1 {
 }
 .tree-row {
   width: 100%;
+  padding-right: 8px;
+  gap: 4px;
 }
 .tree-actions {
   flex-shrink: 0;
@@ -3823,7 +3826,7 @@ h1 {
   background: var(--line);
 }
 @media (max-width: 900px), (pointer: coarse) {
-  .entity-menu-items a {
+  .entity-menu-items [role="menuitem"] {
     min-height: 44px;
     font-size: 14px;
   }
@@ -3832,3 +3835,169 @@ h1 {
     font-size: 16px;
   }
 }
+
+/* A document canvas; editing controls appear beside the work. */
+.document-form {
+  max-width: 840px;
+  margin: 24px auto;
+  gap: 20px;
+}
+.document-edit-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+textarea.document-title-input {
+  resize: none;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  font: 400 clamp(36px, 4vw, 52px)/1.2 var(--font-display);
+  color: var(--text);
+}
+textarea.document-title-input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+.document-form > .action-group {
+  display: flex;
+  justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  align-items: flex-end;
+  padding: 12px 0;
+  background: var(--canvas);
+  z-index: 5;
+}
+.document-form > .action-group .button {
+  width: auto;
+  min-width: 100px;
+  padding: 8px 16px;
+}
+.document-editor {
+  min-height: 48vh;
+}
+.document-editor .milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--text);
+  --crepe-color-surface: var(--surface);
+  --crepe-color-surface-low: var(--raised);
+  --crepe-color-on-surface: var(--text);
+  --crepe-color-on-surface-variant: var(--muted);
+  --crepe-color-outline: var(--muted);
+  --crepe-color-primary: var(--text);
+  --crepe-color-secondary: var(--hover);
+  --crepe-color-on-secondary: var(--text);
+  --crepe-color-inverse: var(--text);
+  --crepe-color-on-inverse: var(--canvas);
+  --crepe-color-inline-code: var(--body-ink);
+  --crepe-color-hover: var(--hover);
+  --crepe-color-selected: var(--lilac);
+  --crepe-color-inline-area: var(--raised);
+  --crepe-font-title: var(--font-body);
+  --crepe-font-default: var(--font-body);
+  --crepe-shadow-1: 0 4px 20px #0002;
+  --crepe-shadow-2: 0 8px 28px #0003;
+}
+.document-editor .milkdown .ProseMirror {
+  padding: 12px 0 120px;
+  min-height: 48vh;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.document-editor .milkdown .milkdown-slash-menu {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-width: calc(100vw - 40px);
+  z-index: 95;
+}
+.document-editor .milkdown .milkdown-toolbar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  z-index: 95;
+}
+.document-editor .milkdown button:focus-visible {
+  outline: 1px solid var(--muted);
+  outline-offset: 2px;
+}
+.document-source {
+  width: 100%;
+  min-height: 48vh;
+  background: transparent;
+  border: 1px solid var(--line);
+  font-family: monospace;
+  padding: 16px;
+}
+@media (max-width: 600px) {
+  .document-form {
+    margin: 16px 12px;
+  }
+  .document-editor .milkdown .ProseMirror {
+    font-size: 16px;
+  }
+  .document-form > .action-group {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+.document-editor .milkdown .milkdown-slash-menu .menu-groups {
+  max-height: min(360px, 45dvh);
+  padding: 4px;
+}
+.document-editor .milkdown .milkdown-slash-menu .tab-group {
+  display: none;
+}
+.document-editor .milkdown .milkdown-slash-menu .menu-group li {
+  min-width: 200px;
+  padding: 8px 10px;
+  gap: 10px;
+  border-radius: 4px;
+}
+.document-editor .milkdown .milkdown-slash-menu .menu-group li svg {
+  width: 18px;
+  height: 18px;
+}
+.document-editor .milkdown .milkdown-slash-menu .menu-group li > span {
+  font-size: 13px;
+  font-weight: 400;
+}
+.document-editor .milkdown .milkdown-slash-menu .menu-group h6 {
+  font-size: 11px;
+  padding: 8px 10px 4px;
+}
+.document-editor .milkdown .ProseMirror h1 {
+  font-size: 30px;
+  font-weight: 600;
+}
+.document-editor .milkdown .ProseMirror h2 {
+  font-size: 24px;
+  font-weight: 600;
+}
+.document-editor .milkdown .ProseMirror h3 {
+  font-size: 20px;
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .document-editor *,
+  .document-editor *::before,
+  .document-editor *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.document-editor .milkdown .image-resize-handle {
+  display: none;
+}
+
+.document-save-status { display: flex; align-items: center; justify-content: flex-end; gap: 20px; min-height: 36px; margin-bottom: 16px; font-size: 12px; color: var(--muted); }
+.document-save-status a { color: var(--text); padding: 8px 0 8px 8px; }
+.document-save-error { margin: 20px 0; border-left: 2px solid var(--danger); padding: 8px 16px; font-size: 13px; }
+.document-save-error p { margin-bottom: 12px; }
+.document-save-error a, .document-save-error button { margin-right: 20px; min-height: 36px; text-decoration: underline; text-underline-offset: 4px; }
+.entity-menu-items [data-disabled] { opacity: .45; }
