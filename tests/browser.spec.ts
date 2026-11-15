@@ -1397,6 +1397,30 @@ test("page autosave queues edits, survives reload and preserves conflicts", asyn
     await page.getByRole("button", { name: "Retry save" }).click();
     await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
     expect((await store.listPages(owner, project.id)).pages).toHaveLength(1);
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await page.route(endpoint, async (route) => {
+      await route.fetch();
+      await route.abort("failed");
+    });
+    await source.fill("The server saved this but the acknowledgement was lost");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("The server saved this but the acknowledgement was lost");
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await expect(
+      page.getByRole("link", { name: "Compare latest page" }),
+    ).toHaveCount(0);
+    await page.unroute(endpoint);
     const saved = await store.getPage(owner, id);
     await store.updatePage(
       owner,

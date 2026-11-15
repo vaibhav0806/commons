@@ -205,6 +205,14 @@ export function usePageAutosave(options: {
           latest.current.restore(stored.draft);
           if (
             options.page &&
+            (serialize(stored.draft) === serialize(options.page) ||
+              stored.base === serialize(options.page))
+          ) {
+            stored.version = options.page.version;
+            stored.base = serialize(options.page);
+          }
+          if (
+            options.page &&
             stored.version !== options.page.version &&
             stored.base !== serialize(options.page)
           ) {
