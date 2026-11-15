@@ -302,10 +302,17 @@ export function ProjectStories() {
       if (!frame) frame = requestAnimationFrame(update);
     };
     const measure = () => {
+      const available = window.visualViewport?.height || innerHeight;
+      const tabs =
+        pinned.current!.querySelector<HTMLElement>(
+          '[role="tablist"]',
+        )!.offsetHeight;
+      stage.current!.style.setProperty(
+        "--story-panel-height",
+        `${Math.floor(available - tabs - 41)}px`,
+      );
       const fit =
-        !media.matches &&
-        pinned.current!.offsetHeight + 40 <=
-          (window.visualViewport?.height || innerHeight);
+        !media.matches && pinned.current!.offsetHeight + 40 <= available;
       pinnedMode.current = fit;
       stage.current!.dataset.pinned = String(fit);
       stage.current!.style.height = fit

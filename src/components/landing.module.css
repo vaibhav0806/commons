@@ -680,7 +680,7 @@
   }
 }
 .storyStage[data-pinned="true"] .storyPanel {
-  min-height: calc(100svh - 108px);
+  min-height: var(--story-panel-height, calc(100svh - 120px));
   display: flex;
   flex-direction: column;
 }
