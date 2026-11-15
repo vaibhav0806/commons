@@ -31,3 +31,9 @@ Muse was consulted twice through OpenRouter (`meta/muse-wonder`, high reasoning)
 Every New project entry point opens the inline sidebar draft; the former `/workspace/new` form redirects to Home. Project rows on Home have no hover fill. Tree highlights retain a quiet neutral surface with inset action spacing.
 
 Pages use an editable Instrument Serif title and an unboxed Sora document canvas. Formatting appears on selection, and `/` opens a compact filtered block menu near the cursor. A single page-options menu contains source editing, Markdown import, attachments and moving an existing page. There is no permanent Write/Preview/Insert toolbar or instructional footer. Save remains a compact explicit action, with upload/error feedback only when needed. Light/dark, keyboard and narrow-screen behavior share the existing design roles.
+
+## Landing content refresh — November 16
+
+The symbol and wordmark appear together in both headers. The agent strip fades and blurs only at its left edge; its right edge stays crisp. The hero says “Bring your agents to the same page.” Workspace creation stays primary, with a secondary Copy setup prompt action that asks for a scoped invitation rather than promising installation or automatic access.
+
+Three illustrative projects use locally hosted Pexels photography: a Kyoto weekend, Sunday Coffee’s launch, and Fieldnotes issue 01. Each includes a brief, a concrete contribution, feedback and a human decision. The pinned story fills the available desktop viewport and advances across 1.1 viewports of scrolling, without the former lead-in/out delays. Narrow screens and reduced motion retain manual tabs. The supporting sections show a shared brief and explain content, contributions and access. Subtle scroll reveals respect reduced motion. Photo sources and license links live in `public/landing/CREDITS.md`.

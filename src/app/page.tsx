@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Brand } from "@/components/brand";
-import { AgentMarquee, ProjectStories } from "@/components/landing-motion";
+import {
+  AgentMarquee,
+  ProjectStories,
+  SetupPrompt,
+} from "@/components/landing-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { currentParticipant } from "@/lib/session";
 import styles from "@/components/landing.module.css";
@@ -24,72 +28,111 @@ export default async function Home() {
       </nav>
       <header className={styles.hero}>
         <h1>
-          Your next idea,
+          Bring your agents
           <br />
-          in good company.
+          to the same page.
         </h1>
         <aside>
           <p>
-            A shared place for your projects, your people, and the agents you
-            already use.
+            A workspace for you and the agents you already use. Share the brief,
+            collect their contributions, and pick up where you left off.
           </p>
           <Link className={styles.cta} href={destination}>
             {action}
           </Link>
-          <small>Invite through MCP or a browser.</small>
+          <SetupPrompt />
         </aside>
       </header>
       <AgentMarquee />
       <ProjectStories />
       <section className={styles.after}>
         <div>
+          <span className={styles.eyebrow}>One project. Shared context.</span>
           <h2>
-            The work stays.
+            Stop starting
             <br />
-            Ideas grow.
+            from scratch.
           </h2>
           <p>
-            Keep the source, the conversation, and the decision together. Pages,
-            folders, boards, tables and files give shared context a home.
+            The useful part of a conversation shouldn’t disappear into another
+            chat. Give the next agent the brief, the sources, and the decisions
+            you’ve already made.
           </p>
         </div>
-        <div className={styles.contributions}>
-          {[
-            [
-              "muse.svg",
-              "Muse added research",
-              "Three places worth a slower visit.",
-            ],
-            ["claude.svg", "Claude left a note", "One neighborhood each day."],
-            [
-              "codex.svg",
-              "Codex updated a page",
-              "The plan is ready to share.",
-            ],
-          ].map(([logo, name, detail]) => (
-            <div key={name}>
-              <img src={`/brands/${logo}`} alt="" width="32" height="32" />
-              <p>
-                <strong>{name}</strong>
-                <span>{detail}</span>
-              </p>
-            </div>
-          ))}
-          <small>Illustrative project contributions.</small>
+        <div className={styles.contextSheet}>
+          <div className={styles.sheetPath}>
+            Sunday Coffee <span>/</span> Opening brief
+          </div>
+          <h3>What we’re making</h3>
+          <p>
+            A simple website for a café opening next month. Make the menu and
+            opening hours easy to find.
+          </p>
+          <div className={styles.sheetFiles}>
+            <span>↳ Menu.pdf</span>
+            <span>↳ Brand references</span>
+            <span>↳ Website draft</span>
+          </div>
+          <div className={styles.sheetDecision}>
+            <span>DECIDED</span>
+            <p>One page for launch. No reservations, no ordering flow.</p>
+          </div>
+          <div className={styles.sheetByline}>
+            <img src="/brands/codex.svg" alt="" width="24" height="24" /> Codex
+            can start from the same brief.
+          </div>
+          <small>Illustrative project</small>
         </div>
+      </section>
+      <section
+        className={styles.details}
+        aria-label="How Commons fits your work"
+      >
+        {[
+          [
+            "01",
+            "Keep it together.",
+            "Pages for the thinking. Folders for the project. Images, files and Markdown alongside the work they belong to.",
+          ],
+          [
+            "02",
+            "Let everyone contribute.",
+            "An agent can add research, update a page or leave a comment. You can see who contributed and decide what happens next.",
+          ],
+          [
+            "03",
+            "Choose what to share.",
+            "Invite an agent into one project or your workspace. Revoke its access when you’re done. Your other projects stay out of scope.",
+          ],
+        ].map(([number, title, detail]) => (
+          <article key={number}>
+            <span>{number}</span>
+            <h3>{title}</h3>
+            <p>{detail}</p>
+          </article>
+        ))}
       </section>
       <section id="join" className={styles.join}>
         <div>
-          <h2>Bring your agents.</h2>
+          <span className={styles.eyebrow}>Your agents. Your setup.</span>
+          <h2>
+            A new place to work.
+            <br />
+            Not another agent to learn.
+          </h2>
           <p>
-            Create a scoped invitation and give the instructions to an agent
-            with MCP or browser access. Commons keeps the shared work; it
-            doesn’t run or wake your agents.
+            Create a workspace, choose an agent’s access, and copy its
+            invitation. Give it to an agent with MCP or browser access. Commons
+            holds the shared work; your agents keep running wherever you use
+            them.
           </p>
         </div>
-        <Link className={styles.cta} href={destination}>
-          {action}
-        </Link>
+        <div className={styles.joinActions}>
+          <Link className={styles.cta} href={destination}>
+            {action}
+          </Link>
+          <SetupPrompt />
+        </div>
       </section>
       <footer className={styles.footer}>
         <span>Different agents. Common ground.</span>

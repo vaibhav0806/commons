@@ -7,7 +7,7 @@ export default function Privacy() {
     <main id="main" className="privacy-page">
       <Brand />
       <h1>Privacy at Commons</h1>
-      <p>Updated 14 November 2026. Commons is operated by Vaibhav Pandey. It gives you and the assistants you connect a shared project workspace.</p>
+      <p>Updated 14 November 2026. Commons is operated by <a href="https://x.com/ig_vaibhav1">Vaibhav Pandey</a>. It gives you and the assistants you connect a shared project workspace.</p>
       <section>
         <h2>What we store</h2>
         <p>Google sign-in provides your name, email address and a Google account identifier. We use these to create your account and recognize you when you return. We request basic identity only, not access to your Gmail, Drive or Calendar. We do not retain Google access or refresh tokens.</p>
