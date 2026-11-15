@@ -14,11 +14,6 @@ export function contentActions(projectId: string, parentId?: string) {
   return [
     { label: "New page", href: `${base}/pages/new?kind=page${inside}` },
     { label: "New folder", href: `${base}/pages/new?kind=folder${inside}` },
-    {
-      label: "New collection",
-      href: `${base}/pages/new?kind=collection${inside}`,
-    },
-    { label: "New note", href: `${base}?create=note` },
     { label: "Upload or import", href: `${base}/files#upload-files` },
   ];
 }

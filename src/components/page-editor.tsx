@@ -66,10 +66,10 @@ export function PageEditor({
       node?.setSelectionRange(from + value.length, from + value.length);
     });
   }
-  if ((page?.kind || kind) === "folder")
+  if ((page?.kind || kind) !== "page")
     return (
       <>
-        <input type="hidden" name="kind" value="folder" />
+        <input type="hidden" name="kind" value={page?.kind || kind} />
         <label className="field">
           <span>Name</span>
           <input
@@ -81,6 +81,52 @@ export function PageEditor({
             placeholder="Folder name"
           />
         </label>
+        {page ? (
+          <SelectField
+            label="Inside"
+            name="parentId"
+            defaultValue={page?.parentId || parentId || ""}
+            options={[
+              { value: "", label: "Top level in this project" },
+              ...pages
+                .filter((p) => p.id !== page?.id)
+                .map((p) => ({ value: p.id, label: p.title })),
+            ]}
+          />
+        ) : (
+          <input type="hidden" name="parentId" value={parentId || ""} />
+        )}
+        {page ? (
+          <label className="field">
+            <span>Description</span>
+            <textarea
+              name="body"
+              defaultValue={page?.body}
+              maxLength={100000}
+              rows={3}
+            />
+          </label>
+        ) : (
+          <input type="hidden" name="body" value="" />
+        )}
+      </>
+    );
+  return (
+    <>
+      <input type="hidden" name="kind" value={page?.kind || kind} />
+      <input type="hidden" name="status" value={page?.status || status} />
+      <label className="field">
+        <span>{(page?.kind || kind) === "page" ? "Page title" : "Name"}</span>
+        <input
+          name="title"
+          defaultValue={page?.title}
+          maxLength={160}
+          required
+          autoFocus
+          placeholder="Untitled page"
+        />
+      </label>
+      {page ? (
         <SelectField
           label="Inside"
           name="parentId"
@@ -92,50 +138,9 @@ export function PageEditor({
               .map((p) => ({ value: p.id, label: p.title })),
           ]}
         />
-        <label className="field">
-          <span>Description (optional)</span>
-          <textarea
-            name="body"
-            defaultValue={page?.body}
-            maxLength={100000}
-            rows={3}
-          />
-        </label>
-      </>
-    );
-  return (
-    <>
-      <input type="hidden" name="kind" value={page?.kind || kind} />
-      <SelectField
-        label="Status"
-        name="status"
-        defaultValue={page?.status || status}
-        options={["Idea", "Drafting", "Ready"].map((value) => ({
-          value,
-          label: value,
-        }))}
-      />
-      <label className="field">
-        <span>{(page?.kind || kind) === "page" ? "Page title" : "Name"}</span>
-        <input
-          name="title"
-          defaultValue={page?.title}
-          maxLength={160}
-          required
-          placeholder="Untitled page"
-        />
-      </label>
-      <SelectField
-        label="Inside"
-        name="parentId"
-        defaultValue={page?.parentId || parentId || ""}
-        options={[
-          { value: "", label: "Top level in this project" },
-          ...pages
-            .filter((p) => p.id !== page?.id)
-            .map((p) => ({ value: p.id, label: p.title })),
-        ]}
-      />
+      ) : (
+        <input type="hidden" name="parentId" value={parentId || ""} />
+      )}
       <div className="editor-toolbar">
         <div className="editor-modes">
           <button
@@ -292,7 +297,7 @@ export function PageEditor({
             onKeyDown={(event) => {
               if (event.key === "Escape") setMenu(false);
             }}
-            placeholder="Write in Markdown, paste content or type / to insert a block…"
+            placeholder="Start writing…"
           />
         </label>
       )}

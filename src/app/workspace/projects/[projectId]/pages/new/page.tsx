@@ -3,7 +3,7 @@ import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { ActionForm } from "@/components/forms";
 import { PageEditor } from "@/components/page-editor";
-import { DetailSheet } from "@/components/detail-sheet";
+import Link from "next/link";
 
 export default async function NewPage({
   params,
@@ -19,21 +19,23 @@ export default async function NewPage({
     pages = await store.pageTree(actor, projectId);
   const query = await searchParams;
   const kind =
-    query.kind === "folder" || query.kind === "collection"
-      ? query.kind
-      : "page";
+    query.kind === "folder" || query.kind === "collection" ? "folder" : "page";
   const parent = pages.find((page) => page.id === query.parent);
   const closeHref = `/workspace/projects/${projectId}${parent ? `/pages/${parent.id}` : ""}`;
   return (
-    <DetailSheet closeHref={closeHref} title={`New ${kind}`}>
+    <div className="project-page document-page">
+      <div className="document-toolbar">
+        <Link className="text-link" href={closeHref}>
+          {parent?.title || project.name}
+        </Link>
+        <Link className="text-link" href={closeHref}>
+          Cancel
+        </Link>
+      </div>
       <div className="creation-form">
         <header className="project-heading">
           <div>
             <h1>New {kind}</h1>
-            <p>
-              Inside {project.name}
-              {parent ? ` / ${parent.title}` : ""}
-            </p>
           </div>
         </header>
 
@@ -57,6 +59,6 @@ export default async function NewPage({
           />
         </ActionForm>
       </div>
-    </DetailSheet>
+    </div>
   );
 }

@@ -238,9 +238,9 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     name: "Bring an agent",
     exact: true,
   });
-  const unread = page
+  const home = page
     .locator(".sidebar")
-    .getByRole("link", { name: "Unread notes", exact: true });
+    .getByRole("link", { name: "Home", exact: true });
   await expect(agents).toHaveAttribute("aria-current", "page");
   const geometry = await navigation.evaluate((element) => {
     const [first, second] = [...element.children].map((child) =>
@@ -259,12 +259,12 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
   await page.locator(".sidebar-bottom").screenshot({
     path: "test-results/sidebar-agents-selected.png",
   });
-  await unread.hover();
-  await expect(unread).toHaveCSS("background-color", "rgb(220, 226, 232)");
-  await unread.focus();
-  await expect(unread).toHaveCSS("outline-offset", "-2px");
+  await home.hover();
+  await expect(home).toHaveCSS("background-color", "rgb(220, 226, 232)");
+  await home.focus();
+  await expect(home).toHaveCSS("outline-offset", "-2px");
   await page.locator(".sidebar-bottom").screenshot({
-    path: "test-results/sidebar-unread-hover.png",
+    path: "test-results/sidebar-home-hover.png",
   });
   await connect.click();
   await expect(
@@ -530,6 +530,19 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await page.getByRole("button", { name: "Continue with Google" }).click();
     await page.waitForURL(/\/workspace/);
     await page.goto(`${base}/pages/new`);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "New page", exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("combobox", { name: "Status", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Inside", exact: true }),
+    ).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/page-create-mobile.png" });
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await page
       .getByLabel("Page title", { exact: true })
       .fill("Workspace brief");
@@ -733,7 +746,7 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
 });
 
-test("nested folder, collection views and discussions work on desktop and mobile", async ({
+test("nested folders, list board table views and discussions work on desktop and mobile", async ({
   page,
   baseURL,
 }) => {
@@ -776,11 +789,11 @@ test("nested folder, collection views and discussions work on desktop and mobile
       .getByRole("button", { name: "Add inside First issue" })
       .click();
     await page
-      .getByRole("menuitem", { name: "New collection", exact: true })
+      .getByRole("menuitem", { name: "New folder", exact: true })
       .click();
     await page.getByLabel("Name", { exact: true }).fill("Stories");
     await page
-      .getByRole("button", { name: "Create collection", exact: true })
+      .getByRole("button", { name: "Create folder", exact: true })
       .click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const collectionUrl = page.url(),
@@ -815,6 +828,12 @@ test("nested folder, collection views and discussions work on desktop and mobile
       }),
     );
     await page.reload();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Folder view" })
+        .getByRole("link", { name: "List", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await page.getByRole("link", { name: "Board", exact: true }).click();
     await expect(page.locator(".collection-card")).toContainText(
       "Opening note",
     );
@@ -826,6 +845,9 @@ test("nested folder, collection views and discussions work on desktop and mobile
       .getByRole("link", { name: "Opening note", exact: true })
       .last()
       .click();
+    await expect(page).toHaveURL(new RegExp(`/pages/${item.id}$`));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("link", { name: "Discussion", exact: true }).click();
     await expect(page.getByRole("dialog")).toContainText(
       "I added the research.",
     );
@@ -856,7 +878,7 @@ test("nested folder, collection views and discussions work on desktop and mobile
       ),
     ).toBe(true);
     await page.getByRole("button", { name: "Close details" }).click();
-    await page.goto(collectionUrl);
+    await page.goto(`${collectionUrl}?view=board`);
     await page.getByRole("button", { name: "Switch to dark theme" }).click();
     await page.waitForLoadState("networkidle");
     await page.screenshot({
@@ -909,6 +931,15 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
     const sidebar = page.locator(".sidebar");
     await expect(sidebar).not.toContainText("Workspace access");
     await expect(sidebar).not.toContainText("Workspace owner");
+    await expect(
+      sidebar.getByRole("link", { name: "Unread notes", exact: true }),
+    ).toHaveCount(0);
+    const workspaceName = await sidebar.locator(".workspace-name").innerText();
+    await expect(page.locator(".workspace-header")).not.toContainText(
+      workspaceName,
+    );
+    await page.goto("/workspace/unread");
+    await expect(page).toHaveURL(/\/workspace$/);
     await expect(sidebar.locator(".profile a")).toHaveCSS("font-size", "13px");
     await expect(
       sidebar.getByRole("link", { name: "Home", exact: true }).locator("use"),
@@ -944,6 +975,24 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       await expect(plus).toBeFocused();
       await expect(page).toHaveURL(originalUrl);
       await plus.click();
+      await input.fill("Outside cancelled draft");
+      await surface.locator(".nav-heading").click();
+      await expect(input).toHaveCount(0);
+      await expect(page).toHaveURL(originalUrl);
+      expect(
+        (await store.listProjects(owner)).some(
+          (p) => p.name === "Outside cancelled draft",
+        ),
+      ).toBe(false);
+      await plus.click();
+      await input.fill("Composing draft");
+      await input.dispatchEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        isComposing: true,
+      });
+      await expect(input).toHaveValue("Composing draft");
+      await expect(page).toHaveURL(originalUrl);
       await input.fill("x");
       await input.press("Enter");
       await expect(surface.getByRole("alert")).toHaveText(
@@ -968,18 +1017,11 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       await page.screenshot({
         path: `test-results/sidebar-inline-${width}.png`,
       });
-      if (mobile) {
-        for (const button of await surface
-          .locator(".inline-project button")
-          .all()) {
-          const box = await button.boundingBox();
-          expect(box!.height).toBeGreaterThanOrEqual(44);
-          expect(box!.width).toBeGreaterThanOrEqual(44);
-        }
-        await surface
-          .getByRole("button", { name: "Create project", exact: true })
-          .click();
-      } else await input.press("Enter");
+      await expect(surface.locator(".inline-project button")).toHaveCount(0);
+      await expect(surface.locator(".inline-project")).not.toContainText(
+        "Enter to create",
+      );
+      await input.press("Enter");
       await page.waitForURL(/\/workspace\/projects\/[^/]+$/);
       if (mobile) await expect(page.getByRole("dialog")).toBeHidden();
       const project = (await store.listProjects(owner)).filter(
@@ -988,6 +1030,18 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       expect(project).toHaveLength(1);
       expect(project[0].brief).toBe("");
       created.push(project[0]);
+      await page.goto("/workspace");
+      const indexRow = page
+        .locator(".project-index-row")
+        .filter({ has: page.getByRole("heading", { name, exact: true }) });
+      await indexRow.hover();
+      await expect(
+        indexRow.getByRole("heading", { name, exact: true }),
+      ).toHaveCSS("color", "rgb(61, 73, 85)");
+      await expect(indexRow.locator(".project-count")).toBeEmpty();
+      await expect(indexRow).not.toContainText("Add a brief");
+      await indexRow.click();
+      await expect(page.locator(".workspace-breadcrumb")).toContainText(name);
       await expect(
         page.getByRole("heading", { name, exact: true }),
       ).toBeVisible();
@@ -999,7 +1053,13 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
         .locator(".tree-row")
         .filter({ has: page.getByRole("link", { name, exact: true }) });
       await expect(row.locator(".tree-actions button")).toHaveCount(1);
-      await row.getByRole("button", { name: `Actions for ${name}` }).click();
+      const rowAction = row.getByRole("button", {
+        name: `Actions for ${name}`,
+      });
+      await rowAction.hover();
+      await expect(row).toHaveCSS("background-color", "rgb(220, 226, 232)");
+      await expect(rowAction).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await rowAction.click();
       const menu = page.getByRole("menu");
       await expect(
         menu.getByRole("menuitem", { name: "New folder", exact: true }),
@@ -1007,6 +1067,12 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       await menu
         .getByRole("menuitem", { name: "New folder", exact: true })
         .click({ trial: true });
+      await expect(
+        menu.getByRole("menuitem", { name: "New collection", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        menu.getByRole("menuitem", { name: "New note", exact: true }),
+      ).toHaveCount(0);
       await expect(menu.getByRole("separator")).toHaveCount(1);
       const box = await menu.boundingBox();
       expect(box!.width).toBeLessThanOrEqual(224);
@@ -1026,13 +1092,30 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       }
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page
+      .getByRole("button", { name: "Connect an agent to this project" })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Agent access", exact: true })
+      .click();
+    await expect(
+      page.getByRole("option", { name: created[1].name, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("option", {
+        name: `${created[1].name} only`,
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Switch to dark theme" }).click();
-    const unread = sidebar.getByRole("link", {
-      name: "Unread notes",
+    const home = sidebar.getByRole("link", {
+      name: "Home",
       exact: true,
     });
-    await unread.hover();
-    await expect(unread).toHaveCSS("background-color", "rgb(48, 57, 74)");
+    await home.hover();
+    await expect(home).toHaveCSS("background-color", "rgb(48, 57, 74)");
     await page.screenshot({ path: "test-results/sidebar-polish-dark.png" });
   } finally {
     for (const project of created)

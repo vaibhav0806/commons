@@ -16,6 +16,8 @@ export function CollectionView({
   view?: string;
 }) {
   const base = `/workspace/projects/${collection.projectId}/pages/${collection.id}`;
+  const selectedView =
+    view || (collection.kind === "collection" ? "board" : "list");
   const statuses = ["Idea", "Drafting", "Ready"] as const;
   const statusControl = (item: WorkspacePage) =>
     actor.kind === "owner" || item.authorId === actor.id ? (
@@ -42,30 +44,57 @@ export function CollectionView({
   return (
     <section className="collection-section">
       <div className="collection-toolbar">
-        <h2>Collection</h2>
+        <h2>Contents</h2>
         <Link
           className="text-link"
           href={`/workspace/projects/${collection.projectId}/pages/new?parent=${collection.id}`}
         >
-          + New item
+          + New page
         </Link>
       </div>
-      <nav className="content-tabs" aria-label="Collection view">
-        <Link href={base} aria-current={view !== "table" ? "page" : undefined}>
+      <nav className="content-tabs" aria-label="Folder view">
+        <Link
+          href={`${base}?view=list`}
+          aria-current={selectedView === "list" ? "page" : undefined}
+        >
+          List
+        </Link>
+        <Link
+          href={`${base}?view=board`}
+          aria-current={selectedView === "board" ? "page" : undefined}
+        >
           Board
         </Link>
         <Link
           href={`${base}?view=table`}
-          aria-current={view === "table" ? "page" : undefined}
+          aria-current={selectedView === "table" ? "page" : undefined}
         >
           Table
         </Link>
       </nav>
-      {view === "table" ? (
+      {selectedView === "list" ? (
+        <div className="context-list">
+          {items.map((item) => (
+            <Link
+              className="context-row"
+              key={item.id}
+              href={`/workspace/projects/${collection.projectId}/pages/${item.id}`}
+            >
+              <span className="row-copy">
+                <h3>{item.title}</h3>
+              </span>
+              <span className="meta">
+                {item.kind === "page" ? "Page" : "Folder"}
+              </span>
+            </Link>
+          ))}
+          {!items.length && <p className="empty-list">No content yet.</p>}
+        </div>
+      ) : selectedView === "table" ? (
         <div
           className="collection-table-wrap"
           role="region"
-          aria-label="Collection table"
+          aria-label="Folder table"
           tabIndex={0}
         >
           <table className="collection-table">
@@ -81,7 +110,9 @@ export function CollectionView({
               {items.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <Link href={`${base}?view=table&item=${item.id}`}>
+                    <Link
+                      href={`/workspace/projects/${collection.projectId}/pages/${item.id}`}
+                    >
                       {item.title}
                     </Link>
                   </td>
@@ -104,9 +135,7 @@ export function CollectionView({
               ))}
             </tbody>
           </table>
-          {!items.length && (
-            <p className="empty-list">Add the first item to this collection.</p>
-          )}
+          {!items.length && <p className="empty-list">No content yet.</p>}
         </div>
       ) : (
         <div className="collection-board">
@@ -131,11 +160,12 @@ export function CollectionView({
                 .filter((item) => item.status === status)
                 .map((item) => (
                   <article key={item.id} className="collection-card">
-                    <Link href={`${base}?item=${item.id}`}>
+                    <Link
+                      href={`/workspace/projects/${collection.projectId}/pages/${item.id}`}
+                    >
                       <h3>{item.title}</h3>
                       <p>
-                        {item.body.replace(/[#*`>]/g, "").slice(0, 120) ||
-                          "Open to add context."}
+                        {item.body.replace(/[#*`>]/g, "").slice(0, 120) || ""}
                       </p>
                       <span className="contributor">
                         <AgentMark name={item.authorName} small />
@@ -146,7 +176,7 @@ export function CollectionView({
                   </article>
                 ))}
               {!items.some((item) => item.status === status) && (
-                <p className="board-empty">Room for the next idea.</p>
+                <p className="board-empty">—</p>
               )}
             </section>
           ))}

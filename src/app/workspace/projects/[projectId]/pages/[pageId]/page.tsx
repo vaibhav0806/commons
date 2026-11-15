@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { CommonsError } from "@/lib/store";
@@ -54,7 +54,8 @@ export default async function PageDocument({
         throw error;
       })
     : null;
-  const selected = item?.parentId === pageId ? item : null;
+  if (item?.parentId === pageId)
+    redirect(`/workspace/projects/${projectId}/pages/${item.id}`);
   return (
     <div className="project-page document-page">
       <div className="document-toolbar">
@@ -133,11 +134,9 @@ export default async function PageDocument({
       ) : (
         <>
           {(page.body || page.kind === "page") && (
-            <MarkdownContent
-              body={page.body || "This page is ready for its first content."}
-            />
+            <MarkdownContent body={page.body} />
           )}
-          {page.kind === "collection" && (
+          {page.kind !== "page" && (
             <CollectionView
               collection={page}
               items={children}
@@ -145,7 +144,7 @@ export default async function PageDocument({
               view={query.view}
             />
           )}
-          {page.kind !== "collection" && !!children.length && (
+          {page.kind === "page" && !!children.length && (
             <section className="project-section">
               <h2>Inside {page.title}</h2>
               {children.map((child) => (
@@ -188,29 +187,6 @@ export default async function PageDocument({
             actor={actor}
             offset={Math.max(0, Math.min(1000000, Number(query.comments) || 0))}
           />
-        </DetailSheet>
-      )}
-      {selected && (
-        <DetailSheet
-          title={selected.title}
-          closeHref={`${base}${query.view === "table" ? "?view=table" : ""}`}
-        >
-          <div className="item-detail">
-            <Link
-              className="text-link"
-              href={`/workspace/projects/${projectId}/pages/${selected.id}`}
-            >
-              Open as page ↗
-            </Link>
-            <h1>{selected.title}</h1>
-            <span className="status-pill" data-status={selected.status}>
-              {selected.status}
-            </span>
-            <MarkdownContent
-              body={selected.body || "Ready for its first content."}
-            />
-            <PageDiscussion page={selected} actor={actor} />
-          </div>
         </DetailSheet>
       )}
     </div>
