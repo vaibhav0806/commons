@@ -11,6 +11,7 @@ import type {
   WorkspacePage,
 } from "@/lib/store";
 import { DocumentEditor, type DocumentEditorHandle } from "./document-editor";
+import { usePageAutosave } from "./use-page-autosave";
 import { SelectField } from "./ui/select-field";
 
 export function PageEditor({
@@ -21,8 +22,10 @@ export function PageEditor({
   kind = "page",
   parentId,
   status = "Idea",
+  actorId,
 }: {
   page?: WorkspacePage;
+  actorId?: string;
   pages: PageTreeItem[];
   kind?: PageKind;
   parentId?: string;
@@ -41,6 +44,36 @@ export function PageEditor({
   const hidden = useRef<HTMLInputElement>(null);
   const importer = useRef<HTMLInputElement>(null);
   const title = useRef<HTMLTextAreaElement>(null);
+  const [parent, setParent] = useState(page?.parentId || parentId || "");
+  const autosave = usePageAutosave({
+    enabled: !!actorId && (page?.kind || kind) === "page",
+    ready,
+    uploading,
+    actorId: actorId || "",
+    projectId,
+    page,
+    parentId,
+    read: () => ({
+      title: title.current?.value || "",
+      body: source ? body : (editor.current?.markdown() ?? body),
+      parentId: parent || null,
+      status: page?.status || status,
+    }),
+    restore: (draft) => {
+      if (title.current) {
+        title.current.value = draft.title;
+        title.current.style.height = "auto";
+        title.current.style.height = `${title.current.scrollHeight}px`;
+      }
+      setBody(draft.body);
+      editor.current?.replace(draft.body);
+      setParent(draft.parentId || "");
+    },
+  });
+  const { changed } = autosave;
+  useEffect(() => {
+    changed();
+  }, [body, parent, uploading, ready, changed]);
   useEffect(() => {
     const node = title.current;
     if (!node) return;
@@ -128,7 +161,7 @@ export function PageEditor({
       </>
     );
   return (
-    <>
+    <div className="form-stack document-form">
       <input type="hidden" name="status" value={page?.status || status} />
       <input type="hidden" name="kind" value={page?.kind || kind} />
       <input
@@ -137,6 +170,20 @@ export function PageEditor({
         type="hidden"
         value={JSON.stringify(body)}
       />
+      {actorId && (
+        <div className="document-save-status">
+          <span role="status" data-autosave-status>
+            {autosave.status}
+          </span>
+          {autosave.pageId && (
+            <a
+              href={`/workspace/projects/${projectId}/pages/${autosave.pageId}`}
+            >
+              Done
+            </a>
+          )}
+        </div>
+      )}
       <div className="document-edit-heading">
         <textarea
           ref={title}
@@ -148,11 +195,13 @@ export function PageEditor({
             );
             event.currentTarget.style.height = "auto";
             event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+            changed();
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.nativeEvent.isComposing) {
               event.preventDefault();
-              event.currentTarget.form
+              event.currentTarget
+                .closest(".document-page")
                 ?.querySelector<HTMLElement>(
                   '.document-editor [contenteditable="true"]',
                 )
@@ -216,7 +265,8 @@ export function PageEditor({
           <SelectField
             label="Inside"
             name="parentId"
-            defaultValue={page.parentId || ""}
+            value={parent}
+            onValueChange={setParent}
             options={[
               { value: "", label: "Project" },
               ...pages
@@ -313,6 +363,40 @@ export function PageEditor({
           spellCheck={false}
         />
       )}
+      {actorId && autosave.error && (
+        <div className="document-save-error" role="alert">
+          <p>{autosave.error}</p>
+          {autosave.conflict ? (
+            <a
+              href={`/workspace/projects/${projectId}/pages/${autosave.pageId || page?.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Compare latest page ↗
+            </a>
+          ) : (
+            <button type="button" onClick={() => void autosave.flush()}>
+              Retry save
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const text = source ? body : (editor.current?.markdown() ?? body);
+              const url = URL.createObjectURL(
+                new Blob([text], { type: "text/markdown" }),
+              );
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "commons-draft.md";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Download draft
+          </button>
+        </div>
+      )}
       {uploading && (
         <p className="meta" role="status">
           Uploading image…
@@ -323,6 +407,6 @@ export function PageEditor({
           {error}
         </p>
       )}
-    </>
+    </div>
   );
 }

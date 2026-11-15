@@ -572,7 +572,7 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
       "const shared",
     );
     expect(await page.evaluate(() => "unsafeMarkdown" in window)).toBe(false);
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const pageUrl = page.url(),
       pageId = new URL(pageUrl).pathname.split("/").at(-1)!;
@@ -651,7 +651,7 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await page
       .getByRole("button", { name: "reference.png", exact: true })
       .click();
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     await expect(page.locator(".markdown-content img")).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
@@ -690,9 +690,15 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(
-    page.getByRole("heading", { name: /Your next idea/ }),
+    page.getByRole("heading", { name: /Bring your agents/ }),
   ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator("nav .brandmark")).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy setup prompt" }).first().click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+    "Ask me for a scoped invitation",
+  );
   await expect(
     page.locator("[data-logo]").filter({ has: page.locator("img") }),
   ).toHaveCount(33);
@@ -706,19 +712,18 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
       document.querySelector("#projects")!.getBoundingClientRect().top +
         scrollY -
         20 +
-        innerHeight * 1.3,
+        innerHeight * 0.55,
     ),
   );
-  await expect(page.getByRole("tab", { name: "Reading room" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await page.evaluate(() => window.scrollBy(0, innerHeight));
+  await expect(
+    page.getByRole("tab", { name: "Sunday Coffee" }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.evaluate(() => window.scrollBy(0, innerHeight * 0.55));
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await page.evaluate(() => window.scrollBy(0, -innerHeight * 2));
+  await page.evaluate(() => window.scrollBy(0, -innerHeight * 1.1));
   await expect(
     page.getByRole("tab", { name: /Weekend in Kyoto/ }),
   ).toHaveAttribute("aria-selected", "true");
@@ -729,10 +734,26 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(
-    page.getByRole("heading", { name: /Your next idea/ }),
+    page.getByRole("heading", { name: /Bring your agents/ }),
   ).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: "test-results/mist-landing-dark.png" });
+  const storyHeights = await page.evaluate(async () => {
+    const samples: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      await new Promise(requestAnimationFrame);
+      samples.push(
+        document.querySelector("#projects")!.getBoundingClientRect().height,
+      );
+    }
+    return samples;
+  });
+  expect(Math.max(...storyHeights) - Math.min(...storyHeights)).toBeLessThan(1);
+  await page
+    .getByRole("heading", { name: /Stop starting/ })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/landing-context-dark.png" });
+  await page.evaluate(() => window.scrollTo(0, 0));
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     expect(
@@ -750,11 +771,11 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
     "data-pinned",
     "false",
   );
-  await page.getByRole("tab", { name: "Reading room" }).click();
+  await page.getByRole("tab", { name: "Sunday Coffee" }).click();
   await expect(
-    page.getByRole("heading", { name: "Follow a thought a little further." }),
+    page.getByRole("heading", { name: "A little café. A proper launch." }),
   ).toBeVisible();
-  await page.getByRole("tab", { name: "Reading room" }).press("ArrowRight");
+  await page.getByRole("tab", { name: "Sunday Coffee" }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
 });
 
@@ -1180,7 +1201,7 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     await expect(content.locator('span[data-type="html"]')).toContainText(
       "Keep this HTML",
     );
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(docUrl);
     expect((await store.getPage(owner, existingPage.id)).body).toBe(original);
     expect(externalRequests).toEqual([]);
@@ -1190,7 +1211,7 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.press("Enter");
     await page.keyboard.type("A new contribution");
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(docUrl);
     const changed = (await store.getPage(owner, existingPage.id)).body;
     expect(changed).toContain(
@@ -1260,7 +1281,7 @@ test("document editing preserves Markdown and supports contextual keyboard editi
       ),
     ).toBe(true);
     await page.screenshot({ path: "test-results/editor-document-mobile.png" });
-    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const createdId = new URL(page.url()).pathname.split("/").at(-1)!;
     const saved = await store.getPage(owner, createdId);
@@ -1269,6 +1290,195 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     await expect(page.locator(".markdown-content strong")).toHaveText(
       "Useful context",
     );
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("page autosave queues edits, survives reload and preserves conflicts", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Autosave ${Date.now()}`,
+    "",
+  );
+  const base = `/workspace/projects/${project.id}`;
+  const endpoint = `**/api/projects/${project.id}/pages`;
+  try {
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${base}/pages/new`);
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeVisible();
+    expect((await store.listPages(owner, project.id)).pages).toHaveLength(0);
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("An automatically saved page");
+    await page.getByLabel("Page title", { exact: true }).press("Enter");
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.type("First contribution");
+    await expect(page).toHaveURL(/\/pages\/[a-f0-9-]+\?edit=1$/);
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await expect(
+      page.locator(".sidebar").getByRole("link", {
+        name: "An automatically saved page",
+        exact: true,
+      }),
+    ).toBeVisible();
+    const id = new URL(page.url()).pathname.split("/").at(-1)!;
+    await expect
+      .poll(async () => (await store.getPage(owner, id)).body)
+      .toContain("First contribution");
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("First contribution");
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    const item = page.getByRole("menuitem", {
+      name: "Markdown source",
+      exact: true,
+    });
+    await expect(item).toHaveCSS("padding-left", "10px");
+    await item.click();
+    const source = page.getByLabel("Markdown source", { exact: true });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let delayed = false;
+    await page.route(endpoint, async (route) => {
+      if (!delayed) {
+        delayed = true;
+        const response = await route.fetch();
+        await gate;
+        await route.fulfill({ response });
+      } else await route.continue();
+    });
+    await source.fill("A slow first save");
+    await expect.poll(() => delayed).toBe(true);
+    await source.fill("A newer edit while the first response is delayed");
+    release();
+    await expect
+      .poll(async () => (await store.getPage(owner, id)).body)
+      .toBe("A newer edit while the first response is delayed");
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await page.unroute(endpoint);
+
+    await page.route(endpoint, (route) => route.abort("failed"));
+    await source.fill("Recover this draft after a failed save");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.reload();
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toContainText("Recover this draft after a failed save");
+    await expect(page.locator("[data-autosave-status]")).toHaveText(
+      "Not saved",
+    );
+    await page.unroute(endpoint);
+    await page.getByRole("button", { name: "Retry save" }).click();
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    expect((await store.listPages(owner, project.id)).pages).toHaveLength(1);
+    const saved = await store.getPage(owner, id);
+    await store.updatePage(
+      owner,
+      id,
+      {
+        title: saved.title,
+        body: "Another contributor changed this page",
+        parentId: null,
+      },
+      saved.version,
+    );
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await source.fill("My draft must not overwrite their work");
+    await expect(
+      page.getByRole("link", { name: "Compare latest page" }),
+    ).toBeVisible();
+    expect((await store.getPage(owner, id)).body).toBe(
+      "Another contributor changed this page",
+    );
+    await expect(source).toHaveValue("My draft must not overwrite their work");
+    await expect(page.getByRole("button", { name: "Retry save" })).toHaveCount(
+      0,
+    );
+    const response = await page.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      {
+        headers: { origin: "https://untrusted.example" },
+        data: {
+          id,
+          version: saved.version,
+          clientKey: crypto.randomUUID(),
+          draft: { title: "No", body: "No", parentId: null, status: "Idea" },
+        },
+      },
+    );
+    expect(response.status()).toBe(403);
+    const anonymous = await browser.newContext();
+    const denied = await anonymous.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      { data: {} },
+    );
+    expect(denied.status()).toBe(401);
+    await anonymous.close();
+    const invite = await store.issueInvite(owner, project.id);
+    const agent = await store.join(
+      invite.id,
+      invite.code,
+      "Read-only author check",
+    );
+    const agentContext = await browser.newContext();
+    await agentContext.addCookies([
+      {
+        name: "commons_session",
+        value: agent.token,
+        url: baseURL!,
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    const unauthorizedEdit = await agentContext.request.post(
+      `${baseURL}/api/projects/${project.id}/pages`,
+      {
+        data: {
+          id,
+          version: saved.version + 1,
+          clientKey: crypto.randomUUID(),
+          draft: {
+            title: saved.title,
+            body: "Another contributor changed this page",
+            parentId: null,
+            status: "Idea",
+          },
+        },
+      },
+    );
+    expect(unauthorizedEdit.status()).toBe(403);
+    await agentContext.close();
   } finally {
     await store.deleteProject(owner, project.id, project.name);
     await pool.end();

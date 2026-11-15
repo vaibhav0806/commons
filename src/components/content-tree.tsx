@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ContextMenu } from "@base-ui/react/context-menu";
 import type { PageTreeItem, Project } from "@/lib/store";
 import { Icon } from "./brand";
@@ -164,13 +164,29 @@ export function ContentTree({
   owner: boolean;
   actorId: string;
 }) {
+  const [saved, setSaved] = useState<PageTreeItem[]>([]);
+  useEffect(() => {
+    const update = (event: Event) => {
+      const item = (event as CustomEvent<PageTreeItem>).detail;
+      setSaved((current) => [
+        ...current.filter((page) => page.id !== item.id),
+        item,
+      ]);
+    };
+    window.addEventListener("commons:page-saved", update);
+    return () => window.removeEventListener("commons:page-saved", update);
+  }, []);
+  const visibleItems = [
+    ...items.filter((item) => !saved.some((page) => page.id === item.id)),
+    ...saved,
+  ];
   return (
     <ul className="content-tree">
       {projects.map((project) => (
         <TreeRow
           key={project.id}
           project={project}
-          items={items.filter((p) => p.projectId === project.id)}
+          items={visibleItems.filter((p) => p.projectId === project.id)}
           owner={owner}
           actorId={actorId}
         />

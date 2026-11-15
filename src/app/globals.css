@@ -2496,7 +2496,7 @@ input.join-code {
   display: grid;
   gap: 0;
 }
-.entity-menu-items a {
+.entity-menu-items [role="menuitem"] {
   display: flex;
   align-items: center;
   min-height: 32px;
@@ -3826,7 +3826,7 @@ h1 {
   background: var(--line);
 }
 @media (max-width: 900px), (pointer: coarse) {
-  .entity-menu-items a {
+  .entity-menu-items [role="menuitem"] {
     min-height: 44px;
     font-size: 14px;
   }
@@ -3994,3 +3994,10 @@ textarea.document-title-input:focus {
 .document-editor .milkdown .image-resize-handle {
   display: none;
 }
+
+.document-save-status { display: flex; align-items: center; justify-content: flex-end; gap: 20px; min-height: 36px; margin-bottom: 16px; font-size: 12px; color: var(--muted); }
+.document-save-status a { color: var(--text); padding: 8px 0 8px 8px; }
+.document-save-error { margin: 20px 0; border-left: 2px solid var(--danger); padding: 8px 16px; font-size: 13px; }
+.document-save-error p { margin-bottom: 12px; }
+.document-save-error a, .document-save-error button { margin-right: 20px; min-height: 36px; text-decoration: underline; text-underline-offset: 4px; }
+.entity-menu-items [data-disabled] { opacity: .45; }

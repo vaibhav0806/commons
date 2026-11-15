@@ -38,8 +38,7 @@ export default async function Settings({
       <div className="project-page settings-page" data-workspace-background>
         <header className="project-heading">
           <div>
-            <h1>Settings.</h1>
-            <p>Your identity, workspace and connections.</p>
+            <h1>Settings</h1>
           </div>
         </header>
         <nav className="settings-tabs" aria-label="Settings sections">

@@ -87,7 +87,7 @@ export default async function PageDocument({
               Edit page
             </Link>
           )}
-          {query.edit && (
+          {query.edit && page.kind !== "page" && (
             <Link className="button secondary" href={base}>
               Cancel editing
             </Link>
@@ -125,22 +125,30 @@ export default async function PageDocument({
           </Link>
         </section>
       ) : query.edit ? (
-        <ActionForm
-          operation="edit-page"
-          label="Save page"
-          className={
-            page.kind === "page" ? "form-stack document-form" : "form-stack"
-          }
-        >
-          <input type="hidden" name="pageId" value={page.id} />
-          <input type="hidden" name="version" value={page.version} />
+        page.kind === "page" ? (
           <PageEditor
+            actorId={actor.id}
             page={page}
             projectId={projectId}
             files={(await store.listFiles(actor, projectId)).files}
             pages={await store.pageTree(actor, projectId)}
           />
-        </ActionForm>
+        ) : (
+          <ActionForm
+            operation="edit-page"
+            label="Save folder"
+            className="form-stack"
+          >
+            <input type="hidden" name="pageId" value={page.id} />
+            <input type="hidden" name="version" value={page.version} />
+            <PageEditor
+              page={page}
+              projectId={projectId}
+              files={[]}
+              pages={await store.pageTree(actor, projectId)}
+            />
+          </ActionForm>
+        )
       ) : (
         <>
           {(page.body || page.kind === "page") && (
