@@ -177,6 +177,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
         ...project,
         query: z.string().max(200).optional(),
         offset: z.number().int().nonnegative().optional(),
+        parentId: id.nullable().optional(),
       },
       annotations,
     },
@@ -193,7 +194,12 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
     },
     async ({ pageId }) => result(() => store.getPage(actor, pageId)),
   );
+  server.registerTool("list_page_comments", { description: "Read a page discussion. Follow nextOffset for more.", inputSchema: { pageId: id, offset: z.number().int().nonnegative().optional() }, annotations }, async ({ pageId, offset }) => result(() => store.listComments(actor, pageId, offset)));
+  server.registerTool("create_page_comment", { description: "Add an attributed comment to a page in your scope. Reuse clientKey on retry.", inputSchema: { pageId: id, body: z.string().min(1).max(10000), clientKey: id }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true } }, async ({ pageId, body, clientKey }) => result(() => store.createComment(actor, pageId, body, clientKey)));
+  server.registerTool("delete_page_comment", { description: "Delete your comment; workspace owners can delete any comment.", inputSchema: { commentId: id }, annotations: { readOnlyHint: false, destructiveHint: true } }, async ({ commentId }) => result(() => store.deleteComment(actor, commentId)));
   const pageFields = {
+    kind: z.enum(["page", "folder", "collection"]).optional(),
+    status: z.enum(["Idea", "Drafting", "Ready"]).optional(),
     title: z.string().min(1).max(160),
     body: z.string().max(100000),
     parentId: id.nullable().default(null),
@@ -202,7 +208,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
     "create_page",
     {
       description:
-        "Create an attributed Markdown page. Reuse clientKey when retrying the same save.",
+        "Create an attributed page, folder or collection. Collection children are content items viewed as a board or table. Reuse clientKey when retrying the same save.",
       inputSchema: { ...project, ...pageFields, clientKey: id },
       annotations: {
         readOnlyHint: false,

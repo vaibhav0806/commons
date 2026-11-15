@@ -61,12 +61,18 @@ export type Note = {
 };
 export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
 const fileSelect = "SELECT f.*,p.name AS author_name FROM project_files f JOIN participants p ON p.id=f.author_id";
+export type PageKind = "page" | "folder" | "collection";
+export type PageStatus = "Idea" | "Drafting" | "Ready";
 export type PageInput = {
+  kind?: PageKind;
+  status?: PageStatus;
   title: string;
   body: string;
   parentId: string | null;
 };
 export type WorkspacePage = PageInput & {
+  kind: PageKind;
+  status: PageStatus;
   id: string;
   projectId: string;
   workspaceId: string;
@@ -76,7 +82,11 @@ export type WorkspacePage = PageInput & {
   createdAt: number;
   editedAt: number | null;
 };
+export type PageTreeItem = Pick<WorkspacePage, "id" | "projectId" | "parentId" | "title" | "kind" | "status" | "authorId">;
+export type PageComment = { id: string; pageId: string; projectId: string; authorId: string; authorName: string; body: string; createdAt: number };
 const pageSchema = z.object({
+  kind: z.enum(["page", "folder", "collection"]).optional(),
+  status: z.enum(["Idea", "Drafting", "Ready"]).optional(),
   title: z.string().trim().min(1, "Give the page a title.").max(160),
   body: z.string().max(100000),
   parentId: z.uuid().nullable(),
@@ -1045,10 +1055,49 @@ export class Store {
   async queueFileCleanup(objectKey: string) {
     await this.connection.query("INSERT INTO file_cleanup(object_key) VALUES($1) ON CONFLICT DO NOTHING", [objectKey]);
   }
+  async pageTree(actor: Principal, projectId: string) {
+    await this.getProject(actor, projectId);
+    return this.rows<PageTreeItem>("SELECT id,project_id,parent_id,title,kind,status,author_id FROM pages WHERE project_id=$1 ORDER BY created_at,id", [projectId]);
+  }
+  async listComments(actor: Principal, pageId: string, offset = 0) {
+    await this.getPage(actor, pageId);
+    const comments = await this.rows<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.page_id=$1 ORDER BY c.created_at,c.id LIMIT 51 OFFSET $2", [pageId, z.number().int().min(0).max(1000000).parse(offset)]);
+    return { comments: comments.slice(0, 50), nextOffset: comments.length > 50 ? offset + 50 : null };
+  }
+  async createComment(actor: Principal, pageId: string, body: string, clientKey: string) {
+    return this.transaction(async tx => {
+      const current = await tx.active(actor.id), page = await tx.getPage(current, pageId);
+      const text = z.string().trim().min(1, "Write a comment first.").max(10000).parse(body);
+      idSchema.parse(clientKey);
+      await tx.connection.query("SELECT id FROM pages WHERE id=$1 FOR UPDATE", [pageId]);
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["comment:" + current.id + clientKey]);
+      const prior = await tx.one<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.author_id=$1 AND c.client_key=$2", [current.id, clientKey]);
+      if (prior) {
+        if (prior.pageId !== pageId) throw new CommonsError("This save key belongs to another page.", 409);
+        return prior;
+      }
+      const id = randomUUID(), createdAt = this.clock();
+      await tx.connection.query("INSERT INTO page_comments(id,page_id,project_id,workspace_id,author_id,body,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, pageId, page.projectId, page.workspaceId, current.id, text, clientKey, createdAt]);
+      await tx.record(current, page.projectId, "Commented on a page", pageId);
+      return { id, pageId, projectId: page.projectId, authorId: current.id, authorName: current.name, body: text, createdAt };
+    });
+  }
+  async deleteComment(actor: Principal, commentId: string) {
+    return this.transaction(async tx => {
+      const current = await tx.active(actor.id);
+      const comment = await tx.one<PageComment>("SELECT * FROM page_comments WHERE id=$1 FOR UPDATE", [idSchema.parse(commentId)]);
+      if (!comment) throw new CommonsError("This comment is unavailable.", 404);
+      await tx.getPage(current, comment.pageId);
+      if (current.kind !== "owner" && current.id !== comment.authorId) throw new CommonsError("Only the author or workspace owner can delete this comment.", 403);
+      await tx.connection.query("DELETE FROM page_comments WHERE id=$1", [commentId]);
+      await tx.record(current, comment.projectId, "Deleted a page comment", comment.pageId);
+      return { pageId: comment.pageId, projectId: comment.projectId };
+    });
+  }
   async listPages(
     actor: Principal,
     projectId: string,
-    options: { query?: string; offset?: number } = {},
+    options: { query?: string; offset?: number; parentId?: string | null } = {},
   ) {
     await this.getProject(actor, projectId);
     const offset = z
@@ -1062,8 +1111,8 @@ export class Store {
       .max(200)
       .parse(options.query || "");
     const pages = await this.rows<WorkspacePage>(
-      `${pageSelect} WHERE d.project_id=$1 AND (d.title ILIKE $2 OR d.body ILIKE $2) ORDER BY d.created_at DESC,d.id DESC LIMIT 51 OFFSET $3`,
-      [projectId, `%${query}%`, offset],
+      `${pageSelect} WHERE d.project_id=$1 AND (d.title ILIKE $2 OR d.body ILIKE $2) AND ($4::boolean = false OR d.parent_id IS NOT DISTINCT FROM $5::uuid) ORDER BY d.created_at DESC,d.id DESC LIMIT 51 OFFSET $3`,
+      [projectId, `%${query}%`, offset, options.parentId !== undefined, options.parentId === undefined ? null : z.uuid().nullable().parse(options.parentId)],
     );
     return {
       pages: pages.slice(0, 50),
@@ -1132,7 +1181,7 @@ export class Store {
       await tx.pageParent(current, projectId, data.parentId);
       const id = randomUUID();
       await tx.connection.query(
-        "INSERT INTO pages(id,workspace_id,project_id,author_id,parent_id,title,body,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+        "INSERT INTO pages(id,workspace_id,project_id,author_id,parent_id,title,body,client_key,created_at,kind,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
         [
           id,
           current.workspaceId,
@@ -1143,6 +1192,8 @@ export class Store {
           data.body,
           clientKey,
           this.clock(),
+          data.kind || "page",
+          data.status || "Idea",
         ],
       );
       await tx.record(current, projectId, "Created a page", id);
@@ -1170,7 +1221,7 @@ export class Store {
       );
       await tx.pageParent(current, page.projectId, data.parentId, pageId);
       const changed = await tx.connection.query(
-        "UPDATE pages SET title=$1,body=$2,parent_id=$3,edited_at=$4,version=version+1 WHERE id=$5 AND version=$6",
+        "UPDATE pages SET title=$1,body=$2,parent_id=$3,edited_at=$4,version=version+1,kind=$7,status=$8 WHERE id=$5 AND version=$6",
         [
           data.title,
           data.body,
@@ -1178,6 +1229,8 @@ export class Store {
           this.clock(),
           pageId,
           z.number().int().positive().parse(version),
+          data.kind ?? page.kind,
+          data.status ?? page.status,
         ],
       );
       if (!changed.rowCount)

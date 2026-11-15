@@ -110,6 +110,32 @@ test("rich pages enforce project scope, authorship, version checks, hierarchy an
       ),
       CommonsError,
     );
+    const folder = await store.createPage(owner, project.id, { title: "Editorial", body: "", parentId: null, kind: "folder" });
+    const collection = await store.createPage(owner, project.id, { title: "First issue", body: "", parentId: folder.id, kind: "collection" });
+    const item = await store.createPage(agent, project.id, { title: "Opening", body: "Three ideas", parentId: collection.id, status: "Drafting" });
+    assert.equal((await store.listPages(agent, project.id, { parentId: folder.id })).pages[0].id, collection.id);
+    assert.equal((await store.listPages(agent, project.id, { parentId: collection.id })).pages[0].status, "Drafting");
+    assert.equal((await store.pageTree(agent, project.id)).find(p => p.id === collection.id)?.kind, "collection");
+    await assert.rejects(store.pageTree(agent, hidden.id), CommonsError);
+    const compatible = await store.updatePage(owner, collection.id, { title: "Issue one", body: "", parentId: folder.id }, collection.version);
+    assert.equal(compatible.kind, "collection", "old clients preserve the content kind");
+    const moved = await store.updatePage(agent, item.id, { title: item.title, body: item.body, parentId: collection.id, status: "Ready" }, item.version);
+    assert.equal(moved.status, "Ready");
+    await assert.rejects(store.updatePage(agent, item.id, { title: item.title, body: item.body, parentId: collection.id, status: "Idea" }, item.version), e => e instanceof CommonsError && e.status === 409);
+    const key = crypto.randomUUID();
+    const comment = await store.createComment(agent, ownerPage.id, "Keep the sources beside the claims.", key);
+    assert.equal((await store.createComment(agent, ownerPage.id, "Retry", key)).id, comment.id);
+    await assert.rejects(store.createComment(agent, item.id, "Wrong retry", key), e => e instanceof CommonsError && e.status === 409);
+    await assert.rejects(store.listComments(other, ownerPage.id), CommonsError);
+    await assert.rejects(store.createComment(agent, privatePage.id, "Denied", crypto.randomUUID()), CommonsError);
+    const ownerComment = await store.createComment(owner, ownerPage.id, "Agreed", crypto.randomUUID());
+    await assert.rejects(store.deleteComment(agent, ownerComment.id), e => e instanceof CommonsError && e.status === 403);
+    assert.equal((await store.listComments(owner, ownerPage.id)).comments.length, 2);
+    await store.deleteComment(owner, comment.id);
+    assert.equal((await store.listComments(agent, ownerPage.id)).comments.length, 1);
+    await store.createComment(agent, item.id, "Temporary", crypto.randomUUID());
+    await store.deletePage(agent, item.id, moved.version);
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM page_comments WHERE page_id=$1", [item.id])).rows[0].n, 0);
     await store.deletePage(owner, page.id, edited.version);
     assert.equal((await store.getPage(owner, child.id)).parentId, null);
     await store.deleteProject(owner, project.id, project.name);
