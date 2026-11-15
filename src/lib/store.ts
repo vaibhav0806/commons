@@ -9,6 +9,7 @@ import {
 import { Pool, types, type PoolClient } from "pg";
 import { z } from "zod";
 import { graphEnabled, graphQuery } from "./graph";
+import { referencePaths, resourceHref } from "./explorer";
 
 types.setTypeParser(20, Number);
 export class CommonsError extends Error {
@@ -957,6 +958,25 @@ export class Store {
   }
   async inspectGraph(actor: Principal, projectId: string) {
     await this.owner(actor);
+    return this.projectGraph(actor, projectId);
+  }
+  async relatedContext(actor: Principal, projectId: string, resourceId: string) {
+    idSchema.parse(resourceId);
+    const graph = await this.projectGraph(actor, projectId, resourceId);
+    const ready = graph.available && !!graph.sync && graph.sync.revision === graph.sync.syncedRevision;
+    const start = graph.nodes.find((node) => node.resourceId === resourceId);
+    if (!start) return { status: ready ? "outside_loaded_graph" : "pending", sources: [], truncated: graph.truncated };
+    if (!ready) return { status: graph.available ? "pending" : "unavailable", sources: [], truncated: graph.truncated };
+    const paths = referencePaths(graph.nodes, graph.edges, start.id);
+    const sources = [...paths].map(([id, path]) => {
+      const node = graph.nodes.find((node) => node.id === id)!;
+      return { resourceId: node.resourceId, kind: node.kind, title: node.title, href: resourceHref(projectId, node),
+        path: path.map((id) => { const node = graph.nodes.find((node) => node.id === id)!; return { resourceId: node.resourceId, title: node.title }; }) };
+    });
+    await this.getProject(actor, projectId);
+    return { status: "ready", sources, truncated: graph.truncated };
+  }
+  private async projectGraph(actor: Principal, projectId: string, focusResourceId?: string) {
     await this.getProject(actor, projectId);
     const sync = await this.one<{
       revision: number;
@@ -964,37 +984,50 @@ export class Store {
       syncedAt: string | null;
       lastError: string | null;
     }>("SELECT * FROM graph_sync WHERE project_id=$1", [projectId]);
-    const nodes = await this.rows<{
+    const loaded = await this.rows<{
       id: number;
       resourceId: string;
       kind: string;
       title: string;
       revoked: boolean;
+      contentKind: string | null;
     }>(
-      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,d.title,f.name,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
+      `SELECT g.id,g.resource_id,g.kind,d.kind content_kind,coalesce(n.title,d.title,f.name,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
        FROM graph_entities g LEFT JOIN notes n ON g.kind='note' AND n.id=g.resource_id
        LEFT JOIN participants p ON g.kind='participant' AND p.id=g.resource_id
        LEFT JOIN pages d ON g.kind='page' AND d.id=g.resource_id
        LEFT JOIN project_files f ON g.kind='file' AND f.id=g.resource_id AND f.ready
        LEFT JOIN projects pr ON g.kind='project' AND pr.id=g.resource_id
-       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR d.id IS NOT NULL OR f.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
+       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR d.id IS NOT NULL OR f.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 201`,
       [projectId],
     );
+    const nodes = loaded.slice(0, 200);
+    let truncated = loaded.length > 200;
     const edges: { source: number; target: number; kind: string }[] = [];
     let available = graphEnabled();
     if (available && sync?.revision === sync?.syncedRevision && nodes.length) {
       try {
         const allowed = new Set(nodes.map((n) => n.id));
-        for (const kind of ["IN_PROJECT", "AUTHORED_BY", "IN_PAGE", "REFERENCES"]) {
+        const focus = focusResourceId ? nodes.find((node) => node.resourceId === focusResourceId) : undefined;
+        const queries = focusResourceId ? (focus ? [
+          { kind: "REFERENCES", query: "MATCH (a {id: $start})-[:REFERENCES]->(b) WHERE b.id IN $ids RETURN a.id,b.id LIMIT 1001" },
+          { kind: "REFERENCES", query: "MATCH (a {id: $start})-[:REFERENCES]->(b)-[:REFERENCES]->(c) WHERE b.id IN $ids AND c.id IN $ids RETURN b.id,c.id LIMIT 1001" },
+        ] : []) : ["IN_PROJECT", "AUTHORED_BY", "IN_PAGE", "REFERENCES"].map((kind) => ({ kind, query: `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1001` }));
+        const seen = new Set<string>();
+        for (const { kind, query } of queries) {
           const result = await graphQuery(
-            `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1000`,
-            { ids: [...allowed] },
+            query,
+            { ids: [...allowed], ...(focus ? { start: focus.id } : {}) },
           );
-          for (const row of result.rows) {
+          if (result.rows.length > 1000) truncated = true;
+          for (const row of result.rows.slice(0, 1000)) {
             const source = Number(row[0]?.value),
               target = Number(row[1]?.value);
-            if (allowed.has(source) && allowed.has(target))
+            const key = `${kind}:${source}:${target}`;
+            if (allowed.has(source) && allowed.has(target) && !seen.has(key)) {
               edges.push({ source, target, kind });
+              seen.add(key);
+            }
           }
         }
       } catch {
@@ -1002,8 +1035,14 @@ export class Store {
         edges.length = 0;
       }
     }
-    await this.owner(actor);
-    return { nodes, edges, available, sync };
+    await this.getProject(actor, projectId);
+    const current = await this.one<{ revision: number; syncedRevision: number }>("SELECT revision,synced_revision FROM graph_sync WHERE project_id=$1", [projectId]);
+    if (sync && current && (current.revision !== sync.revision || current.syncedRevision !== sync.syncedRevision)) {
+      edges.length = 0;
+      sync.revision = current.revision;
+      sync.syncedRevision = -1;
+    }
+    return { nodes, edges, available, sync, truncated };
   }
   async listFiles(actor: Principal, projectId: string, options: { query?: string; offset?: number } = {}) {
     await this.getProject(actor, projectId);
