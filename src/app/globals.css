@@ -540,7 +540,7 @@ input.join-code {
   overflow-wrap: anywhere;
 }
 .nav-item:hover {
-  background: var(--surface);
+  background: var(--hover);
   color: var(--text);
 }
 .nav-item[aria-current="page"] {
@@ -584,14 +584,13 @@ input.join-code {
   min-width: 0;
   flex: 1;
 }
-.profile small {
+.profile a {
   display: block;
-}
-.profile strong {
-  display: block;
-  font-size: var(--type-control);
-  font-weight: 500;
-  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .profile .icon-button {
   width: 36px;
@@ -2478,19 +2477,28 @@ input.join-code {
   font-size: 24px;
 }
 .entity-menu-positioner {
-  z-index: 55;
+  z-index: 90;
 }
 .entity-menu-items {
-  min-width: 180px;
-  padding: var(--space-2);
-  background: var(--raised);
+  width: 208px;
+  max-height: var(--available-height);
+  overflow-y: auto;
+  max-width: calc(100vw - 24px);
+  padding: 4px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+  font-size: 13px;
+  line-height: 1.4;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   display: grid;
-  gap: var(--space-1);
+  gap: 0;
 }
 .entity-menu-items a {
-  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
   border-radius: 6px;
 }
 .entity-menu-items [data-highlighted] {
@@ -3759,4 +3767,72 @@ h1 {
 .project-page .project-purpose {
   background: var(--lilac);
   border: 0;
+}
+
+/* Creation stays beside the project tree, with explicit commit and cancel. */
+.inline-project {
+  min-width: 0;
+}
+.inline-project-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inline-project-field > .icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  color: var(--muted);
+}
+.inline-project-field input {
+  min-width: 0;
+  width: 100%;
+  padding: 6px 8px;
+  min-height: 34px;
+  font-size: 12px;
+  background: transparent;
+}
+.inline-project-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-top: 4px;
+}
+.inline-project-controls > span {
+  flex: 1;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.inline-project-controls > .danger-text {
+  color: var(--danger);
+}
+.inline-project-controls .icon-button {
+  min-width: 28px;
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 4px;
+}
+.entity-menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--line);
+}
+@media (max-width: 900px), (pointer: coarse) {
+  .entity-menu-items a {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .inline-project-field input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .inline-project-controls .icon-button {
+    min-width: 44px;
+    width: 44px;
+    min-height: 44px;
+    height: 44px;
+  }
 }

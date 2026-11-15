@@ -136,6 +136,20 @@ export async function joinWorkspace(
   }
   redirect("/workspace?welcome=1");
 }
+export async function createSidebarProject(name: string): Promise<{
+  projectId?: string;
+  error?: string;
+}> {
+  const actor = await requireParticipant();
+  try {
+    const project = await getStore().createProject(actor, name, "");
+    revalidatePath("/workspace", "layout");
+    return { projectId: project.id };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function workspaceAction(
   _previous: ActionState,
   data: FormData,

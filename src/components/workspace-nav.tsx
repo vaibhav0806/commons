@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SelectField } from "./ui/select-field";
 import { Icon } from "./brand";
-import { ConnectAgentButton } from "./app-interactions";
+import { createSidebarProject } from "@/app/actions";
 import { ContentTree } from "./content-tree";
 import type { PageTreeItem, Project } from "@/lib/store";
 
@@ -14,12 +14,16 @@ export function WorkspaceNav({
   owner,
   items,
   actorId,
+  onNavigate,
 }: {
   projects: Project[];
   owner: boolean;
   items: PageTreeItem[];
   actorId: string;
+  onNavigate?: () => void;
 }) {
+  const [creating, setCreating] = useState(false);
+  const createButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!owner)
       void fetch("/api/agent/session", { method: "POST" }).catch(() => {});
@@ -36,7 +40,7 @@ export function WorkspaceNav({
           href="/workspace"
           aria-current={pathname === "/workspace" ? "page" : undefined}
         >
-          <Icon name="House" />
+          <Icon name="HouseLine" />
           Home
         </Link>
         <Link
@@ -57,16 +61,34 @@ export function WorkspaceNav({
         <div className="nav-section-heading">
           <p className="nav-heading">Projects</p>
           {owner && (
-            <Link
-              href="/workspace/new"
+            <button
+              ref={createButton}
+              type="button"
               className="icon-button"
               aria-label="New project"
+              aria-expanded={creating}
+              aria-disabled={creating}
+              onClick={() => {
+                if (!creating) setCreating(true);
+              }}
             >
               <Icon name="Plus" />
-            </Link>
+            </button>
           )}
         </div>
         <nav className="nav-group" aria-label="Projects">
+          {creating && (
+            <InlineProject
+              onCancel={() => {
+                createButton.current?.focus();
+                setCreating(false);
+              }}
+              onCreated={() => {
+                setCreating(false);
+                onNavigate?.();
+              }}
+            />
+          )}
           <ContentTree
             projects={projects}
             items={items}
@@ -76,6 +98,110 @@ export function WorkspaceNav({
         </nav>
       </div>
     </>
+  );
+}
+
+function InlineProject({
+  onCancel,
+  onCreated,
+}: {
+  onCancel: () => void;
+  onCreated: () => void;
+}) {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string>();
+  const [pending, startTransition] = useTransition();
+  const submitting = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  const hintId = useId();
+  useEffect(() => input.current?.focus(), []);
+  return (
+    <form
+      className="inline-project"
+      aria-label="Create project"
+      aria-busy={pending}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!submitting.current) onCancel();
+        }
+      }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (submitting.current) return;
+        if (name.trim().length < 2) {
+          setError("Use at least 2 characters.");
+          input.current?.focus();
+          return;
+        }
+        submitting.current = true;
+        setError(undefined);
+        startTransition(async () => {
+          try {
+            const result = await createSidebarProject(name.trim());
+            if (result.projectId) {
+              onCreated();
+              router.push(`/workspace/projects/${result.projectId}`);
+            } else {
+              setError(result.error);
+              input.current?.focus();
+            }
+          } catch {
+            setError("Couldn’t create this project. Try again.");
+            input.current?.focus();
+          } finally {
+            submitting.current = false;
+          }
+        });
+      }}
+    >
+      <div className="inline-project-field">
+        <Icon name="Folder" />
+        <input
+          ref={input}
+          aria-label="Project name"
+          aria-describedby={hintId}
+          aria-invalid={!!error}
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setError(undefined);
+          }}
+          placeholder="Project name"
+          maxLength={60}
+          readOnly={pending}
+          autoComplete="off"
+        />
+      </div>
+      <div className="inline-project-controls">
+        <span
+          id={hintId}
+          role={error ? "alert" : "status"}
+          className={error ? "danger-text" : undefined}
+        >
+          {error || (pending ? "Creating…" : "Enter to create · Esc to cancel")}
+        </span>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Cancel new project"
+          disabled={pending}
+          onClick={onCancel}
+        >
+          <Icon name="X" />
+        </button>
+        <button
+          type="submit"
+          className="icon-button"
+          aria-label="Create project"
+          disabled={pending || !name.trim()}
+        >
+          <Icon name="Check" />
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -108,12 +234,7 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
       >
         <Icon name="GearSix" /> Settings
       </Link>
-      {owner ? (
-        <ConnectAgentButton className="nav-item">
-          <Icon name="Plus" />
-          Connect an agent
-        </ConnectAgentButton>
-      ) : (
+      {!owner && (
         <Link
           className="nav-item"
           href="/workspace/connection"

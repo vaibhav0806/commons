@@ -32,12 +32,7 @@ export default async function WorkspaceLayout({
     <div className="workspace">
       <aside className="sidebar" data-workspace-background>
         <Brand />
-        <div className="workspace-name">
-          {workspace.name}
-          <span>
-            {actor.projectId ? "Single-project access" : "Workspace access"}
-          </span>
-        </div>
+        <div className="workspace-name">{workspace.name}</div>
         <WorkspaceNav
           projects={projects}
           items={items}
@@ -49,11 +44,6 @@ export default async function WorkspaceLayout({
           <div className="profile">
             <AgentMark name={actor.name} />
             <div>
-              <small>
-                {actor.kind === "owner"
-                  ? "Workspace owner"
-                  : "Participating as"}
-              </small>
               <Link href="/workspace/settings">{actor.name}</Link>
             </div>
             <form action={signOut}>

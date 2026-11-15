@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
 import type { PageTreeItem, Project } from "@/lib/store";
-import { CommandSearchButton } from "./app-interactions";
 import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
 import { DialogSurface } from "./ui/dialog-surface";
 import { Icon } from "./brand";
@@ -52,7 +51,6 @@ export function WorkspaceHeader({
           <span>{section}</span>
         </div>
         <ThemeToggle />
-        <CommandSearchButton />
       </header>
       <DialogSurface open={open} onOpenChange={setOpen} title={name}>
         <div
@@ -66,6 +64,7 @@ export function WorkspaceHeader({
             items={items}
             actorId={actorId}
             owner={owner}
+            onNavigate={() => setOpen(false)}
           />
           <WorkspaceActions owner={owner} />
         </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ContextMenu } from "@base-ui/react/context-menu";
 import type { PageTreeItem, Project } from "@/lib/store";
 import { Icon } from "./brand";
@@ -73,7 +73,8 @@ function TreeRow({
     ...(editable
       ? [
           {
-            label: "Rename or move",
+            label: item ? "Rename or move" : "Rename",
+            separator: true,
             href: `${href}?edit=${item ? "1" : "project"}`,
           },
           {
@@ -111,16 +112,10 @@ function TreeRow({
             className="tree-label"
             href={href}
             aria-current={selected ? "page" : undefined}
-            title={title}
           >
             {title}
           </Link>
           <div className="tree-actions">
-            <ContentPlus
-              projectId={project.id}
-              parentId={item?.id}
-              name={title}
-            />
             <ActionMenu label={`Actions for ${title}`} items={actions} />
           </div>
         </ContextMenu.Trigger>
@@ -128,13 +123,17 @@ function TreeRow({
           <ContextMenu.Positioner className="entity-menu-positioner">
             <ContextMenu.Popup className="entity-menu-items">
               {actions.map((action) => (
-                <ContextMenu.Item
-                  key={action.href}
-                  render={<Link href={action.href} />}
-                  className={"danger" in action ? "danger-text" : undefined}
-                >
-                  {action.label}
-                </ContextMenu.Item>
+                <Fragment key={action.href}>
+                  {"separator" in action && action.separator && (
+                    <ContextMenu.Separator className="entity-menu-separator" />
+                  )}
+                  <ContextMenu.Item
+                    render={<Link href={action.href} />}
+                    className={"danger" in action ? "danger-text" : undefined}
+                  >
+                    {action.label}
+                  </ContextMenu.Item>
+                </Fragment>
               ))}
             </ContextMenu.Popup>
           </ContextMenu.Positioner>
