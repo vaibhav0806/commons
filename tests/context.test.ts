@@ -10,7 +10,7 @@ const store = new Store(pool, "context-test-secret-over-thirty-two-characters");
 process.env.HYDRA_URL = "http://127.0.0.1:18443";
 process.env.HYDRA_TOKEN_FILE = "data/hydradb/auth-token";
 
-test("Hydra reconciles notes, access changes and deleted projects; outages retain cleanup jobs", async () => {
+test("Hydra reconciles notes, access changes and deleted projects; outages retain cleanup jobs", async (t) => {
   const owner = (
     await store.createLocalOwner(
       `context-${crypto.randomUUID()}@example.test`,
@@ -69,6 +69,47 @@ test("Hydra reconciles notes, access changes and deleted projects; outages retai
     assert.ok(initial.edges.some((e) => e.kind === "IN_PAGE"));
     assert.ok(initial.edges.some((e) => e.kind === "REFERENCES"));
     await assert.rejects(store.inspectGraph(agent, project.id), CommonsError);
+    assert.equal(
+      (await store.relatedContext(agent, project.id, parent.id)).sources.length,
+      0,
+    );
+    await assert.rejects(
+      store.relatedContext(agent, other.id, untouched.id),
+      CommonsError,
+    );
+    await store.updatePage(
+      owner,
+      parent.id,
+      {
+        title: parent.title,
+        body: `[Evidence](/workspace/projects/${project.id}/pages/${child.id})`,
+        parentId: null,
+      },
+      parent.version,
+    );
+    assert.equal(
+      (await store.relatedContext(agent, project.id, parent.id)).status,
+      "pending",
+    );
+    await syncGraphProject(pool, project.id);
+    const retrieval = await store.relatedContext(agent, project.id, parent.id);
+    assert.equal(retrieval.status, "ready");
+    assert.deepEqual(
+      new Set(retrieval.sources.map((source) => source.resourceId)),
+      new Set([child.id, file.id]),
+    );
+    assert.equal(
+      retrieval.sources.find((source) => source.resourceId === file.id)?.path
+        .length,
+      3,
+    );
+    const flat = await store.listPages(agent, project.id, { query: "Parent" });
+    const baselineHits = flat.pages.filter((page) =>
+      [child.id, file.id].includes(page.id),
+    ).length;
+    t.diagnostic(
+      `Controlled source-retrieval fixture (2 expected sources): title-search baseline ${baselineHits}/2; graph before linking 0/2; graph after linking ${retrieval.sources.length}/2. Curated example, not a general benchmark or learned ranking.`,
+    );
     const ids = initial.nodes.map((n) => n.id);
     const unrelatedId = (await store.inspectGraph(owner, other.id)).nodes.find(
       (n) => n.resourceId === untouched.id,
@@ -82,7 +123,7 @@ test("Hydra reconciles notes, access changes and deleted projects; outages retai
     await syncGraphProject(pool, project.id);
     assert.equal(
       (await store.inspectGraph(owner, project.id)).edges.length,
-      initial.edges.length,
+      initial.edges.length + 1,
     );
     await store.deleteNote(owner, note.id, 2);
     const endpoint = process.env.HYDRA_URL;

@@ -43,3 +43,11 @@ Three illustrative projects use locally hosted Pexels photography: a Kyoto weeke
 Page titles, body and location save after an 800 ms pause. The document stays editable while a request is in flight; later edits are queued and version conflicts never overwrite another contribution. Empty new pages are not created until there is content. A saved new page gets a durable URL and appears in the sidebar without closing the editor. Done leaves editing; it is not a save button. Internal navigation flushes pending edits first.
 
 Failed edits are recoverable from same-tab session storage. Conflicts show a comparison link and draft download; routine editing carries no instruction text. Joining-page navigation is removed from the invitation result, Settings loses its subtitle, and the document options menu uses the same padded rows as the sidebar menus.
+
+## Focused Explorer and inline media — November 16
+
+Sidebar destinations are Agents, Explorer and Settings. A header control collapses the desktop sidebar and remembers the preference; mobile retains its navigation drawer. Disclosure arrows are centered SVGs. Project contents do not receive a filled hover background.
+
+Project upload menus open a contextual dialog. Page attachments upload inside the document without navigation. Clipboard file bytes take precedence over accompanying HTML image URLs; pasted and dropped images use authenticated R2 uploads, with an inline placeholder while transferring. Safe raster images display in the document; other dropped files become links. The slash-menu Image action uses the same private upload path. Existing external Markdown images remain unloaded for privacy.
+
+Explorer starts from an artifact and separates References, People and Structure. Incoming links, direct sources and sources one link further are navigable, with an Open action and back history. A searchable index supports pages, folders, files and contributors. Context health is collapsed by default and exposes explicit link coverage and items without references; missing links are review suggestions, not automatic quality judgments. Pending/unavailable graph states suppress derived relationships. Partial graphs are labelled.
