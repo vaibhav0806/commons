@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppInteractions } from "@/components/app-interactions";
@@ -32,10 +33,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const theme = (await cookies()).get("commons-theme")?.value === "dark" ? "dark" : "light";
   const actor = await currentParticipant();
   const projects = actor ? await getStore().listProjects(actor) : [];
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme}>
       <body>
         <a className="skip-link" href="#main">
           Skip to content

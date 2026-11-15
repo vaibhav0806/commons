@@ -1,40 +1,41 @@
-/* Approved foundations from DESIGN.md. Shared by the mock and system reference. */
-@font-face { font-family: 'Space Grotesk'; src: url('./typography/fonts/spacegrotesk.ttf') format('truetype'); font-weight: 300 700; font-display: swap; }
+/* Approved Paper system, November 2026. Light is the default. */
+@font-face { font-family: 'Sora'; src: url('/fonts/sora.ttf') format('truetype'); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 @font-face { font-family: 'Geist Mono'; src: url('./typography/fonts/geistmono.ttf') format('truetype'); font-weight: 100 900; font-display: swap; }
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-tap-highlight-color: transparent;
-  --canvas: #0B0C0E;
-  --nav: #101114;
-  --surface: #17191D;
+  --canvas: #F5F6F8;
+  --nav: #E3E7EC;
+  --surface: #FFFFFF;
   --panel: var(--surface);
-  --raised: #202328;
-  --hover: #292D34;
-  --line: #30353E;
-  --strong: #677282;
+  --raised: #DCE2E8;
+  --hover: #DCE2E8;
+  --line: #D1D8E1;
+  --strong: #8994A1;
   --line-strong: var(--strong);
-  --ink: #EEF0F3;
+  --ink: #3D4955;
   --text: var(--ink);
-  --body-ink: #C2C7D0;
-  --muted: #A7AEBA;
-  --quiet: #959EAC;
+  --body-ink: #3D4955;
+  --muted: #66717F;
+  --quiet: #66717F;
   --dim: var(--quiet);
-  --accent: #C8D0DC;
-  --accent-bg: var(--raised);
-  --primary: #DBE0E8;
-  --primary-hover: #F3F5F8;
-  --on-accent: #12161C;
-  --focus: #BCCADC;
-  --field-focus: #8C97A6;
-  --success: #ADD2BB;
+  --accent: #81728F;
+  --accent-bg: #E0DBE8;
+  --primary: #E0DBE8;
+  --primary-hover: #D2CBDD;
+  --on-accent: #3D4955;
+  --focus: #81728F;
+  --field-focus: #81728F;
+  --success: #42613F;
   --green: var(--success);
-  --warning: #E6BFB0;
-  --error: #F0A5B5;
+  --warning: #80552E;
+  --error: #A33143;
   --danger: var(--error);
-  --glint: #E8F2FF;
-  --glint-end: #9BAAC1;
-  --font-heading: 'Space Grotesk', sans-serif;
-  --font-body: Geist, system-ui, sans-serif;
+  --glint: transparent;
+  --glint-end: transparent;
+  --font-heading: 'Sora', sans-serif;
+  --font-body: 'Sora', system-ui, sans-serif;
   --font-code: 'Geist Mono', monospace;
   --type-page: 44px;
   --type-note: 26px;
@@ -56,16 +57,19 @@
   --space-7: 48px;
   --space-8: 64px;
   --control-height: 44px;
-  --navigation-width: 220px;
-  --content-width: 960px;
+  --navigation-width: 240px;
+  --content-width: 1120px;
   --motion-response: 140ms;
   --motion-surface: 260ms;
   --motion-light: 500ms;
   --ease: cubic-bezier(.16,1,.3,1);
-  --shadow-rest: 0 3px 7px #0005;
-  --shadow-hover: 0 4px 9px #0005;
-  --shadow-press: 0 1px 3px #0005;
+  --shadow-rest: none;
+  --shadow-hover: none;
+  --shadow-press: none;
 }
 @media (max-width: 700px) {
   :root { --type-page: 36px; --type-note: 24px; }
 }
+
+:root { --font-display: 'Instrument Serif', serif; --mist: #E9EDF0; --lilac: #E0DBE8; --blue: #DCE2E8; --olive: #D9E0CE; --sand: #E7DECF; --art: #5D6879; --art-text: #F0ECE7; --landing-button: #D2D8E4; --landing-button-ink: #3D4955; }
+:root[data-theme="dark"] { color-scheme: dark; --canvas:#1D222C;--nav:#171B23;--surface:#282F3C;--raised:#30394A;--hover:#30394A;--line:#3D4859;--strong:#78879B;--ink:#E1E5ED;--body-ink:#E1E5ED;--muted:#A7B2C2;--quiet:#A7B2C2;--accent:#C9C4DE;--accent-bg:#363241;--primary:#363241;--primary-hover:#474055;--on-accent:#E1E5ED;--focus:#C9C4DE;--field-focus:#C9C4DE;--success:#AFCAAA;--warning:#DBBC9F;--error:#F0A5B5;--mist:#171B23;--lilac:#363241;--blue:#30394A;--olive:#394238;--sand:#3B3834;--art:#414D63;--art-text:#F1F0EC;--landing-button:#C9C4DE;--landing-button-ink:#252435; }
