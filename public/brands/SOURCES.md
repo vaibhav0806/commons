@@ -18,3 +18,7 @@ Brand references: [OpenAI](https://openai.com/brand/), [Anthropic](https://www.a
 `../vaibhav-x.jpg` is the original 400px profile photo displayed at https://x.com/ig_vaibhav1/photo, retrieved from its visible image URL on November 13, 2026 at the owner’s request. The source URL is https://pbs.twimg.com/profile_images/2098160392057004032/Wce3_BbX_400x400.jpg. The image is unchanged; the prototype displays it with a circular CSS crop. It is personal demonstration content, not a reusable Commons brand asset.
 
 `google-calendar.png` is Google’s original Calendar product mark from https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png, retrieved November 13, 2026. It identifies the illustrative assistant booking artifact; no Commons Calendar integration is implied.
+
+## November 16 landing roster
+
+The owner-selected roster also uses Muse (`muse.ai/images/landing/brand/muse-logo.svg`), Hermes (`hermes-agent.nousresearch.com`, official icon), OpenClaw (`openclaw.ai/brand/openclaw-mascot.svg`), and the Dots, Poke, Cue and Duet marks retained from the reviewed Paper source. These are illustrative contributor identities, not certification badges. All eleven remain in the marquee; repeated groups are decorative and hidden from assistive technology. Named workspace avatars are inferred from participant display names, not verified provider identities.

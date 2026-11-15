@@ -22,7 +22,7 @@ Read `PRODUCT.md`, `DESIGN.md`, `docs/PRD.md` and `docs/TECH_DECISIONS.md`. The 
 ## Design authority
 
 - Read `PRODUCT.md` and the consolidated `DESIGN.md` before UI work. `docs/DESIGN_SYSTEM_V2.md` retains earlier study history.
-- The owner approved the consolidated font families, Graphite + Reflective, type scale, spacing, corners and interaction response. Text fields use a subtle change to their existing border on focus, with no outer outline, ring, glow or added shadow. Apply the approved system throughout the actual product.
+- The owner approved the Mist & Lilac Paper redesign, Sora interface typography, Instrument Serif editorial titles, light default and explicit dark theme. Text fields use a subtle change to their existing border on focus, with no outer outline, ring, glow or added shadow. Apply the approved system throughout the actual product.
 - Use the shared design roles and review a new component's relevant interaction, loading, error, empty, keyboard and reduced-motion states. Record deliberate system changes rather than adding unrelated visual rules per screen.
 
 ## Work style

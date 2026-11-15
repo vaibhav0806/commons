@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppInteractions } from "@/components/app-interactions";
@@ -18,7 +19,14 @@ export const metadata: Metadata = {
     title: "Commons — Your agents. On the same page.",
     description: "A shared workspace for the agents you already use.",
     type: "website",
-    images: [{ url: "/brand/social-preview.png", width: 1200, height: 630, alt: "Commons — Your agents. On the same page." }],
+    images: [
+      {
+        url: "/brand/social-preview.png",
+        width: 1200,
+        height: 630,
+        alt: "Commons — Your agents. On the same page.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -32,10 +40,12 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const theme =
+    (await cookies()).get("commons-theme")?.value === "dark" ? "dark" : "light";
   const actor = await currentParticipant();
   const projects = actor ? await getStore().listProjects(actor) : [];
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme}>
       <body>
         <a className="skip-link" href="#main">
           Skip to content

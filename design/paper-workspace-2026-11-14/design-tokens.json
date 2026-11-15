@@ -1,0 +1,224 @@
+{
+  "tokens": [
+    {
+      "name": "--color-canvas",
+      "type": "color",
+      "value": "#0B0C0E"
+    },
+    {
+      "name": "--color-navigation",
+      "type": "color",
+      "value": "#101114"
+    },
+    {
+      "name": "--color-surface",
+      "type": "color",
+      "value": "#17191D"
+    },
+    {
+      "name": "--color-raised",
+      "type": "color",
+      "value": "#202328"
+    },
+    {
+      "name": "--color-border",
+      "type": "color",
+      "value": "#30353E"
+    },
+    {
+      "name": "--color-foreground",
+      "type": "color",
+      "value": "#EEF0F3"
+    },
+    {
+      "name": "--color-body",
+      "type": "color",
+      "value": "#C2C7D0"
+    },
+    {
+      "name": "--color-muted",
+      "type": "color",
+      "value": "#A7AEBA"
+    },
+    {
+      "name": "--color-primary",
+      "type": "color",
+      "value": "#DBE0E8"
+    },
+    {
+      "name": "--color-on-primary",
+      "type": "color",
+      "value": "#12161C"
+    },
+    {
+      "name": "--color-success",
+      "type": "color",
+      "value": "#ADD2BB"
+    },
+    {
+      "name": "--color-error",
+      "type": "color",
+      "value": "#F0A5B5"
+    },
+    {
+      "name": "--font-heading",
+      "type": "fontFamily",
+      "value": "\"Space Grotesk\""
+    },
+    {
+      "name": "--font-body",
+      "type": "fontFamily",
+      "value": "\"Geist\""
+    },
+    {
+      "name": "--font-mono",
+      "type": "fontFamily",
+      "value": "\"Geist Mono\""
+    },
+    {
+      "name": "--text-meta",
+      "type": "fontSize",
+      "value": "12px"
+    },
+    {
+      "name": "--text-control",
+      "type": "fontSize",
+      "value": "13px"
+    },
+    {
+      "name": "--text-body",
+      "type": "fontSize",
+      "value": "15px"
+    },
+    {
+      "name": "--text-row",
+      "type": "fontSize",
+      "value": "16px"
+    },
+    {
+      "name": "--text-section",
+      "type": "fontSize",
+      "value": "20px"
+    },
+    {
+      "name": "--text-feature",
+      "type": "fontSize",
+      "value": "26px"
+    },
+    {
+      "name": "--text-page",
+      "type": "fontSize",
+      "value": "44px"
+    },
+    {
+      "name": "--font-weight-normal",
+      "type": "fontWeight",
+      "value": "400"
+    },
+    {
+      "name": "--font-weight-medium",
+      "type": "fontWeight",
+      "value": "500"
+    },
+    {
+      "name": "--font-weight-semibold",
+      "type": "fontWeight",
+      "value": "600"
+    },
+    {
+      "name": "--tracking-body",
+      "type": "letterSpacing",
+      "value": "0em"
+    },
+    {
+      "name": "--tracking-heading",
+      "type": "letterSpacing",
+      "value": "-0.035em"
+    },
+    {
+      "name": "--leading-body",
+      "type": "lineHeight",
+      "value": "27px"
+    },
+    {
+      "name": "--leading-heading",
+      "type": "lineHeight",
+      "value": "52px"
+    },
+    {
+      "name": "--opacity-muted",
+      "type": "opacity",
+      "value": "60%"
+    },
+    {
+      "name": "--breakpoint-mobile",
+      "type": "breakpoint",
+      "value": "700px"
+    },
+    {
+      "name": "--breakpoint-desktop",
+      "type": "breakpoint",
+      "value": "1440px"
+    },
+    {
+      "name": "--container-reading",
+      "type": "container",
+      "value": "960px"
+    },
+    {
+      "name": "--spacing-1",
+      "type": "spacing",
+      "value": "4px"
+    },
+    {
+      "name": "--spacing-2",
+      "type": "spacing",
+      "value": "8px"
+    },
+    {
+      "name": "--spacing-3",
+      "type": "spacing",
+      "value": "12px"
+    },
+    {
+      "name": "--spacing-4",
+      "type": "spacing",
+      "value": "16px"
+    },
+    {
+      "name": "--spacing-5",
+      "type": "spacing",
+      "value": "24px"
+    },
+    {
+      "name": "--spacing-6",
+      "type": "spacing",
+      "value": "32px"
+    },
+    {
+      "name": "--spacing-7",
+      "type": "spacing",
+      "value": "40px"
+    },
+    {
+      "name": "--spacing-8",
+      "type": "spacing",
+      "value": "48px"
+    },
+    {
+      "name": "--spacing-9",
+      "type": "spacing",
+      "value": "64px"
+    },
+    {
+      "name": "--radius-control",
+      "type": "radius",
+      "value": "8px"
+    },
+    {
+      "name": "--radius-surface",
+      "type": "radius",
+      "value": "14px"
+    }
+  ]
+}

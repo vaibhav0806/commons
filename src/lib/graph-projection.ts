@@ -31,10 +31,26 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
           ])
         ).rows
       : [];
+    const pages = project
+      ? (
+          await db.query(
+            "SELECT id,author_id,parent_id,body FROM pages WHERE project_id=$1",
+            [projectId],
+          )
+        ).rows
+      : [];
+    const files = project
+      ? (
+          await db.query(
+            "SELECT id,author_id FROM project_files WHERE project_id=$1 AND ready",
+            [projectId],
+          )
+        ).rows
+      : [];
     const people = project
       ? (
           await db.query(
-            "SELECT id FROM participants WHERE workspace_id=$1 AND ((removed_at IS NULL AND (project_id IS NULL OR project_id=$2)) OR id IN (SELECT author_id FROM notes WHERE project_id=$2))",
+            "SELECT id FROM participants WHERE workspace_id=$1 AND ((removed_at IS NULL AND (project_id IS NULL OR project_id=$2)) OR id IN (SELECT author_id FROM notes WHERE project_id=$2 UNION SELECT author_id FROM pages WHERE project_id=$2 UNION SELECT author_id FROM project_files WHERE project_id=$2))",
             [project.workspace_id, projectId],
           )
         ).rows
@@ -47,6 +63,8 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
             resource: p.id as string,
           })),
           ...notes.map((n) => ({ kind: "note", resource: n.id as string })),
+          ...pages.map((p) => ({ kind: "page", resource: p.id as string })),
+          ...files.map((f) => ({ kind: "file", resource: f.id as string })),
         ]
       : [];
     const ids = new Map<string, number>();
@@ -86,6 +104,8 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
     const edges: Record<string, { source: number; target: number }[]> = {
       IN_PROJECT: [],
       AUTHORED_BY: [],
+      IN_PAGE: [],
+      REFERENCES: [],
     };
     const id = (kind: string, resource: string) =>
       ids.get(`${kind}:${resource}`)!;
@@ -101,6 +121,35 @@ export async function syncGraphProject(pool: Pool, projectId: string) {
         source: id("note", note.id),
         target: id("participant", note.author_id),
       });
+    for (const [kind, records] of [
+      ["page", pages],
+      ["file", files],
+    ] as const) {
+      for (const record of records)
+        edges.AUTHORED_BY.push({
+          source: id(kind, record.id),
+          target: id("participant", record.author_id),
+        });
+    }
+    for (const page of pages) {
+      if (page.parent_id)
+        edges.IN_PAGE.push({
+          source: id("page", page.id),
+          target: id("page", page.parent_id),
+        });
+      const targets = new Set<string>();
+      for (const match of String(page.body).matchAll(
+        /\/api\/files\/([a-f0-9-]{36})|\/pages\/([a-f0-9-]{36})/gi,
+      )) {
+        const kind = match[1] ? "file" : "page",
+          resource = (match[1] || match[2]).toLowerCase();
+        const target = ids.get(`${kind}:${resource}`);
+        if (target && !targets.has(`${target}`)) {
+          edges.REFERENCES.push({ source: id("page", page.id), target });
+          targets.add(`${target}`);
+        }
+      }
+    }
     for (const [kind, rows] of Object.entries(edges)) {
       for (let offset = 0; offset < rows.length; offset += 100) {
         await graphQuery(

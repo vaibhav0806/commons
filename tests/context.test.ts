@@ -37,12 +37,37 @@ test("Hydra reconciles notes, access changes and deleted projects; outages retai
     { title: "Unrelated", body: "Keep this" },
     crypto.randomUUID(),
   );
+  const file = await store.reserveFile(owner, project.id, {
+    name: "graph.md",
+    size: 1,
+    mimeType: "application/octet-stream",
+    checksum: "a".repeat(64),
+  });
+  await store.completeFile(owner, file.id);
+  const parent = await store.createPage(owner, project.id, {
+    title: "Parent",
+    body: "",
+    parentId: null,
+  });
+  const child = await store.createPage(owner, project.id, {
+    title: "Child",
+    body: `[file](/api/files/${file.id})`,
+    parentId: parent.id,
+  });
   try {
     await syncGraphProject(pool, project.id);
     await syncGraphProject(pool, other.id);
     const initial = await store.inspectGraph(owner, project.id);
     assert.equal(initial.available, true);
     assert.ok(initial.edges.some((e) => e.kind === "AUTHORED_BY"));
+    assert.ok(
+      initial.nodes.some((n) => n.kind === "page" && n.resourceId === child.id),
+    );
+    assert.ok(
+      initial.nodes.some((n) => n.kind === "file" && n.resourceId === file.id),
+    );
+    assert.ok(initial.edges.some((e) => e.kind === "IN_PAGE"));
+    assert.ok(initial.edges.some((e) => e.kind === "REFERENCES"));
     await assert.rejects(store.inspectGraph(agent, project.id), CommonsError);
     const ids = initial.nodes.map((n) => n.id);
     const unrelatedId = (await store.inspectGraph(owner, other.id)).nodes.find(

@@ -1,12 +1,9 @@
 import Link from "next/link";
+import { WorkspaceHeader } from "@/components/workspace-header";
 import { redirect } from "next/navigation";
 import { CommonsError } from "@/lib/store";
 import { Brand, AgentMark, Icon } from "@/components/brand";
-import {
-  WorkspaceNav,
-  WorkspaceActions,
-  MobileProjectSwitcher,
-} from "@/components/workspace-nav";
+import { WorkspaceNav, WorkspaceActions } from "@/components/workspace-nav";
 import { signOut } from "@/app/actions";
 import { getStore } from "@/lib/db";
 import { requireParticipant } from "@/lib/session";
@@ -26,27 +23,27 @@ export default async function WorkspaceLayout({
       redirect("/sign-in?session=ended");
     throw error;
   });
+  const items = (
+    await Promise.all(
+      projects.map((project) => store.pageTree(actor, project.id)),
+    )
+  ).flat();
   return (
     <div className="workspace">
       <aside className="sidebar" data-workspace-background>
         <Brand />
-        <div className="workspace-name">
-          {workspace.name}
-          <span>
-            {actor.projectId ? "Single-project access" : "Workspace access"}
-          </span>
-        </div>
-        <WorkspaceNav projects={projects} owner={actor.kind === "owner"} />
+        <div className="workspace-name">{workspace.name}</div>
+        <WorkspaceNav
+          projects={projects}
+          items={items}
+          actorId={actor.id}
+          owner={actor.kind === "owner"}
+        />
         <div className="sidebar-bottom">
           <WorkspaceActions owner={actor.kind === "owner"} />
           <div className="profile">
             <AgentMark name={actor.name} />
             <div>
-              <small>
-                {actor.kind === "owner"
-                  ? "Workspace owner"
-                  : "Participating as"}
-              </small>
               <Link href="/workspace/settings">{actor.name}</Link>
             </div>
             <form action={signOut}>
@@ -62,29 +59,13 @@ export default async function WorkspaceLayout({
         </div>
       </aside>
       <main id="main" className="main-work">
-        <nav
-          className="mobile-project-nav"
-          aria-label="Workspace navigation"
-          data-workspace-background
-        >
-          <MobileProjectSwitcher projects={projects} />
-          <Link href="/workspace/agents">Agents</Link>
-          <Link href="/workspace/settings">Settings</Link>
-          {actor.kind === "owner" && (
-            <Link
-              className="icon-button"
-              href="/workspace/new"
-              aria-label="New project"
-            >
-              <Icon name="Plus" />
-            </Link>
-          )}
-          <form action={signOut}>
-            <button className="icon-button" aria-label="Sign out">
-              <Icon name="SignOut" />
-            </button>
-          </form>
-        </nav>
+        <WorkspaceHeader
+          name={workspace.name}
+          projects={projects}
+          items={items}
+          actorId={actor.id}
+          owner={actor.kind === "owner"}
+        />
         {children}
       </main>
     </div>

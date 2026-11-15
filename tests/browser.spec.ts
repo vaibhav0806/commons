@@ -42,7 +42,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await expect(
     page.getByRole("heading", { name: `${name} renamed`, exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "New note", exact: true }).click();
+  await page.goto(`${projectUrl}?create=note`);
   await page.getByLabel("Title", { exact: true }).fill("Shared context");
   await page
     .getByRole("textbox", { name: "Context", exact: true })
@@ -66,6 +66,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
     "The revised context.",
   );
   await expect(page.locator(".detail-intro")).toContainText("Edited");
+  await page.waitForLoadState("networkidle");
   await page.screenshot({ path: "test-results/crud-note-desktop.png" });
   await page.keyboard.press("Escape");
 
@@ -115,7 +116,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
     await agentPage
       .getByRole("button", { name: "Return to workspace" })
       .click();
-    await agentPage.waitForURL(/\/workspace\/projects\//);
+    await agentPage.waitForURL(/\/workspace/);
     await agentPage.goto(`${projectUrl}?note=${noteId}`);
     await expect(
       agentPage.getByRole("link", { name: "Edit note", exact: true }),
@@ -169,6 +170,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
           () => document.documentElement.scrollWidth > innerWidth,
         ),
       ).toBe(false);
+      await page.waitForLoadState("networkidle");
       await page.screenshot({
         path: `test-results/crud-settings-${width}.png`,
       });
@@ -225,13 +227,21 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     name: "Workspace actions",
     exact: true,
   });
-  const agents = navigation.getByRole("link", { name: "Agents", exact: true });
-  const connect = navigation.getByRole("button", {
-    name: "Connect an agent",
+  const agents = navigation.getByRole("link", {
+    name: "Agents & access",
     exact: true,
   });
+  await expect(
+    navigation.getByRole("button", { name: "Connect an agent" }),
+  ).toHaveCount(0);
+  const connect = page.getByRole("button", {
+    name: "Bring an agent",
+    exact: true,
+  });
+  const home = page
+    .locator(".sidebar")
+    .getByRole("link", { name: "Home", exact: true });
   await expect(agents).toHaveAttribute("aria-current", "page");
-  await expect(connect).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   const geometry = await navigation.evaluate((element) => {
     const [first, second] = [...element.children].map((child) =>
       child.getBoundingClientRect(),
@@ -249,16 +259,16 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
   await page.locator(".sidebar-bottom").screenshot({
     path: "test-results/sidebar-agents-selected.png",
   });
-  await connect.hover();
-  await expect(connect).toHaveCSS("background-color", "rgb(23, 25, 29)");
-  await connect.focus();
-  await expect(connect).toHaveCSS("outline-offset", "-2px");
+  await home.hover();
+  await expect(home).toHaveCSS("background-color", "rgb(220, 226, 232)");
+  await home.focus();
+  await expect(home).toHaveCSS("outline-offset", "-2px");
   await page.locator(".sidebar-bottom").screenshot({
-    path: "test-results/sidebar-connect-hover.png",
+    path: "test-results/sidebar-home-hover.png",
   });
   await connect.click();
   await expect(
-    page.getByRole("dialog", { name: "Bring an agent", exact: true }),
+    page.getByRole("dialog", { name: "Connect an agent", exact: true }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/workspace\/agents$/);
   await page.keyboard.press("Escape");
@@ -362,9 +372,7 @@ test("agent returns in a fresh browser with a saved credential and no invitation
     await page.goto("/return");
     await page.getByLabel("Saved agent credential").fill(joined.token);
     await page.getByRole("button", { name: "Return to workspace" }).click();
-    await expect(page).toHaveURL(
-      new RegExp(`/workspace/projects/${project.id}`),
-    );
+    await expect(page).toHaveURL(/\/workspace$/);
     await expect(page.locator(".profile")).toContainText("Returning assistant");
     await page.reload();
     await expect(page.locator(".profile")).toContainText("Returning assistant");
@@ -492,6 +500,626 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     );
   } finally {
     await context.close();
+    await pool.end();
+  }
+});
+
+test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private project", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Paper ${Date.now()}`,
+    "One project. Shared context.",
+  );
+  const base = `/workspace/projects/${project.id}`;
+  const invite = await store.issueInvite(owner, project.id),
+    agent = await store.join(invite.id, invite.code, "Content agent");
+  const client = new Client({ name: "workspace-content-e2e", version: "1" });
+  const anonymous = await browser.newContext();
+  try {
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${base}/pages/new`);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "New page", exact: true }),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("combobox", { name: "Status", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Inside", exact: true }),
+    ).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/page-create-mobile.png" });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("Workspace brief");
+    await page
+      .getByLabel("Page content", { exact: true })
+      .fill(
+        "## Rendering works\n\n- [x] Shared Markdown\n\n| Item | Details |\n| --- | --- |\n| Context | Durable |\n\n```js\nconst shared = true;\n```\n\n<script>window.unsafeMarkdown = true</script>",
+      );
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Rendering works" }),
+    ).toBeVisible();
+    await expect(page.locator(".markdown-table table")).toBeVisible();
+    await expect(page.locator(".markdown-content pre")).toContainText(
+      "const shared",
+    );
+    expect(await page.evaluate(() => "unsafeMarkdown" in window)).toBe(false);
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const pageUrl = page.url(),
+      pageId = new URL(pageUrl).pathname.split("/").at(-1)!;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: "test-results/paper-document-desktop.png",
+      fullPage: true,
+    });
+    await page.goto(`${base}/files`);
+    const image = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=",
+      "base64",
+    );
+    await expect(
+      page.getByRole("button", { name: "Choose files", exact: true }),
+    ).toBeEnabled();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "reference.png",
+      mimeType: "image/png",
+      buffer: image,
+    });
+    await expect(page.getByRole("status")).toContainText(
+      "reference.png added",
+      { timeout: 30000 },
+    );
+    const file = (await store.listFiles(owner, project.id)).files[0];
+    const download = await page.request.get(`/api/files/${file.id}?preview=1`);
+    expect(download.status()).toBe(200);
+    expect(download.headers()["content-type"]).toBe("image/png");
+    expect(Buffer.from(await download.body())).toEqual(image);
+    expect(
+      (await anonymous.request.get(`${baseURL}/api/files/${file.id}`)).status(),
+    ).toBe(401);
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(baseURL + "/mcp"), {
+        requestInit: { headers: { Authorization: `Bearer ${agent.token}` } },
+      }),
+    );
+    const read = resultData(
+      await client.callTool({ name: "read_page", arguments: { pageId } }),
+    );
+    expect(read.title).toBe("Workspace brief");
+    const mcpFile = resultData(
+      await client.callTool({
+        name: "upload_file",
+        arguments: {
+          projectId: project.id,
+          name: "agent-context.md",
+          contentBase64: Buffer.from(
+            "# Agent context\nShared through MCP",
+          ).toString("base64"),
+        },
+      }),
+    );
+    const fileRead = resultData(
+      await client.callTool({
+        name: "read_file",
+        arguments: { fileId: mcpFile.id, includeContent: true },
+      }),
+    );
+    expect(Buffer.from(fileRead.contentBase64, "base64").toString()).toContain(
+      "Shared through MCP",
+    );
+    await page.reload();
+    await expect(
+      page.getByRole("link", { name: /agent-context.md/ }),
+    ).toBeVisible();
+    await page.goto(`${pageUrl}?edit=1`);
+    await page
+      .getByRole("button", { name: "Insert block", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "File or image", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "reference.png", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    await expect(page.locator(".markdown-content img")).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: "test-results/paper-document-mobile.png",
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole("button", { name: "Open workspace navigation" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await store.revoke(owner, agent.actor.id);
+    const denied = await page.request.get(`/api/files/${mcpFile.id}`, {
+      headers: { Authorization: `Bearer ${agent.token}` },
+    });
+    expect(denied.status()).toBe(401);
+  } finally {
+    await client.close();
+    await anonymous.close();
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("mist landing follows scroll, persists theme and respects reduced motion", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(
+    page.getByRole("heading", { name: /Your next idea/ }),
+  ).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await expect(
+    page.locator("[data-logo]").filter({ has: page.locator("img") }),
+  ).toHaveCount(33);
+  await expect(page.locator("#projects")).toHaveAttribute(
+    "data-pinned",
+    "true",
+  );
+  await page.evaluate(() =>
+    window.scrollTo(
+      0,
+      document.querySelector("#projects")!.getBoundingClientRect().top +
+        scrollY -
+        20 +
+        innerHeight * 1.3,
+    ),
+  );
+  await expect(page.getByRole("tab", { name: "Reading room" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.evaluate(() => window.scrollBy(0, innerHeight));
+  await expect(page.getByRole("tab", { name: "Fieldnotes" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.evaluate(() => window.scrollBy(0, -innerHeight * 2));
+  await expect(
+    page.getByRole("tab", { name: /Weekend in Kyoto/ }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForLoadState("networkidle");
+  await page.screenshot({ path: "test-results/mist-landing-desktop.png" });
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(
+    page.getByRole("heading", { name: /Your next idea/ }),
+  ).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.screenshot({ path: "test-results/mist-landing-dark.png" });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: `test-results/mist-landing-mobile-${width}.png`,
+    });
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator("#projects")).toHaveAttribute(
+    "data-pinned",
+    "false",
+  );
+  await page.getByRole("tab", { name: "Reading room" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Follow a thought a little further." }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "Reading room" }).press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
+});
+
+test("nested folders, list board table views and discussions work on desktop and mobile", async ({
+  page,
+  baseURL,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Fieldnotes ${Date.now()}`,
+    "Useful ideas, with a point of view.",
+  );
+  const base = `/workspace/projects/${project.id}`;
+  const invitation = await store.issueInvite(owner, project.id);
+  const agent = await store.join(invitation.id, invitation.code, "Muse");
+  const client = new Client({ name: "collections-e2e", version: "1" });
+  try {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(base);
+    await page
+      .locator(".sidebar .tree-label")
+      .filter({ hasText: project.name })
+      .click({ button: "right" });
+    await page
+      .getByRole("menuitem", { name: "New folder", exact: true })
+      .click();
+    await page.getByLabel("Name", { exact: true }).fill("First issue");
+    await page
+      .getByRole("button", { name: "Create folder", exact: true })
+      .click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const folderId = new URL(page.url()).pathname.split("/").at(-1)!;
+    await page
+      .locator(".document-actions")
+      .getByRole("button", { name: "Add inside First issue" })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "New folder", exact: true })
+      .click();
+    await page.getByLabel("Name", { exact: true }).fill("Stories");
+    await page
+      .getByRole("button", { name: "Create folder", exact: true })
+      .click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const collectionUrl = page.url(),
+      collectionId = new URL(collectionUrl).pathname.split("/").at(-1)!;
+    expect((await store.getPage(owner, collectionId)).parentId).toBe(folderId);
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL("/mcp", baseURL), {
+        requestInit: { headers: { Authorization: `Bearer ${agent.token}` } },
+      }),
+    );
+    const item = resultData(
+      await client.callTool({
+        name: "create_page",
+        arguments: {
+          projectId: project.id,
+          title: "Opening note",
+          body: "## Start with the question\n\nKeep the sources beside the work.",
+          parentId: collectionId,
+          status: "Drafting",
+          clientKey: crypto.randomUUID(),
+        },
+      }),
+    );
+    resultData(
+      await client.callTool({
+        name: "create_page_comment",
+        arguments: {
+          pageId: item.id,
+          body: "I added the research.",
+          clientKey: crypto.randomUUID(),
+        },
+      }),
+    );
+    await page.reload();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Folder view" })
+        .getByRole("link", { name: "List", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await page.getByRole("link", { name: "Board", exact: true }).click();
+    await expect(page.locator(".collection-card")).toContainText(
+      "Opening note",
+    );
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "test-results/workspace-board-light.png" });
+    await page.getByRole("link", { name: "Table", exact: true }).click();
+    await expect(page.getByRole("table")).toContainText("Opening note");
+    await page
+      .getByRole("link", { name: "Opening note", exact: true })
+      .last()
+      .click();
+    await expect(page).toHaveURL(new RegExp(`/pages/${item.id}$`));
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("link", { name: "Discussion", exact: true }).click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "I added the research.",
+    );
+    await page
+      .getByLabel("Your comment", { exact: true })
+      .fill("Keep both perspectives.");
+    await page
+      .getByRole("button", { name: "Add comment", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText(
+      "Keep both perspectives.",
+    );
+    const comments = resultData(
+      await client.callTool({
+        name: "list_page_comments",
+        arguments: { pageId: item.id },
+      }),
+    );
+    expect(comments.comments).toHaveLength(2);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: "test-results/workspace-discussion-mobile.png",
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.getByRole("button", { name: "Close details" }).click();
+    await page.goto(`${collectionUrl}?view=board`);
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({
+      path: "test-results/workspace-board-dark-mobile.png",
+    });
+    await page
+      .getByRole("button", { name: "Open workspace navigation" })
+      .click();
+    await expect(page.getByRole("dialog")).toContainText("First issue");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
+    await page.screenshot({ path: "test-results/workspace-tree-mobile.png" });
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.waitForLoadState("networkidle");
+    const selectedRow = page.locator(".sidebar .tree-row[data-selected]");
+    const clipped = await selectedRow.evaluate((row) =>
+      [...row.querySelectorAll("button")].some(
+        (button) =>
+          button.getBoundingClientRect().right >
+          row.getBoundingClientRect().right + 1,
+      ),
+    );
+    expect(clipped).toBe(false);
+    await page.screenshot({ path: "test-results/workspace-board-dark.png" });
+  } finally {
+    await client.close();
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("sidebar creates projects inline and keeps compact actions accessible", async ({
+  page,
+}) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const created: { id: string; name: string }[] = [];
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/start");
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await page.waitForURL(/\/(workspace|setup)/);
+  await page.goto("/workspace");
+  try {
+    const sidebar = page.locator(".sidebar");
+    await expect(sidebar).not.toContainText("Workspace access");
+    await expect(sidebar).not.toContainText("Workspace owner");
+    await expect(
+      sidebar.getByRole("link", { name: "Unread notes", exact: true }),
+    ).toHaveCount(0);
+    const workspaceName = await sidebar.locator(".workspace-name").innerText();
+    await expect(page.locator(".workspace-header")).not.toContainText(
+      workspaceName,
+    );
+    await page.goto("/workspace/unread");
+    await expect(page).toHaveURL(/\/workspace$/);
+    await expect(sidebar.locator(".profile a")).toHaveCSS("font-size", "13px");
+    await expect(
+      sidebar.getByRole("link", { name: "Home", exact: true }).locator("use"),
+    ).toHaveAttribute("href", "/icons.svg#HouseLine");
+    await expect(
+      page.getByRole("button", { name: "Open project search" }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Control+k");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      const mobile = width === 390;
+      if (mobile)
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      const surface = mobile ? page.getByRole("dialog") : sidebar;
+      const plus = surface.getByRole("button", {
+        name: "New project",
+        exact: true,
+      });
+      await plus.click();
+      const input = surface.getByRole("textbox", {
+        name: "Project name",
+        exact: true,
+      });
+      await expect(input).toBeFocused();
+      const originalUrl = page.url();
+      await expect(surface.getByLabel("Project brief")).toHaveCount(0);
+      await input.fill("Abandoned draft");
+      await input.press("Escape");
+      await expect(input).toHaveCount(0);
+      await expect(plus).toBeFocused();
+      await expect(page).toHaveURL(originalUrl);
+      await plus.click();
+      await input.fill("Outside cancelled draft");
+      await surface.locator(".nav-heading").click();
+      await expect(input).toHaveCount(0);
+      await expect(page).toHaveURL(originalUrl);
+      expect(
+        (await store.listProjects(owner)).some(
+          (p) => p.name === "Outside cancelled draft",
+        ),
+      ).toBe(false);
+      await plus.click();
+      await input.fill("Composing draft");
+      await input.dispatchEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        isComposing: true,
+      });
+      await expect(input).toHaveValue("Composing draft");
+      await expect(page).toHaveURL(originalUrl);
+      await input.fill("x");
+      await input.press("Enter");
+      await expect(surface.getByRole("alert")).toHaveText(
+        "Use at least 2 characters.",
+      );
+      await expect(input).toHaveValue("x");
+      const name = `Inline ${width} ${Date.now()}`;
+      await input.fill(name);
+      if (!mobile) {
+        await page.route("**/*", async (route) => {
+          if (route.request().headers()["next-action"]) await route.abort();
+          else await route.continue();
+        });
+        await input.press("Enter");
+        await expect(surface.getByRole("alert")).toContainText(
+          "Couldn’t create",
+        );
+        await expect(input).toHaveValue(name);
+        await expect(input).toBeFocused();
+        await page.unroute("**/*");
+      }
+      await page.screenshot({
+        path: `test-results/sidebar-inline-${width}.png`,
+      });
+      await expect(surface.locator(".inline-project button")).toHaveCount(0);
+      await expect(surface.locator(".inline-project")).not.toContainText(
+        "Enter to create",
+      );
+      await input.press("Enter");
+      await page.waitForURL(/\/workspace\/projects\/[^/]+$/);
+      if (mobile) await expect(page.getByRole("dialog")).toBeHidden();
+      const project = (await store.listProjects(owner)).filter(
+        (p) => p.name === name,
+      );
+      expect(project).toHaveLength(1);
+      expect(project[0].brief).toBe("");
+      created.push(project[0]);
+      await page.goto("/workspace");
+      const indexRow = page
+        .locator(".project-index-row")
+        .filter({ has: page.getByRole("heading", { name, exact: true }) });
+      await indexRow.hover();
+      await expect(
+        indexRow.getByRole("heading", { name, exact: true }),
+      ).toHaveCSS("color", "rgb(61, 73, 85)");
+      await expect(indexRow.locator(".project-count")).toBeEmpty();
+      await expect(indexRow).not.toContainText("Add a brief");
+      await indexRow.click();
+      await expect(page.locator(".workspace-breadcrumb")).toContainText(name);
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
+      if (mobile)
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      const row = surface
+        .locator(".tree-row")
+        .filter({ has: page.getByRole("link", { name, exact: true }) });
+      await expect(row.locator(".tree-actions button")).toHaveCount(1);
+      const rowAction = row.getByRole("button", {
+        name: `Actions for ${name}`,
+      });
+      await rowAction.hover();
+      await expect(row).toHaveCSS("background-color", "rgb(220, 226, 232)");
+      await expect(rowAction).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await rowAction.click();
+      const menu = page.getByRole("menu");
+      await expect(
+        menu.getByRole("menuitem", { name: "New folder", exact: true }),
+      ).toBeVisible();
+      await menu
+        .getByRole("menuitem", { name: "New folder", exact: true })
+        .click({ trial: true });
+      await expect(
+        menu.getByRole("menuitem", { name: "New collection", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        menu.getByRole("menuitem", { name: "New note", exact: true }),
+      ).toHaveCount(0);
+      await expect(menu.getByRole("separator")).toHaveCount(1);
+      const box = await menu.boundingBox();
+      expect(box!.width).toBeLessThanOrEqual(224);
+      expect(box!.height).toBeLessThanOrEqual(mobile ? 340 : 260);
+      await page.screenshot({ path: `test-results/sidebar-menu-${width}.png` });
+      await page.keyboard.press("Escape");
+      await expect(
+        row.getByRole("button", { name: `Actions for ${name}` }),
+      ).toBeFocused();
+      if (mobile) await page.keyboard.press("Escape");
+      else {
+        await row.click({ button: "right" });
+        await expect(
+          page.getByRole("menuitem", { name: "New folder", exact: true }),
+        ).toBeVisible();
+        await page.keyboard.press("Escape");
+      }
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page
+      .getByRole("button", { name: "Connect an agent to this project" })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Agent access", exact: true })
+      .click();
+    await expect(
+      page.getByRole("option", { name: created[1].name, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("option", {
+        name: `${created[1].name} only`,
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    const home = sidebar.getByRole("link", {
+      name: "Home",
+      exact: true,
+    });
+    await home.hover();
+    await expect(home).toHaveCSS("background-color", "rgb(48, 57, 74)");
+    await page.screenshot({ path: "test-results/sidebar-polish-dark.png" });
+  } finally {
+    for (const project of created)
+      await store.deleteProject(owner, project.id, project.name);
     await pool.end();
   }
 });

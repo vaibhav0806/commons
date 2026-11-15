@@ -43,7 +43,15 @@ export function AgentMark({
           ? "instinct.png"
           : text.includes("claude")
             ? "claude.svg"
-            : null;
+            : text.includes("muse")
+              ? "muse.svg"
+              : text.includes("hermes")
+                ? "hermes.png"
+                : text.includes("openclaw")
+                  ? "openclaw.svg"
+                  : text.includes("poke")
+                    ? "poke.png"
+                    : null;
   return (
     <span
       className={`agent-logo ${small ? "small" : ""}`}

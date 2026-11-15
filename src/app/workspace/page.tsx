@@ -1,21 +1,124 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
+import { AgentMark, Icon } from "@/components/brand";
 
 export default async function Workspace() {
   const actor = await requireParticipant(),
-    projects = await getStore().listProjects(actor);
-  if (projects[0]) redirect(`/workspace/projects/${projects[0].id}`);
-  if (actor.kind === "owner") redirect("/setup");
+    store = getStore();
+  const projects = await store.listProjects(actor);
+  const summaries = await Promise.all(
+    projects.map(async (project) => ({
+      project,
+      notes: await store.listNotes(actor, project.id),
+      people: await store.listParticipants(actor, project.id),
+      pages: await store.listPages(actor, project.id),
+      files: await store.listFiles(actor, project.id),
+    })),
+  );
+  const recent = summaries
+    .flatMap(({ project, notes }) =>
+      notes.notes.map((note) => ({ ...note, projectName: project.name })),
+    )
+    .sort((a, b) => (b.editedAt || b.createdAt) - (a.editedAt || a.createdAt))
+    .slice(0, 4);
   return (
-    <div className="project-page">
+    <div className="project-page workspace-home">
       <header className="project-heading">
-        <h1>No projects yet.</h1>
+        <div>
+          <h1>Projects</h1>
+        </div>
+        {actor.kind === "owner" && (
+          <Link className="button" href="/workspace/new">
+            <Icon name="Plus" />
+            New project
+          </Link>
+        )}
       </header>
-      <p className="body-copy">
-        You have workspace access. Your human can create the first project; it
-        will be available here when they do.
-      </p>
+      <section className="project-section">
+        <div className="section-title">
+          <span className="meta">
+            {projects.length ? `${projects.length} projects` : ""}
+          </span>
+        </div>
+        <div className="project-index">
+          {summaries.map(({ project, notes, people, pages, files }) => (
+            <Link
+              className="project-index-row"
+              key={project.id}
+              href={`/workspace/projects/${project.id}`}
+            >
+              <span className="project-icon">
+                <Icon name="Folder" />
+              </span>
+              <div className="row-copy">
+                <h2>{project.name}</h2>
+                {project.brief && <p>{project.brief}</p>}
+              </div>
+              <span className="meta project-count">
+                {[
+                  [
+                    people.filter((p) => p.kind === "agent").length,
+                    "agent",
+                    false,
+                  ],
+                  [pages.pages.length, "page", pages.nextOffset !== null],
+                  [files.files.length, "file", files.nextOffset !== null],
+                  [notes.notes.length, "note", notes.nextOffset !== null],
+                ]
+                  .filter(([count]) => Number(count) > 0)
+                  .map(
+                    ([count, label, more]) =>
+                      `${count}${more ? "+" : ""} ${label}${count === 1 ? "" : "s"}`,
+                  )
+                  .join(" · ")}
+              </span>
+              <Icon name="CaretRight" />
+            </Link>
+          ))}
+          {!projects.length && (
+            <div className="empty-state">
+              <Icon name="Folder" />
+              <h2>No projects yet</h2>
+              {actor.kind !== "owner" && <p>No projects yet.</p>}
+              {actor.kind === "owner" && (
+                <Link className="button" href="/workspace/new">
+                  Create a project
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="project-section">
+        <div className="section-title">
+          <h2>Recently shared</h2>
+        </div>
+        <div className="context-list">
+          {recent.map((note) => (
+            <Link
+              className="context-row"
+              key={note.id}
+              href={`/workspace/projects/${note.projectId}?note=${note.id}`}
+            >
+              <AgentMark name={note.authorName} small />
+              <div className="row-copy">
+                <h3>{note.title}</h3>
+                <p>{note.body.slice(0, 180)}</p>
+                <small>
+                  {note.authorName} · {note.projectName}
+                </small>
+              </div>
+              {!note.read ? (
+                <span className="context-chip">Unread</span>
+              ) : (
+                <Icon name="CaretRight" />
+              )}
+            </Link>
+          ))}
+          {!recent.length && <p className="empty-list">Nothing shared yet.</p>}
+        </div>
+      </section>
     </div>
   );
 }

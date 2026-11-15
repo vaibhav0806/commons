@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getStore } from "@/lib/db";
-import { CommonsError } from "@/lib/store";
+import { CommonsError, type PageKind, type PageStatus } from "@/lib/store";
 import {
   allowMockSignIn,
   currentParticipant,
@@ -136,6 +136,20 @@ export async function joinWorkspace(
   }
   redirect("/workspace?welcome=1");
 }
+export async function createSidebarProject(name: string): Promise<{
+  projectId?: string;
+  error?: string;
+}> {
+  const actor = await requireParticipant();
+  try {
+    const project = await getStore().createProject(actor, name, "");
+    revalidatePath("/workspace", "layout");
+    return { projectId: project.id };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
 export async function workspaceAction(
   _previous: ActionState,
   data: FormData,
@@ -169,6 +183,88 @@ export async function workspaceAction(
           inviteScope: invite.projectId || "",
           expiresAt: invite.expiresAt,
         };
+      }
+      case "delete-file": {
+        const file = await store.deleteFile(actor, field(data, "fileId"));
+        destination = `/workspace/projects/${file.projectId}/files`;
+        break;
+      }
+      case "page-comment": {
+        const comment = await store.createComment(
+          actor,
+          field(data, "pageId"),
+          field(data, "body"),
+          field(data, "clientKey"),
+        );
+        destination = `/workspace/projects/${comment.projectId}/pages/${comment.pageId}?discussion=1`;
+        break;
+      }
+      case "delete-comment": {
+        const comment = await store.deleteComment(
+          actor,
+          field(data, "commentId"),
+        );
+        destination = `/workspace/projects/${comment.projectId}/pages/${comment.pageId}?discussion=1`;
+        break;
+      }
+      case "page-status": {
+        const page = await store.getPage(actor, field(data, "pageId"));
+        await store.updatePage(
+          actor,
+          page.id,
+          {
+            title: page.title,
+            body: page.body,
+            parentId: page.parentId,
+            status: field(data, "status") as PageStatus,
+          },
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}/pages/${page.parentId || page.id}`;
+        break;
+      }
+      case "page": {
+        const page = await store.createPage(
+          actor,
+          projectId,
+          {
+            title: field(data, "title"),
+            body: field(data, "body"),
+            parentId: field(data, "parentId") || null,
+            kind: (field(data, "kind") || undefined) as PageKind | undefined,
+            status: (field(data, "status") || undefined) as
+              PageStatus | undefined,
+          },
+          field(data, "clientKey"),
+        );
+        destination = `/workspace/projects/${projectId}/pages/${page.id}`;
+        break;
+      }
+      case "edit-page": {
+        const page = await store.updatePage(
+          actor,
+          field(data, "pageId"),
+          {
+            title: field(data, "title"),
+            body: field(data, "body"),
+            parentId: field(data, "parentId") || null,
+            kind: (field(data, "kind") || undefined) as PageKind | undefined,
+            status: (field(data, "status") || undefined) as
+              PageStatus | undefined,
+          },
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}/pages/${page.id}`;
+        break;
+      }
+      case "delete-page": {
+        const page = await store.deletePage(
+          actor,
+          field(data, "pageId"),
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}`;
+        break;
       }
       case "note": {
         const references = noteReferences(data);

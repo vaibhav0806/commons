@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
+import { uploadFile, readFileObject } from "./object-storage";
 import { getStore } from "./db";
 import { validOrigin } from "./config";
 import { CommonsError, type Store } from "./store";
@@ -163,6 +164,87 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
     async ({ projectId }) =>
       result(() => store.listParticipants(actor, projectId)),
   );
+  server.registerTool("list_files", { description: "List private project files and their authenticated download paths. Follow nextOffset for more.", inputSchema: { ...project, query: z.string().max(200).optional(), offset: z.number().int().nonnegative().optional() }, annotations }, async ({ projectId, ...options }) => result(async () => { const found = await store.listFiles(actor, projectId, options); return { ...found, files: found.files.map((file) => ({ id: file.id, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName, downloadPath: `/api/files/${file.id}` })) }; }));
+  server.registerTool("read_file", { description: "Read file metadata. Set includeContent for base64 content up to 1 MB; download larger files over the authenticated path using the same Bearer credential.", inputSchema: { fileId: id, includeContent: z.boolean().optional() }, annotations }, async ({ fileId, includeContent }) => result(async () => { const file = await store.getFile(actor, fileId); let content; if (includeContent) { if (file.size > 1048576) throw new CommonsError("Download files larger than 1 MB over the authenticated HTTP file path.", 413); content = Buffer.from(await readFileObject(file.objectKey)).toString("base64"); await store.getFile(actor, fileId); } const metadata = { id: file.id, projectId: file.projectId, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName, checksum: file.checksum }; return { ...metadata, downloadPath: `/api/files/${fileId}`, ...(content !== undefined ? { contentBase64: content } : {}) }; }));
+  server.registerTool("upload_file", { description: "Upload private bytes (base64, up to 1 MB) to a project. For files up to 16 MB use multipart POST /api/projects/:projectId/files with the same Bearer credential.", inputSchema: { ...project, name: z.string().min(1).max(240), contentBase64: z.string().max(1400000).regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/) }, annotations: { readOnlyHint: false, destructiveHint: false } }, async ({ projectId, name, contentBase64 }) => result(async () => { const bytes = Buffer.from(contentBase64, "base64"); if (bytes.length > 1048576) throw new CommonsError("MCP uploads support up to 1 MB. Use the HTTP upload path for larger files.", 413); const file = await uploadFile(store, actor, projectId, name, bytes); return { id: file.id, name: file.name, size: file.size, downloadPath: `/api/files/${file.id}` }; }));
+  server.registerTool("delete_file", { description: "Delete your uploaded file (owners can delete any). Access ends immediately; R2 cleanup is retried durably.", inputSchema: { fileId: id }, annotations: { readOnlyHint: false, destructiveHint: true } }, async ({ fileId }) => result(() => store.deleteFile(actor, fileId)));
+  server.registerTool(
+    "list_pages",
+    {
+      description:
+        "Search rich Markdown pages in a project. Follow nextOffset for more results.",
+      inputSchema: {
+        ...project,
+        query: z.string().max(200).optional(),
+        offset: z.number().int().nonnegative().optional(),
+        parentId: id.nullable().optional(),
+      },
+      annotations,
+    },
+    async ({ projectId, ...options }) =>
+      result(() => store.listPages(actor, projectId, options)),
+  );
+  server.registerTool(
+    "read_page",
+    {
+      description:
+        "Read a page's Markdown, author, parent and current version.",
+      inputSchema: { pageId: id },
+      annotations,
+    },
+    async ({ pageId }) => result(() => store.getPage(actor, pageId)),
+  );
+  server.registerTool("list_page_comments", { description: "Read a page discussion. Follow nextOffset for more.", inputSchema: { pageId: id, offset: z.number().int().nonnegative().optional() }, annotations }, async ({ pageId, offset }) => result(() => store.listComments(actor, pageId, offset)));
+  server.registerTool("create_page_comment", { description: "Add an attributed comment to a page in your scope. Reuse clientKey on retry.", inputSchema: { pageId: id, body: z.string().min(1).max(10000), clientKey: id }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true } }, async ({ pageId, body, clientKey }) => result(() => store.createComment(actor, pageId, body, clientKey)));
+  server.registerTool("delete_page_comment", { description: "Delete your comment; workspace owners can delete any comment.", inputSchema: { commentId: id }, annotations: { readOnlyHint: false, destructiveHint: true } }, async ({ commentId }) => result(() => store.deleteComment(actor, commentId)));
+  const pageFields = {
+    kind: z.enum(["page", "folder", "collection"]).optional(),
+    status: z.enum(["Idea", "Drafting", "Ready"]).optional(),
+    title: z.string().min(1).max(160),
+    body: z.string().max(100000),
+    parentId: id.nullable().default(null),
+  };
+  server.registerTool(
+    "create_page",
+    {
+      description:
+        "Create an attributed page, folder or collection. Collection children are content items viewed as a board or table. Reuse clientKey when retrying the same save.",
+      inputSchema: { ...project, ...pageFields, clientKey: id },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    async ({ projectId, clientKey, ...input }) =>
+      result(() => store.createPage(actor, projectId, input, clientKey)),
+  );
+  server.registerTool(
+    "edit_page",
+    {
+      description:
+        "Edit your own page (owners can edit any page). Supply the current version; stale edits are rejected.",
+      inputSchema: {
+        pageId: id,
+        version: z.number().int().positive(),
+        ...pageFields,
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ pageId, version, ...input }) =>
+      result(() => store.updatePage(actor, pageId, input, version)),
+  );
+  server.registerTool(
+    "delete_page",
+    {
+      description:
+        "Delete your own page (owners can delete any page). Children stay in the project at the top level.",
+      inputSchema: { pageId: id, version: z.number().int().positive() },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ pageId, version }) =>
+      result(() => store.deletePage(actor, pageId, version)),
+  );
   server.registerTool(
     "list_notes",
     {
@@ -284,14 +366,18 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
     },
     async ({ projectId, after = 0 }) =>
       result(async () => {
-        const [brief, notes, activity] = await Promise.all([
+        const [brief, notes, activity, pages, files] = await Promise.all([
           store.getProject(actor, projectId),
           store.listNotes(actor, projectId, { unread: true }),
           store.activity(actor, projectId, after),
+          store.listPages(actor, projectId),
+          store.listFiles(actor, projectId),
         ]);
         return {
           project: brief,
           unreadNotes: notes,
+          pages,
+          files: { ...files, files: files.files.map((file) => ({ id: file.id, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName })) },
           activity,
           cursor: Math.max(after, ...activity.map((a) => a.id)),
         };
@@ -300,7 +386,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
-    maxRequestBodySize: 64000,
+    maxRequestBodySize: 2000000,
   });
   try {
     await server.connect(transport);

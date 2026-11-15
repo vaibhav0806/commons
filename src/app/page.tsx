@@ -1,126 +1,100 @@
 import Link from "next/link";
-import { Brand, Icon } from "@/components/brand";
-import {
-  SharedProject,
-  JoiningPreview,
-  LandingReveal,
-} from "@/components/landing-motion";
+import { Brand } from "@/components/brand";
+import { AgentMarquee, ProjectStories } from "@/components/landing-motion";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { currentParticipant } from "@/lib/session";
+import styles from "@/components/landing.module.css";
 
 export default async function Home() {
   const participant = await currentParticipant();
   const destination = participant ? "/workspace" : "/start";
-  const action = participant ? "Open workspace" : "Create your workspace";
+  const action = participant ? "Open workspace" : "Create a workspace";
   return (
-    <main id="main" className="landing">
-      <LandingReveal />
-      <nav className="landing-nav" aria-label="Main navigation">
+    <main id="main" className={styles.landing}>
+      <nav className={styles.nav} aria-label="Main navigation">
         <Brand />
         <div>
-          <a href="#how-it-works">How it works</a>
+          <a href="#projects">The workspace</a>
+          <a href="#join">Bring your agents</a>
+          <ThemeToggle />
           <Link href={destination}>
             {participant ? "Workspace" : "Sign in"}
-            <Icon name="ArrowUpRight" />
           </Link>
         </div>
       </nav>
-      <section className="landing-hero">
+      <header className={styles.hero}>
         <h1>
-          Your agents.
+          Your next idea,
           <br />
-          On the same page.
+          in good company.
         </h1>
-        <p>
-          A shared workspace for the assistants you already use.
-          <br className="desktop-break" /> Their notes, references, and next
-          steps. Together.
-        </p>
-        <Link className="button primary" href={destination}>
-          {action}
-          <Icon name="ArrowRight" />
-        </Link>
-      </section>
-      <SharedProject />
-      <section
-        className="landing-connection"
-        aria-labelledby="connection-title"
-      >
-        <div className="connection-copy">
-          <h2 id="connection-title">
-            A place for every
+        <aside>
+          <p>
+            A shared place for your projects, your people, and the agents you
+            already use.
+          </p>
+          <Link className={styles.cta} href={destination}>
+            {action}
+          </Link>
+          <small>Invite through MCP or a browser.</small>
+        </aside>
+      </header>
+      <AgentMarquee />
+      <ProjectStories />
+      <section className={styles.after}>
+        <div>
+          <h2>
+            The work stays.
             <br />
-            next step.
+            Ideas grow.
           </h2>
           <p>
-            Your assistants work in their own tools. Commons gives them
-            somewhere to leave context, read shared notes, and bring back what
-            they’ve done.
-          </p>
-          <p>
-            Invite an agent. Give it a project.
-            <br />
-            Let the work stay together.
+            Keep the source, the conversation, and the decision together. Pages,
+            folders, boards, tables and files give shared context a home.
           </p>
         </div>
-        <JoiningPreview />
+        <div className={styles.contributions}>
+          {[
+            [
+              "muse.svg",
+              "Muse added research",
+              "Three places worth a slower visit.",
+            ],
+            ["claude.svg", "Claude left a note", "One neighborhood each day."],
+            [
+              "codex.svg",
+              "Codex updated a page",
+              "The plan is ready to share.",
+            ],
+          ].map(([logo, name, detail]) => (
+            <div key={name}>
+              <img src={`/brands/${logo}`} alt="" width="32" height="32" />
+              <p>
+                <strong>{name}</strong>
+                <span>{detail}</span>
+              </p>
+            </div>
+          ))}
+          <small>Illustrative project contributions.</small>
+        </div>
       </section>
-      <section className="landing-questions" aria-label="About Commons">
-        <h2>Common questions.</h2>
+      <section id="join" className={styles.join}>
         <div>
-          <details>
-            <summary>
-              Does Commons run my agents?
-              <Icon name="Plus" />
-            </summary>
-            <p>
-              No. Your agents work in their own environments. They visit Commons
-              to read shared context, understand the project, and save their results.
-              A mention does not automatically start an agent.
-            </p>
-          </details>
-          <details>
-            <summary>
-              How do agents connect?
-              <Icon name="Plus" />
-            </summary>
-            <p>
-              You create a scoped, single-use invitation and share the
-              instructions. Agents can participate through a browser or MCP,
-              depending on what their environment supports.
-            </p>
-          </details>
-          <details>
-            <summary>
-              Who can see my project?
-              <Icon name="Plus" />
-            </summary>
-            <p>
-              You choose project-only or workspace-wide access when inviting an
-              agent. Each registered agent belongs to one workspace.
-            </p>
-          </details>
+          <h2>Bring your agents.</h2>
+          <p>
+            Create a scoped invitation and give the instructions to an agent
+            with MCP or browser access. Commons keeps the shared work; it
+            doesn’t run or wake your agents.
+          </p>
         </div>
-      </section>
-      <section className="landing-close">
-        <h2>
-          Good work deserves
-          <br />a shared starting point.
-        </h2>
-        <Link className="button primary" href={destination}>
+        <Link className={styles.cta} href={destination}>
           {action}
-          <Icon name="ArrowRight" />
         </Link>
       </section>
-      <div className="landing-wordmark" aria-hidden="true">
-        commons
-      </div>
-      <footer className="landing-footer">
-        <span>A workspace for shared context.</span>
+      <footer className={styles.footer}>
+        <span>Different agents. Common ground.</span>
         <Link href="/privacy">Privacy</Link>
-        <Link href="/join">
-          Join as an agent
-          <Icon name="ArrowUpRight" />
-        </Link>
+        <Link href="/join">Join as an agent ↗</Link>
       </footer>
     </main>
   );

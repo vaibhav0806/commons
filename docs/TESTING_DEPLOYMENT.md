@@ -36,7 +36,7 @@ Automated SDK and browser tests are evidence for the protocol and application, n
 
 ## Graph projection boundary
 
-Projects, participants and notes are projected with IN_PROJECT and AUTHORED_BY edges. Postgres triggers queue inserts, edits and deletes in the same transaction. The worker checks every five seconds. Its graph ID mappings and cleanup jobs survive project deletion. Each sync deletes the project-owned graph IDs before rebuilding current relationships; partial failures retain the job for retry. Pending revisions suppress stale edges in the explorer. Note bodies and credentials are never projected.
+Projects, participants, notes, pages and files are projected with IN_PROJECT and AUTHORED_BY edges. Pages also project IN_PAGE parent relationships and explicit REFERENCES to pages/files in the same project. Postgres triggers queue inserts, edits and deletes in the same transaction. The worker checks every five seconds. Its graph ID mappings and cleanup jobs survive project deletion. Each sync deletes the project-owned graph IDs before rebuilding current relationships; partial failures retain the job for retry. Pending revisions suppress stale edges in the explorer. Note bodies and credentials are never projected.
 
 The owner-only `/workspace/graph` page is a Commons explorer, not an official Hydra Studio distribution. Labels come from currently authorized Postgres records; edges come from Hydra. Revoked/removed authors are retained where their notes still require attribution. Agents cannot access the explorer.
 
@@ -62,3 +62,49 @@ Branding has the Commons logo, homepage, privacy URL and support email. Google c
 ## CRUD release verification — 2026-11-14
 
 Migration 005 and the matching app/worker were deployed after a private Postgres backup and stopping the old processes. Local validation passed: lint/typecheck, production build, 17 domain tests, 5 MCP tests, 1 Hydra reconciliation test and 5 production-browser scenarios. Hosted acceptance also passed note edits/deletes, scope changes, outage/retry and project graph cleanup while retaining unrelated context. Temporary fixture data was deleted and the worker resumed. Public health returned OK. This verifies logical graph cleanup; immediate physical R2 object reclamation is not asserted.
+
+## Content workspace deployment
+
+`.env.files` (0600, outside Git) defines `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PREFIX=commons-files/`. The existing private bucket is reused under an isolated prefix, leaving Hydra objects untouched. The app and file-cleanup worker load this config. Keep it with private deployment configuration backups.
+
+Retain the previous image and take a private Postgres backup before replacement. Migrations 006–008 are additive. App, graph-sync and file-cleanup use matching source, with workers starting after app health. A code rollback stops new workers and restores the previous app image, retaining additive tables/data. Do not drop content tables during rollback.
+
+Backups now require Postgres plus application R2 objects; database dumps do not include file bytes. Do not apply bucket-wide expiry rules. Monitor durable `file_cleanup` jobs and pending upload reservations.
+
+Validation commands include the existing check/build/domain/MCP/context/browser scripts plus `npm run test:workspace`. The workspace and browser tests use real R2 credentials with disposable objects and the dedicated `_test` database.
+
+## Workspace release verification — 2026-11-14
+
+Deployed application commit `1b79d2f` to the existing Hetzner testing environment. Migrations 006–008 applied without resetting the database. The previous `commons:testing` image was retained as `commons:pre-workspace-20261114` and a private custom-format database backup was saved before replacement.
+
+Local verification passed: lint/typecheck, production build, 17 store tests, 5 MCP tests, 3 page/file/private-R2 tests, 6 production browser tests, and expanded graph reconciliation covering pages, parent relationships and file references. The existing local Hydra volume returned internal query errors even for basic queries; it was preserved, and graph verification passed with a separate disposable volume.
+
+Hosted verification used a disposable workspace: saved and read a Markdown page; uploaded bytes through the public authenticated multipart route to private R2; downloaded identical bytes; rejected anonymous and revoked-agent downloads; rendered Home, Pages and Files with a real session; projected pages/files into hosted Hydra; then removed the fixture and confirmed existing project IDs were unchanged. `/api/health` returned `ok`. Native agent-provider certification remains a separate manual acceptance step.
+
+Final worker check found and fixed the cleanup container's missing default network route (`4e35148`); its networks now match the app's outbound connectivity. The one-shot cleanup completed successfully after the fix, and final inspection confirmed zero queued file cleanup jobs and zero pending graph revisions.
+
+## Mist & Lilac release — 2026-11-16
+
+Application revision `df4ef20e868c4f952a8b38ba3a865becf81955c9` is deployed. Four implementation milestones were pushed on `feat/paper-workspace`: landing/theme foundation (`379d45a`), folders/collections/comments (`e3f12f7`), responsive workspace (`d974aaf`), and nested-row/control polish (`df4ef20`). The deployment uses a Git archive of the application revision; the hosted directory is not a Git checkout. App, graph-sync and file-cleanup run the same image, labeled with `org.opencontainers.image.revision`.
+
+Before migration 009, a private custom-format Postgres dump was created at `backups/pre-mist-20261116.dump` and its archive listing was checked. `commons:pre-mist-20261116` retains the previous application image; `commons:mist-d974aaf` retains the first redesign deployment. Migration 009 adds kind/status columns and scoped page comments without resetting existing records. For a code rollback, retain the additive schema/data and replace all three application services with the chosen retained image. Do not restore an old dump over newer user contributions unless a data restore is explicitly intended.
+
+Validation passed: lint/typecheck, production build, 17 Store tests, 5 MCP tests, 3 content/private-R2 tests, Hydra reconciliation and eight production-browser scenarios. A targeted production-browser rerun validates the final nested-sidebar action bounds. Browser scenarios cover desktop/mobile CRUD, nesting and contextual menus, collection views, shared discussions, theme persistence, scroll-driven stories and reduced motion. No GitHub CI checks are configured on this branch; these checks ran locally.
+
+Live acceptance used an isolated workspace and real sessions. It verified light/dark desktop/mobile rendering; a collection status saved in the browser and read back through MCP; browser comments read by an MCP agent; private R2 bytes uploaded through MCP and downloaded through authenticated HTTP; anonymous download denial; revoked credential rejection; and hosted graph projection. The fixture was removed and the prior project IDs were preserved. Production Google configuration remains enabled and mock authentication remains false. Screenshots in the local release review package depict this disposable acceptance fixture.
+
+## Sidebar interaction release — 2026-11-16
+
+Application revision `5680e95c0a9f0a00087d47a9a85ab4004cc24ab2` supersedes the release above. App, graph-sync and file-cleanup share image `sha256:afe296e5bedfdb7bf8a75f3b8f44c3f28c3091e844e5f005dd8fe6d7024f10d5`. The prior image is retained as `commons:pre-sidebar-20261116`; no schema changes were needed.
+
+The sidebar now creates projects inline, removes duplicate connection/search/access controls, uses one compact menu per tree row and restores the Home icon. Validation: lint/typecheck and production build; the eight existing browser scenarios; and a new desktop/mobile scenario covering cancelled drafts, client validation, failed-network draft preservation, successful creation without a brief, focus restoration, menu hit testing, right-click equivalence, compact menu geometry and both-theme hover colors. The focused rerun passed after fixing cancellation focus and menu layering above the mobile navigation dialog.
+
+Live acceptance created a project inline and read it after a reload, verified absence of the removed sidebar/header controls, checked light hover and mobile dark menus, then exercised shared collection status/comments through browser and MCP, private R2 upload/download, anonymous/revoked access denial and graph projection. The isolated workspace was removed and existing project IDs were preserved. Review screenshots are local at `/Users/vaibhav/Downloads/commons-sidebar-2026-11-16`.
+
+## Minimal workspace follow-up — 2026-11-16
+
+Application revision `abf4914f1bfe5805558d2e5acd7c0f36f2227751` is deployed on all three application services using image `sha256:11634bf080128a1e42dbe989c6099fb6a5b20ba508d29870b81e6dc2624b64c0`. Rollback image: `commons:pre-minimal-20261116`. No schema migration or content conversion was required.
+
+Project drafts now use Enter to save, Escape/outside pointer gestures to cancel, and error-only feedback. Unread routes redirect; neutral row states replace colored text/selection and nested action fills. Breadcrumbs no longer repeat the workspace name. Access dropdowns show project names without the extra suffix. Creation offers Page/Folder/Upload; editors and item links open in the main workspace. Folders expose List/Board/Table views while old collection records retain their contents and compatibility.
+
+Validation passed: lint/typecheck, production build and all nine browser scenarios. Focused reruns covered final breadcrumb changes, full-page creation, folder views, discussions, outside cancellation, IME handling, hidden creation controls, zero-count suppression, neutral hover/action styles and concise access options. Hosted acceptance verified inline creation and full-page Markdown creation surviving reload, responsive light/dark rendering, old collection compatibility, shared browser/MCP status/comments, private R2 bytes and access denial. The disposable workspace was deleted and existing project IDs remained present. Screenshots: `/Users/vaibhav/Downloads/commons-minimal-2026-11-16`.

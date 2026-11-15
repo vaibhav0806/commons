@@ -59,9 +59,43 @@ export type Note = {
   createdAt: number;
   read: boolean;
 };
+export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
+const fileSelect = "SELECT f.*,p.name AS author_name FROM project_files f JOIN participants p ON p.id=f.author_id";
+export type PageKind = "page" | "folder" | "collection";
+export type PageStatus = "Idea" | "Drafting" | "Ready";
+export type PageInput = {
+  kind?: PageKind;
+  status?: PageStatus;
+  title: string;
+  body: string;
+  parentId: string | null;
+};
+export type WorkspacePage = PageInput & {
+  kind: PageKind;
+  status: PageStatus;
+  id: string;
+  projectId: string;
+  workspaceId: string;
+  authorId: string;
+  authorName: string;
+  version: number;
+  createdAt: number;
+  editedAt: number | null;
+};
+export type PageTreeItem = Pick<WorkspacePage, "id" | "projectId" | "parentId" | "title" | "kind" | "status" | "authorId">;
+export type PageComment = { id: string; pageId: string; projectId: string; authorId: string; authorName: string; body: string; createdAt: number };
+const pageSchema = z.object({
+  kind: z.enum(["page", "folder", "collection"]).optional(),
+  status: z.enum(["Idea", "Drafting", "Ready"]).optional(),
+  title: z.string().trim().min(1, "Give the page a title.").max(160),
+  body: z.string().max(100000),
+  parentId: z.uuid().nullable(),
+});
+const pageSelect =
+  "SELECT d.*,p.name AS author_name FROM pages d JOIN participants p ON p.id=d.author_id";
 export type SearchResult = {
   id: string;
-  kind: "note" | "project" | "agent";
+  kind: "note" | "project" | "agent" | "page" | "file";
   title: string;
   description: string;
   href: string;
@@ -937,11 +971,13 @@ export class Store {
       title: string;
       revoked: boolean;
     }>(
-      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
+      `SELECT g.id,g.resource_id,g.kind,coalesce(n.title,d.title,f.name,p.name,pr.name) title,coalesce(p.revoked_at IS NOT NULL,false) revoked
        FROM graph_entities g LEFT JOIN notes n ON g.kind='note' AND n.id=g.resource_id
        LEFT JOIN participants p ON g.kind='participant' AND p.id=g.resource_id
+       LEFT JOIN pages d ON g.kind='page' AND d.id=g.resource_id
+       LEFT JOIN project_files f ON g.kind='file' AND f.id=g.resource_id AND f.ready
        LEFT JOIN projects pr ON g.kind='project' AND pr.id=g.resource_id
-       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
+       WHERE g.project_id=$1 AND (n.id IS NOT NULL OR d.id IS NOT NULL OR f.id IS NOT NULL OR p.id IS NOT NULL OR pr.id IS NOT NULL) ORDER BY g.kind,g.id LIMIT 200`,
       [projectId],
     );
     const edges: { source: number; target: number; kind: string }[] = [];
@@ -949,7 +985,7 @@ export class Store {
     if (available && sync?.revision === sync?.syncedRevision && nodes.length) {
       try {
         const allowed = new Set(nodes.map((n) => n.id));
-        for (const kind of ["IN_PROJECT", "AUTHORED_BY"]) {
+        for (const kind of ["IN_PROJECT", "AUTHORED_BY", "IN_PAGE", "REFERENCES"]) {
           const result = await graphQuery(
             `MATCH (a)-[:${kind}]->(b) WHERE a.id IN $ids RETURN a.id,b.id LIMIT 1000`,
             { ids: [...allowed] },
@@ -969,6 +1005,269 @@ export class Store {
     await this.owner(actor);
     return { nodes, edges, available, sync };
   }
+  async listFiles(actor: Principal, projectId: string, options: { query?: string; offset?: number } = {}) {
+    await this.getProject(actor, projectId);
+    const offset = z.number().int().min(0).max(1000000).parse(options.offset || 0);
+    const query = z.string().max(200).parse(options.query || "");
+    const files = await this.rows<ProjectFile>(`${fileSelect} WHERE f.project_id=$1 AND f.ready AND f.name ILIKE $2 ORDER BY f.created_at DESC,f.id DESC LIMIT 51 OFFSET $3`, [projectId, `%${query}%`, offset]);
+    return { files: files.slice(0, 50), nextOffset: files.length > 50 ? offset + 50 : null };
+  }
+  async getFile(actor: Principal, fileId: string, includePending = false) {
+    const file = await this.one<ProjectFile>(`${fileSelect} WHERE f.id=$1 AND (f.ready OR $2)`, [idSchema.parse(fileId), includePending]);
+    if (!file) throw new CommonsError("This file is unavailable.", 404);
+    await this.getProject(actor, file.projectId);
+    return file;
+  }
+  async reserveFile(actor: Principal, projectId: string, input: { name: string; size: number; mimeType: string; checksum: string }) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id);
+      await tx.getProject(current, projectId);
+      await tx.rateLimit(`upload:${current.id}`, 30);
+      const data = z.object({ name: z.string().trim().min(1).max(240).refine((v) => !/[\x00-\x1f\x7f/\\]/.test(v), "Use a file name without control characters or path separators."), size: z.number().int().min(0).max(16777216, "Each file can be up to 16 MB."), mimeType: z.string().min(1).max(120), checksum: z.string().regex(/^[a-f0-9]{64}$/) }).parse(input);
+      await tx.connection.query("SELECT id FROM workspaces WHERE id=$1 FOR UPDATE", [current.workspaceId]);
+      const usage = await tx.one<{ bytes: number }>("SELECT coalesce(sum(size),0)::bigint bytes FROM project_files WHERE workspace_id=$1", [current.workspaceId]);
+      if (usage.bytes + data.size > 1073741824) throw new CommonsError("This workspace has reached its 1 GB storage limit. Remove unused files before uploading more.", 413);
+      const prefix = process.env.R2_PREFIX || "commons-files/";
+      if (!/^[a-zA-Z0-9/-]+\/$/.test(prefix)) throw new Error("Configure a valid private R2 prefix.");
+      const id = randomUUID(), key = `${prefix}${current.workspaceId}/${id}`;
+      await tx.connection.query("INSERT INTO project_files(id,workspace_id,project_id,author_id,name,mime_type,size,checksum,object_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [id, current.workspaceId, projectId, current.id, data.name, data.mimeType, data.size, data.checksum, key, this.clock()]);
+      return tx.getFile(current, id, true);
+    });
+  }
+  async completeFile(actor: Principal, fileId: string) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id), file = await tx.getFile(current, fileId, true);
+      if (file.authorId !== current.id) throw new CommonsError("Only the uploader can finish this upload.", 403);
+      const changed = await tx.connection.query("UPDATE project_files SET ready=true WHERE id=$1 AND NOT ready", [fileId]);
+      if (changed.rowCount) await tx.record(current, file.projectId, "Uploaded a file", fileId);
+      return tx.getFile(current, fileId);
+    });
+  }
+  async deleteFile(actor: Principal, fileId: string) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id), file = await tx.getFile(current, fileId, true);
+      if (current.kind !== "owner" && current.id !== file.authorId) throw new CommonsError("Only the uploader or workspace owner can delete this file.", 403);
+      await tx.connection.query("DELETE FROM project_files WHERE id=$1", [fileId]);
+      if (file.ready) await tx.record(current, file.projectId, "Deleted a file", fileId);
+      return { projectId: file.projectId };
+    });
+  }
+  async queueFileCleanup(objectKey: string) {
+    await this.connection.query("INSERT INTO file_cleanup(object_key) VALUES($1) ON CONFLICT DO NOTHING", [objectKey]);
+  }
+  async pageTree(actor: Principal, projectId: string) {
+    await this.getProject(actor, projectId);
+    return this.rows<PageTreeItem>("SELECT id,project_id,parent_id,title,kind,status,author_id FROM pages WHERE project_id=$1 ORDER BY created_at,id", [projectId]);
+  }
+  async listComments(actor: Principal, pageId: string, offset = 0) {
+    await this.getPage(actor, pageId);
+    const comments = await this.rows<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.page_id=$1 ORDER BY c.created_at,c.id LIMIT 51 OFFSET $2", [pageId, z.number().int().min(0).max(1000000).parse(offset)]);
+    return { comments: comments.slice(0, 50), nextOffset: comments.length > 50 ? offset + 50 : null };
+  }
+  async createComment(actor: Principal, pageId: string, body: string, clientKey: string) {
+    return this.transaction(async tx => {
+      const current = await tx.active(actor.id), page = await tx.getPage(current, pageId);
+      const text = z.string().trim().min(1, "Write a comment first.").max(10000).parse(body);
+      idSchema.parse(clientKey);
+      await tx.connection.query("SELECT id FROM pages WHERE id=$1 FOR UPDATE", [pageId]);
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["comment:" + current.id + clientKey]);
+      const prior = await tx.one<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.author_id=$1 AND c.client_key=$2", [current.id, clientKey]);
+      if (prior) {
+        if (prior.pageId !== pageId) throw new CommonsError("This save key belongs to another page.", 409);
+        return prior;
+      }
+      const id = randomUUID(), createdAt = this.clock();
+      await tx.connection.query("INSERT INTO page_comments(id,page_id,project_id,workspace_id,author_id,body,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, pageId, page.projectId, page.workspaceId, current.id, text, clientKey, createdAt]);
+      await tx.record(current, page.projectId, "Commented on a page", pageId);
+      return { id, pageId, projectId: page.projectId, authorId: current.id, authorName: current.name, body: text, createdAt };
+    });
+  }
+  async deleteComment(actor: Principal, commentId: string) {
+    return this.transaction(async tx => {
+      const current = await tx.active(actor.id);
+      const comment = await tx.one<PageComment>("SELECT * FROM page_comments WHERE id=$1 FOR UPDATE", [idSchema.parse(commentId)]);
+      if (!comment) throw new CommonsError("This comment is unavailable.", 404);
+      await tx.getPage(current, comment.pageId);
+      if (current.kind !== "owner" && current.id !== comment.authorId) throw new CommonsError("Only the author or workspace owner can delete this comment.", 403);
+      await tx.connection.query("DELETE FROM page_comments WHERE id=$1", [commentId]);
+      await tx.record(current, comment.projectId, "Deleted a page comment", comment.pageId);
+      return { pageId: comment.pageId, projectId: comment.projectId };
+    });
+  }
+  async listPages(
+    actor: Principal,
+    projectId: string,
+    options: { query?: string; offset?: number; parentId?: string | null } = {},
+  ) {
+    await this.getProject(actor, projectId);
+    const offset = z
+      .number()
+      .int()
+      .min(0)
+      .max(1000000)
+      .parse(options.offset || 0);
+    const query = z
+      .string()
+      .max(200)
+      .parse(options.query || "");
+    const pages = await this.rows<WorkspacePage>(
+      `${pageSelect} WHERE d.project_id=$1 AND (d.title ILIKE $2 OR d.body ILIKE $2) AND ($4::boolean = false OR d.parent_id IS NOT DISTINCT FROM $5::uuid) ORDER BY d.created_at DESC,d.id DESC LIMIT 51 OFFSET $3`,
+      [projectId, `%${query}%`, offset, options.parentId !== undefined, options.parentId === undefined ? null : z.uuid().nullable().parse(options.parentId)],
+    );
+    return {
+      pages: pages.slice(0, 50),
+      nextOffset: pages.length > 50 ? offset + 50 : null,
+    };
+  }
+  async getPage(actor: Principal, pageId: string) {
+    const page = await this.one<WorkspacePage>(`${pageSelect} WHERE d.id=$1`, [
+      idSchema.parse(pageId),
+    ]);
+    if (!page) throw new CommonsError("This page is unavailable.", 404);
+    await this.getProject(actor, page.projectId);
+    return page;
+  }
+  private async pageParent(
+    actor: Principal,
+    projectId: string,
+    parentId: string | null,
+    pageId?: string,
+  ) {
+    if (!parentId) return;
+    const parent = await this.getPage(actor, parentId);
+    if (parent.projectId !== projectId)
+      throw new CommonsError("Choose a parent page in this project.");
+    if (pageId) {
+      const cycle = await this.one(
+        "WITH RECURSIVE ancestors AS (SELECT id,parent_id FROM pages WHERE id=$1 UNION SELECT p.id,p.parent_id FROM pages p JOIN ancestors a ON p.id=a.parent_id) SELECT 1 FROM ancestors WHERE id=$2",
+        [parentId, pageId],
+      );
+      if (cycle)
+        throw new CommonsError(
+          "A page cannot be placed inside itself or its children.",
+        );
+    }
+  }
+  async createPage(
+    actor: Principal,
+    projectId: string,
+    input: PageInput,
+    clientKey: string = randomUUID(),
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id);
+      await tx.getProject(current, projectId);
+      const data = pageSchema.parse(input);
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [projectId],
+      );
+      await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+        "page:" + current.id + idSchema.parse(clientKey),
+      ]);
+      const prior = await tx.one<{ id: string }>(
+        "SELECT id FROM pages WHERE author_id=$1 AND client_key=$2",
+        [current.id, clientKey],
+      );
+      if (prior) {
+        const page = await tx.getPage(current, prior.id);
+        if (page.projectId !== projectId)
+          throw new CommonsError(
+            "This save key belongs to another project.",
+            409,
+          );
+        return page;
+      }
+      await tx.pageParent(current, projectId, data.parentId);
+      const id = randomUUID();
+      await tx.connection.query(
+        "INSERT INTO pages(id,workspace_id,project_id,author_id,parent_id,title,body,client_key,created_at,kind,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+        [
+          id,
+          current.workspaceId,
+          projectId,
+          current.id,
+          data.parentId,
+          data.title,
+          data.body,
+          clientKey,
+          this.clock(),
+          data.kind || "page",
+          data.status || "Idea",
+        ],
+      );
+      await tx.record(current, projectId, "Created a page", id);
+      return tx.getPage(current, id);
+    });
+  }
+  async updatePage(
+    actor: Principal,
+    pageId: string,
+    input: PageInput,
+    version: number,
+  ) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        page = await tx.getPage(current, pageId);
+      if (current.kind !== "owner" && page.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can edit this page.",
+          403,
+        );
+      const data = pageSchema.parse(input);
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [page.projectId],
+      );
+      await tx.pageParent(current, page.projectId, data.parentId, pageId);
+      const changed = await tx.connection.query(
+        "UPDATE pages SET title=$1,body=$2,parent_id=$3,edited_at=$4,version=version+1,kind=$7,status=$8 WHERE id=$5 AND version=$6",
+        [
+          data.title,
+          data.body,
+          data.parentId,
+          this.clock(),
+          pageId,
+          z.number().int().positive().parse(version),
+          data.kind ?? page.kind,
+          data.status ?? page.status,
+        ],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This page changed since you opened it. Your draft is kept below. Open the latest page in another tab to compare before saving.",
+          409,
+        );
+      await tx.record(current, page.projectId, "Updated a page", page.id);
+      return tx.getPage(current, pageId);
+    });
+  }
+  async deletePage(actor: Principal, pageId: string, version: number) {
+    return this.transaction(async (tx) => {
+      const current = await tx.active(actor.id),
+        page = await tx.getPage(current, pageId);
+      if (current.kind !== "owner" && page.authorId !== current.id)
+        throw new CommonsError(
+          "Only the author or workspace owner can delete this page.",
+          403,
+        );
+      await tx.connection.query(
+        "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
+        [page.projectId],
+      );
+      const changed = await tx.connection.query(
+        "DELETE FROM pages WHERE id=$1 AND version=$2",
+        [pageId, z.number().int().positive().parse(version)],
+      );
+      if (!changed.rowCount)
+        throw new CommonsError(
+          "This page changed. Open the latest version before deleting it.",
+          409,
+        );
+      await tx.record(current, page.projectId, "Deleted a page", pageId);
+      return { projectId: page.projectId };
+    });
+  }
   async searchProject(
     actor: Principal,
     projectId: string,
@@ -976,9 +1275,11 @@ export class Store {
   ): Promise<SearchResult[]> {
     const query = z.string().trim().max(200).parse(input);
     const project = await this.getProject(actor, projectId);
-    const [notes, people] = await Promise.all([
+    const [notes, people, pages, files] = await Promise.all([
       this.listNotes(actor, projectId, { query }),
       this.listParticipants(actor, projectId),
+      this.listPages(actor, projectId, { query }),
+      this.listFiles(actor, projectId, { query }),
     ]);
     const base = `/workspace/projects/${projectId}`;
     const results: SearchResult[] = [];
@@ -993,6 +1294,17 @@ export class Store {
         href: base,
       });
     results.push(
+      ...pages.pages
+        .slice(0, 8)
+        .map((page) => ({
+          id: page.id,
+          kind: "page" as const,
+          title: page.title,
+          description: `Page by ${page.authorName}`,
+          href: `${base}/pages/${page.id}`,
+        })),
+    );
+    results.push(
       ...notes.notes.slice(0, 8).map((note) => ({
         id: note.id,
         kind: "note" as const,
@@ -1001,6 +1313,7 @@ export class Store {
         href: `${base}?note=${note.id}`,
       })),
     );
+    results.push(...files.files.slice(0, 6).map((file) => ({ id: file.id, kind: "file" as const, title: file.name, description: `File by ${file.authorName}`, href: `${base}/files?file=${file.id}` })));
     if (query)
       results.push(
         ...people
@@ -1019,6 +1332,10 @@ export class Store {
     return results;
   }
 
+  async recentActivity(actor: Principal, projectId: string) {
+    await this.getProject(actor, projectId);
+    return this.rows<Activity>("SELECT a.*,p.name AS author_name FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 ORDER BY a.id DESC LIMIT 5", [projectId]);
+  }
   async activity(actor: Principal, projectId: string, after = 0) {
     await this.getProject(actor, projectId);
     return this.rows<Activity>(

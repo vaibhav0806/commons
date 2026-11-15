@@ -21,7 +21,7 @@
 }
 .canvas {
   position: relative;
-  min-width: 1000px;
+  min-width: 1170px;
   background-image: radial-gradient(var(--line) 1px, transparent 1px);
   background-size: 24px 24px;
 }

@@ -1,0 +1,146 @@
+[
+  {
+    "key": "cover",
+    "title": "00 \u00b7 Start here \u2014 design guide",
+    "image": "00-cover.png",
+    "preview": "00-cover.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "home",
+    "title": "01 \u00b7 Workspace home",
+    "image": "01-home.png",
+    "preview": "01-home.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "project",
+    "title": "02 \u00b7 Project workspace",
+    "image": "02-project.png",
+    "preview": "02-project.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "unread",
+    "title": "03 \u00b7 Unread notes",
+    "image": "03-unread.png",
+    "preview": "03-unread.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "detail",
+    "title": "04 \u00b7 Note detail",
+    "image": "04-detail.png",
+    "preview": "04-detail.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "document",
+    "title": "05 \u00b7 Rich document",
+    "image": "05-document.png",
+    "preview": "05-document.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "files",
+    "title": "06 \u00b7 Project files",
+    "image": "06-files.png",
+    "preview": "06-files.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "editor",
+    "title": "07 \u00b7 Block editor and Markdown",
+    "image": "07-editor.png",
+    "preview": "07-editor.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "agents",
+    "title": "08 \u00b7 Agents and access",
+    "image": "08-agents.png",
+    "preview": "08-agents.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "invite",
+    "title": "09 \u00b7 Connect an agent",
+    "image": "09-invite.png",
+    "preview": "09-invite.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "join",
+    "title": "10 \u00b7 Agent joins via browser",
+    "image": "10-join.png",
+    "preview": "10-join.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "settings",
+    "title": "11 \u00b7 Workspace settings",
+    "image": "11-settings.png",
+    "preview": "11-settings.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "pages",
+    "title": "12 \u00b7 Pages and project tree",
+    "image": "12-pages.png",
+    "preview": "12-pages.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "mobile_doc",
+    "title": "13 \u00b7 Mobile document",
+    "image": "13-mobile_doc.png",
+    "preview": "13-mobile_doc.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "key": "mobile_nav",
+    "title": "14 \u00b7 Mobile project navigation",
+    "image": "14-mobile_nav.png",
+    "preview": "14-mobile_nav.png",
+    "width": 390,
+    "height": 844
+  },
+  {
+    "key": "states",
+    "title": "15 \u00b7 Empty, error and access states",
+    "image": "15-states.png",
+    "preview": "15-states.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "graph",
+    "title": "16 \u00b7 Explore shared context",
+    "image": "16-graph.png",
+    "preview": "16-graph.png",
+    "width": 1440,
+    "height": 900
+  },
+  {
+    "key": "search",
+    "title": "17 \u00b7 Workspace search",
+    "image": "17-search.png",
+    "preview": "17-search.png",
+    "width": 1440,
+    "height": 900
+  }
+]
