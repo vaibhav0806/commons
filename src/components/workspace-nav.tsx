@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SelectField } from "./ui/select-field";
 import { Icon } from "./brand";
 import { createSidebarProject } from "@/app/actions";
@@ -28,10 +28,7 @@ export function WorkspaceNav({
     if (!owner)
       void fetch("/api/agent/session", { method: "POST" }).catch(() => {});
   }, [owner]);
-  const pathname = usePathname(),
-    view = useSearchParams().get("view"),
-    current = projects.find((p) => pathname.includes(p.id)) || projects[0];
-  const home = current ? `/workspace/projects/${current.id}` : "/workspace";
+  const pathname = usePathname();
   return (
     <>
       <nav className="nav-group" aria-label="Workspace">
@@ -42,19 +39,6 @@ export function WorkspaceNav({
         >
           <Icon name="HouseLine" />
           Home
-        </Link>
-        <Link
-          className="nav-item"
-          href="/workspace/unread"
-          aria-current={
-            pathname === "/workspace/unread" ||
-            (pathname === home && view === "unread")
-              ? "page"
-              : undefined
-          }
-        >
-          <Icon name="Clock" />
-          Unread notes
         </Link>
       </nav>
       <div>
@@ -79,8 +63,8 @@ export function WorkspaceNav({
         <nav className="nav-group" aria-label="Projects">
           {creating && (
             <InlineProject
-              onCancel={() => {
-                createButton.current?.focus();
+              onCancel={(restoreFocus) => {
+                if (restoreFocus) createButton.current?.focus();
                 setCreating(false);
               }}
               onCreated={() => {
@@ -105,7 +89,7 @@ function InlineProject({
   onCancel,
   onCreated,
 }: {
-  onCancel: () => void;
+  onCancel: (restoreFocus: boolean) => void;
   onCreated: () => void;
 }) {
   const router = useRouter();
@@ -114,23 +98,41 @@ function InlineProject({
   const [pending, startTransition] = useTransition();
   const submitting = useRef(false);
   const input = useRef<HTMLInputElement>(null);
-  const hintId = useId();
+  const errorId = useId();
+  const form = useRef<HTMLFormElement>(null);
   useEffect(() => input.current?.focus(), []);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (!submitting.current && !form.current?.contains(event.target as Node))
+        onCancel(false);
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    return () => document.removeEventListener("pointerdown", dismiss, true);
+  }, [onCancel]);
   return (
     <form
+      ref={form}
       className="inline-project"
       aria-label="Create project"
       aria-busy={pending}
       onKeyDown={(event) => {
+        if (event.nativeEvent.isComposing) {
+          if (event.key === "Enter") event.preventDefault();
+          return;
+        }
         if (event.key === "Escape") {
           event.preventDefault();
           event.stopPropagation();
-          if (!submitting.current) onCancel();
+          if (!submitting.current) onCancel(true);
         }
       }}
       onSubmit={(event) => {
         event.preventDefault();
         if (submitting.current) return;
+        if (!name.trim()) {
+          onCancel(true);
+          return;
+        }
         if (name.trim().length < 2) {
           setError("Use at least 2 characters.");
           input.current?.focus();
@@ -162,7 +164,7 @@ function InlineProject({
         <input
           ref={input}
           aria-label="Project name"
-          aria-describedby={hintId}
+          aria-describedby={error ? errorId : undefined}
           aria-invalid={!!error}
           value={name}
           onChange={(event) => {
@@ -173,34 +175,19 @@ function InlineProject({
           maxLength={60}
           readOnly={pending}
           autoComplete="off"
+          enterKeyHint="done"
         />
       </div>
-      <div className="inline-project-controls">
-        <span
-          id={hintId}
-          role={error ? "alert" : "status"}
-          className={error ? "danger-text" : undefined}
-        >
-          {error || (pending ? "Creating…" : "Enter to create · Esc to cancel")}
+      {error && (
+        <p id={errorId} role="alert" className="inline-project-error">
+          {error}
+        </p>
+      )}
+      {pending && (
+        <span className="visually-hidden" role="status">
+          Creating project
         </span>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Cancel new project"
-          disabled={pending}
-          onClick={onCancel}
-        >
-          <Icon name="X" />
-        </button>
-        <button
-          type="submit"
-          className="icon-button"
-          aria-label="Create project"
-          disabled={pending || !name.trim()}
-        >
-          <Icon name="Check" />
-        </button>
-      </div>
+      )}
     </form>
   );
 }

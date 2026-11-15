@@ -2149,8 +2149,8 @@ input.join-code {
   padding: var(--space-1);
   border: 1px solid var(--line);
   border-radius: var(--radius-surface);
-  background: linear-gradient(145deg, var(--raised), var(--surface) 65%);
-  box-shadow: 0 12px 28px #0005;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
   transform-origin: var(--transform-origin);
   transition:
     opacity var(--motion-response),
@@ -2193,7 +2193,7 @@ input.join-code {
   position: absolute;
   right: 12px;
   display: inline-flex;
-  color: var(--accent);
+  color: var(--text);
 }
 .select-check .icon {
   width: 16px;
@@ -2649,6 +2649,9 @@ input.join-code {
 }
 .workspace-breadcrumb > span:last-child {
   color: var(--body-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mobile-menu-button {
   display: none;
@@ -2676,9 +2679,13 @@ input.join-code {
   border-top: 1px solid var(--line);
   min-width: 0;
 }
-.project-index-row:hover h2,
-.context-row:hover h3 {
-  color: var(--primary-hover);
+.project-index-row:hover,
+.context-row:hover {
+  background: var(--hover);
+}
+.project-index-row h2,
+.context-row h3 {
+  color: var(--text);
 }
 .project-index-row .row-copy,
 .context-row .row-copy {
@@ -2754,8 +2761,8 @@ input.join-code {
     flex: 1;
     gap: 8px;
   }
-  .workspace-breadcrumb a,
-  .workspace-breadcrumb > span:first-of-type {
+  .workspace-breadcrumb:has(> span + span) a,
+  .workspace-breadcrumb > span[aria-hidden="true"] {
     display: none;
   }
   .workspace .project-page {
@@ -3320,7 +3327,12 @@ h1 {
   background: var(--hover);
 }
 .tree-row[data-selected] {
-  background: var(--lilac);
+  background: var(--hover);
+}
+.tree-row .icon-button:hover,
+.tree-row .icon-button[data-popup-open] {
+  background: transparent;
+  color: var(--text);
 }
 .tree-label {
   font-size: 12px;
@@ -3769,7 +3781,7 @@ h1 {
   border: 0;
 }
 
-/* Creation stays beside the project tree, with explicit commit and cancel. */
+/* Inline project drafts commit on Enter and dismiss without saving. */
 .inline-project {
   min-width: 0;
 }
@@ -3793,27 +3805,14 @@ h1 {
   font-size: 12px;
   background: transparent;
 }
-.inline-project-controls {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding-top: 4px;
+.inline-project[aria-busy="true"] input {
+  opacity: 0.65;
+  cursor: progress;
 }
-.inline-project-controls > span {
-  flex: 1;
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-.inline-project-controls > .danger-text {
+.inline-project-error {
+  margin-top: 6px;
+  font-size: 11px;
   color: var(--danger);
-}
-.inline-project-controls .icon-button {
-  min-width: 28px;
-  width: 28px;
-  min-height: 28px;
-  height: 28px;
-  padding: 4px;
 }
 .entity-menu-separator {
   height: 1px;
@@ -3828,11 +3827,5 @@ h1 {
   .inline-project-field input {
     min-height: 44px;
     font-size: 16px;
-  }
-  .inline-project-controls .icon-button {
-    min-width: 44px;
-    width: 44px;
-    min-height: 44px;
-    height: 44px;
   }
 }

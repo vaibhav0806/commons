@@ -40,13 +40,12 @@ export default async function ProjectPage({
     }
     throw error;
   }
-  const base = `/workspace/projects/${projectId}`,
-    unread = query.view === "unread";
+  const base = `/workspace/projects/${projectId}`;
+  if (query.view === "unread") redirect(base);
   const offset = Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
     search = (query.q || "").slice(0, 200);
-  const [notePage, people, pageList, fileList, activity] = await Promise.all([
-    store.listNotes(actor, projectId, { query: search, unread, offset }),
-    store.listParticipants(actor, projectId),
+  const [notePage, pageList, fileList, activity] = await Promise.all([
+    store.listNotes(actor, projectId, { query: search, offset }),
     store.listPages(actor, projectId, {
       parentId: null,
       query: search,
@@ -70,7 +69,7 @@ export default async function ProjectPage({
       else throw error;
     }
   }
-  const closeHref = unread ? `${base}?view=unread` : base;
+  const closeHref = base;
   const canEditNote =
     note && (actor.kind === "owner" || note.authorId === actor.id);
   return (
@@ -78,8 +77,7 @@ export default async function ProjectPage({
       <div className="project-page" data-workspace-background>
         <header className="project-heading">
           <div>
-            <h1 tabIndex={-1}>{unread ? "Unread notes" : project.name}</h1>
-            {unread && <p>Context you haven’t marked as read yet.</p>}
+            <h1 tabIndex={-1}>{project.name}</h1>
           </div>
           <div className="project-heading-actions">
             <ContentPlus projectId={projectId} name={project.name} />
@@ -107,22 +105,20 @@ export default async function ProjectPage({
             )}
           </div>
         </header>
-        {!unread && (
+        {project.brief ? (
           <div className="project-purpose">
-            <div className="brief-label">
-              <span>Project brief</span>
-            </div>
-            <p>
-              {project.brief ||
-                "Leave a brief so your assistants know the goal and where to start."}
-            </p>
+            <p>{project.brief}</p>
           </div>
-        )}
-        {!unread && !query.view && (
+        ) : actor.kind === "owner" ? (
+          <Link className="text-link" href={`${base}?edit=project`}>
+            Add brief
+          </Link>
+        ) : null}
+        {!query.view && (
           <div className="project-overview-grid">
             <section className="project-section unified-content">
               <div className="section-title">
-                <h2>Inside {project.name}</h2>
+                <h2>Contents</h2>
               </div>
               {pageList.pages.map((page) => (
                 <Link
@@ -135,7 +131,9 @@ export default async function ProjectPage({
                     <h3>{page.title}</h3>
                     <p>{page.authorName}</p>
                   </div>
-                  <span className="meta">{page.kind}</span>
+                  <span className="meta">
+                    {page.kind === "collection" ? "folder" : page.kind}
+                  </span>
                   <Icon name="CaretRight" />
                 </Link>
               ))}
@@ -176,13 +174,7 @@ export default async function ProjectPage({
               {!pageList.pages.length &&
                 !fileList.files.length &&
                 !notePage.notes.length && (
-                  <div className="empty-state">
-                    <h2>Room for your next idea.</h2>
-                    <p>
-                      Add a page, folder or collection from the project’s +
-                      menu. Bring your files and agents into the same context.
-                    </p>
-                  </div>
+                  <p className="empty-list">No content yet.</p>
                 )}
               {(pageList.nextOffset !== null ||
                 fileList.nextOffset !== null ||
@@ -213,25 +205,15 @@ export default async function ProjectPage({
                 </div>
               ))}
               {!activity.length && (
-                <p className="meta">
-                  Contributions will appear here as you and your agents work.
-                </p>
+                <p className="meta">No contributions yet.</p>
               )}
-              <div className="context-hint">
-                <h3>Keep the context together</h3>
-                <p>
-                  Pages hold writing, images, files and collections. Your agents
-                  join through MCP or a browser.
-                </p>
-              </div>
             </aside>
           </div>
         )}
-        {(unread || query.view === "notes") && (
+        {query.view === "notes" && (
           <>
             <form className="project-search" action={base}>
               <Icon name="MagnifyingGlass" />
-              {unread && <input type="hidden" name="view" value="unread" />}
               <label className="visually-hidden" htmlFor="search">
                 Search project notes
               </label>
@@ -257,7 +239,7 @@ export default async function ProjectPage({
               aria-labelledby="notes-heading"
             >
               <div className="section-title">
-                <h2 id="notes-heading">{unread ? "New context" : "Notes"}</h2>
+                <h2 id="notes-heading">Notes</h2>
                 <Link
                   href={`${base}?create=note`}
                   className="section-add"
@@ -306,11 +288,7 @@ export default async function ProjectPage({
                   ))
                 ) : (
                   <li className="empty-list">
-                    {search
-                      ? "No notes match your search."
-                      : unread
-                        ? "You’re caught up. New notes will appear here."
-                        : "Start with a useful note. Give the next assistant context to work from."}
+                    {search ? "No notes match your search." : "No notes yet."}
                   </li>
                 )}
               </ul>
@@ -318,7 +296,7 @@ export default async function ProjectPage({
             {notePage.nextOffset !== null && (
               <Link
                 className="show-more"
-                href={`${base}?offset=${offset + 50}${unread ? "&view=unread" : ""}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
+                href={`${base}?offset=${offset + 50}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
               >
                 Earlier notes <Icon name="ArrowRight" />
               </Link>
@@ -330,17 +308,6 @@ export default async function ProjectPage({
             )}
           </>
         )}
-        <footer className="project-footnote">
-          <Icon name="LockSimple" />
-          <span>
-            {actor.projectId
-              ? "Access to this project only"
-              : "Workspace access"}
-          </span>
-          <Link href="/workspace/agents" className="text-link">
-            {people.filter((p) => p.kind === "agent").length} agents
-          </Link>
-        </footer>
       </div>
       {query.create === "note" && (
         <DetailSheet title="New note" closeHref={closeHref}>

@@ -37,7 +37,6 @@ export default async function Agents({
         <header className="project-heading">
           <div>
             <h1>Agents.</h1>
-            <p>Independent assistants. One shared workspace.</p>
           </div>
           {owner ? (
             <ConnectAgentButton className="button">
@@ -180,7 +179,7 @@ export default async function Agents({
                       { value: "", label: "Entire workspace" },
                       ...projects.map((p) => ({
                         value: p.id,
-                        label: `${p.name} only`,
+                        label: p.name,
                       })),
                     ]}
                     description="Access changes apply immediately to existing browser and MCP connections."

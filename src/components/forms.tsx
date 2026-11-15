@@ -316,10 +316,9 @@ Then read the project brief and shared notes, and contribute useful context. The
             { value: "", label: "Entire workspace" },
             ...projects.map((project) => ({
               value: project.id,
-              label: `${project.name} only`,
+              label: project.name,
             })),
           ]}
-          description="The agent chooses its own name. One agent belongs to one workspace."
         />
         <Notice state={state} />
         {!ready && (

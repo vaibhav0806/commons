@@ -25,6 +25,9 @@ export function WorkspaceHeader({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const project = projects.find((p) => pathname.includes(p.id));
+  const currentPage = items.find((item) =>
+    pathname.endsWith(`/pages/${item.id}`),
+  );
   const section =
     project?.name ||
     {
@@ -32,7 +35,6 @@ export function WorkspaceHeader({
       settings: "Settings",
       graph: "Graph explorer",
       new: "New project",
-      unread: "Unread notes",
     }[pathname.split("/")[2] || ""] ||
     "Home";
   return (
@@ -46,9 +48,19 @@ export function WorkspaceHeader({
           <Icon name="List" />
         </button>
         <div className="workspace-breadcrumb">
-          <Link href="/workspace">{name}</Link>
-          <span>/</span>
-          <span>{section}</span>
+          {project ? (
+            <Link href={`/workspace/projects/${project.id}`}>
+              {project.name}
+            </Link>
+          ) : (
+            <span>{section}</span>
+          )}
+          {currentPage && (
+            <>
+              <span aria-hidden="true">/</span>
+              <span>{currentPage.title}</span>
+            </>
+          )}
         </div>
         <ThemeToggle />
       </header>

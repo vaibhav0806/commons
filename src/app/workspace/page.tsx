@@ -26,10 +26,7 @@ export default async function Workspace() {
     <div className="project-page workspace-home">
       <header className="project-heading">
         <div>
-          <h1>Your workspace.</h1>
-          <p>
-            A shared home for the projects you and your agents are building.
-          </p>
+          <h1>Projects</h1>
         </div>
         {actor.kind === "owner" && (
           <Link className="button" href="/workspace/new">
@@ -40,8 +37,9 @@ export default async function Workspace() {
       </header>
       <section className="project-section">
         <div className="section-title">
-          <h2>Projects</h2>
-          <span className="meta">{projects.length} projects</span>
+          <span className="meta">
+            {projects.length ? `${projects.length} projects` : ""}
+          </span>
         </div>
         <div className="project-index">
           {summaries.map(({ project, notes, people, pages, files }) => (
@@ -55,31 +53,34 @@ export default async function Workspace() {
               </span>
               <div className="row-copy">
                 <h2>{project.name}</h2>
-                <p>
-                  {project.brief ||
-                    "Add a brief to give your agents a starting point."}
-                </p>
+                {project.brief && <p>{project.brief}</p>}
               </div>
               <span className="meta project-count">
-                {people.filter((p) => p.kind === "agent").length} agents ·{" "}
-                {pages.pages.length}{pages.nextOffset ? "+" : ""} pages · {files.files.length}{files.nextOffset ? "+" : ""} files · {notes.notes.length}
-                {notes.nextOffset ? "+" : ""} notes
+                {[
+                  [
+                    people.filter((p) => p.kind === "agent").length,
+                    "agent",
+                    false,
+                  ],
+                  [pages.pages.length, "page", pages.nextOffset !== null],
+                  [files.files.length, "file", files.nextOffset !== null],
+                  [notes.notes.length, "note", notes.nextOffset !== null],
+                ]
+                  .filter(([count]) => Number(count) > 0)
+                  .map(
+                    ([count, label, more]) =>
+                      `${count}${more ? "+" : ""} ${label}${count === 1 ? "" : "s"}`,
+                  )
+                  .join(" · ")}
               </span>
-              {notes.notes.some((n) => !n.read) && (
-                <span className="context-chip">Unread context</span>
-              )}
               <Icon name="CaretRight" />
             </Link>
           ))}
           {!projects.length && (
             <div className="empty-state">
               <Icon name="Folder" />
-              <h2>Make room for the project.</h2>
-              <p>
-                {actor.kind === "owner"
-                  ? "Create a project, add a brief and bring your first agent."
-                  : "Your workspace owner can create the first project."}
-              </p>
+              <h2>No projects yet</h2>
+              {actor.kind !== "owner" && <p>No projects yet.</p>}
               {actor.kind === "owner" && (
                 <Link className="button" href="/workspace/new">
                   Create a project
@@ -92,9 +93,6 @@ export default async function Workspace() {
       <section className="project-section">
         <div className="section-title">
           <h2>Recently shared</h2>
-          <Link className="text-link" href="/workspace/unread">
-            View unread notes
-          </Link>
         </div>
         <div className="context-list">
           {recent.map((note) => (
@@ -118,11 +116,7 @@ export default async function Workspace() {
               )}
             </Link>
           ))}
-          {!recent.length && (
-            <p className="empty-list">
-              Shared notes will appear here when you or an agent contributes.
-            </p>
-          )}
+          {!recent.length && <p className="empty-list">Nothing shared yet.</p>}
         </div>
       </section>
     </div>
