@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
 import type { PageTreeItem, Project } from "@/lib/store";
 import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
@@ -24,6 +24,17 @@ export function WorkspaceHeader({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    const create = () => {
+      if (owner && window.matchMedia("(max-width: 900px)").matches) {
+        setCreating(true);
+        setOpen(true);
+      }
+    };
+    window.addEventListener("commons:create-project", create);
+    return () => window.removeEventListener("commons:create-project", create);
+  }, [owner]);
   const project = projects.find((p) => pathname.includes(p.id));
   const currentPage = items.find((item) =>
     pathname.endsWith(`/pages/${item.id}`),
@@ -43,7 +54,10 @@ export function WorkspaceHeader({
         <button
           className="icon-button mobile-menu-button"
           aria-label="Open workspace navigation"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setCreating(false);
+            setOpen(true);
+          }}
         >
           <Icon name="List" />
         </button>
@@ -72,6 +86,7 @@ export function WorkspaceHeader({
           }}
         >
           <WorkspaceNav
+            initialCreating={creating}
             projects={projects}
             items={items}
             actorId={actorId}

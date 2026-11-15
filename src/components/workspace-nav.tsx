@@ -15,18 +15,28 @@ export function WorkspaceNav({
   items,
   actorId,
   onNavigate,
+  initialCreating = false,
 }: {
   projects: Project[];
   owner: boolean;
   items: PageTreeItem[];
   actorId: string;
   onNavigate?: () => void;
+  initialCreating?: boolean;
 }) {
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(initialCreating);
   const createButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!owner)
       void fetch("/api/agent/session", { method: "POST" }).catch(() => {});
+  }, [owner]);
+  useEffect(() => {
+    const create = () => {
+      if (owner && window.matchMedia("(min-width: 901px)").matches)
+        setCreating(true);
+    };
+    window.addEventListener("commons:create-project", create);
+    return () => window.removeEventListener("commons:create-project", create);
   }, [owner]);
   const pathname = usePathname();
   return (
@@ -255,5 +265,17 @@ export function MobileProjectSwitcher({ projects }: { projects: Project[] }) {
         onValueChange={(value) => router.push(`/workspace/projects/${value}`)}
       />
     </div>
+  );
+}
+
+export function NewProjectButton({ children }: { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="button"
+      onClick={() => window.dispatchEvent(new Event("commons:create-project"))}
+    >
+      {children}
+    </button>
   );
 }

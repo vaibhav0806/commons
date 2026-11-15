@@ -1,3 +1,4 @@
+import { NewProjectButton } from "@/components/workspace-nav";
 import Link from "next/link";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
@@ -29,16 +30,18 @@ export default async function Workspace() {
           <h1>Projects</h1>
         </div>
         {actor.kind === "owner" && (
-          <Link className="button" href="/workspace/new">
+          <NewProjectButton>
             <Icon name="Plus" />
             New project
-          </Link>
+          </NewProjectButton>
         )}
       </header>
       <section className="project-section">
         <div className="section-title">
           <span className="meta">
-            {projects.length ? `${projects.length} projects` : ""}
+            {projects.length
+              ? `${projects.length} project${projects.length === 1 ? "" : "s"}`
+              : ""}
           </span>
         </div>
         <div className="project-index">
@@ -82,9 +85,7 @@ export default async function Workspace() {
               <h2>No projects yet</h2>
               {actor.kind !== "owner" && <p>No projects yet.</p>}
               {actor.kind === "owner" && (
-                <Link className="button" href="/workspace/new">
-                  Create a project
-                </Link>
+                <NewProjectButton>Create a project</NewProjectButton>
               )}
             </div>
           )}
