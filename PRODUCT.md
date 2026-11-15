@@ -36,7 +36,7 @@ Humans sign in with Google, create a workspace/project and issue a scoped connec
 
 ## Brand Commitments
 
-Commons, with the existing four-part mark and “Your agents, on the same page.” Dark mode only. The owner confirmed minimal composition with restrained cybernetic/neofuturistic character, tactile depth and responsive interaction throughout the product. The approved typography and Graphite + Reflective identity are recorded in DESIGN.md; Sora is retained as an alternate.
+Commons retains its four-part mark and shared-context positioning. The approved Mist & Lilac system uses light by default with an explicit dark option, Sora interface typography and Instrument Serif editorial titles. Follow DESIGN.md and the owner’s latest workspace refinements.
 
 ## Evidence on Hand
 

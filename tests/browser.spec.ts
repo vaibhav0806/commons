@@ -231,12 +231,17 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     name: "Agents & access",
     exact: true,
   });
-  const connect = navigation.getByRole("button", {
-    name: "Connect an agent",
+  await expect(
+    navigation.getByRole("button", { name: "Connect an agent" }),
+  ).toHaveCount(0);
+  const connect = page.getByRole("button", {
+    name: "Bring an agent",
     exact: true,
   });
+  const unread = page
+    .locator(".sidebar")
+    .getByRole("link", { name: "Unread notes", exact: true });
   await expect(agents).toHaveAttribute("aria-current", "page");
-  await expect(connect).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   const geometry = await navigation.evaluate((element) => {
     const [first, second] = [...element.children].map((child) =>
       child.getBoundingClientRect(),
@@ -254,12 +259,12 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
   await page.locator(".sidebar-bottom").screenshot({
     path: "test-results/sidebar-agents-selected.png",
   });
-  await connect.hover();
-  await expect(connect).toHaveCSS("background-color", "rgb(255, 255, 255)");
-  await connect.focus();
-  await expect(connect).toHaveCSS("outline-offset", "-2px");
+  await unread.hover();
+  await expect(unread).toHaveCSS("background-color", "rgb(220, 226, 232)");
+  await unread.focus();
+  await expect(unread).toHaveCSS("outline-offset", "-2px");
   await page.locator(".sidebar-bottom").screenshot({
-    path: "test-results/sidebar-connect-hover.png",
+    path: "test-results/sidebar-unread-hover.png",
   });
   await connect.click();
   await expect(
@@ -881,6 +886,157 @@ test("nested folder, collection views and discussions work on desktop and mobile
   } finally {
     await client.close();
     await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("sidebar creates projects inline and keeps compact actions accessible", async ({
+  page,
+}) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const created: { id: string; name: string }[] = [];
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/start");
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await page.waitForURL(/\/(workspace|setup)/);
+  await page.goto("/workspace");
+  try {
+    const sidebar = page.locator(".sidebar");
+    await expect(sidebar).not.toContainText("Workspace access");
+    await expect(sidebar).not.toContainText("Workspace owner");
+    await expect(sidebar.locator(".profile a")).toHaveCSS("font-size", "13px");
+    await expect(
+      sidebar.getByRole("link", { name: "Home", exact: true }).locator("use"),
+    ).toHaveAttribute("href", "/icons.svg#HouseLine");
+    await expect(
+      page.getByRole("button", { name: "Open project search" }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Control+k");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      const mobile = width === 390;
+      if (mobile)
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      const surface = mobile ? page.getByRole("dialog") : sidebar;
+      const plus = surface.getByRole("button", {
+        name: "New project",
+        exact: true,
+      });
+      await plus.click();
+      const input = surface.getByRole("textbox", {
+        name: "Project name",
+        exact: true,
+      });
+      await expect(input).toBeFocused();
+      const originalUrl = page.url();
+      await expect(surface.getByLabel("Project brief")).toHaveCount(0);
+      await input.fill("Abandoned draft");
+      await input.press("Escape");
+      await expect(input).toHaveCount(0);
+      await expect(plus).toBeFocused();
+      await expect(page).toHaveURL(originalUrl);
+      await plus.click();
+      await input.fill("x");
+      await input.press("Enter");
+      await expect(surface.getByRole("alert")).toHaveText(
+        "Use at least 2 characters.",
+      );
+      await expect(input).toHaveValue("x");
+      const name = `Inline ${width} ${Date.now()}`;
+      await input.fill(name);
+      if (!mobile) {
+        await page.route("**/*", async (route) => {
+          if (route.request().headers()["next-action"]) await route.abort();
+          else await route.continue();
+        });
+        await input.press("Enter");
+        await expect(surface.getByRole("alert")).toContainText(
+          "Couldn’t create",
+        );
+        await expect(input).toHaveValue(name);
+        await expect(input).toBeFocused();
+        await page.unroute("**/*");
+      }
+      await page.screenshot({
+        path: `test-results/sidebar-inline-${width}.png`,
+      });
+      if (mobile) {
+        for (const button of await surface
+          .locator(".inline-project button")
+          .all()) {
+          const box = await button.boundingBox();
+          expect(box!.height).toBeGreaterThanOrEqual(44);
+          expect(box!.width).toBeGreaterThanOrEqual(44);
+        }
+        await surface
+          .getByRole("button", { name: "Create project", exact: true })
+          .click();
+      } else await input.press("Enter");
+      await page.waitForURL(/\/workspace\/projects\/[^/]+$/);
+      if (mobile) await expect(page.getByRole("dialog")).toBeHidden();
+      const project = (await store.listProjects(owner)).filter(
+        (p) => p.name === name,
+      );
+      expect(project).toHaveLength(1);
+      expect(project[0].brief).toBe("");
+      created.push(project[0]);
+      await expect(
+        page.getByRole("heading", { name, exact: true }),
+      ).toBeVisible();
+      if (mobile)
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      const row = surface
+        .locator(".tree-row")
+        .filter({ has: page.getByRole("link", { name, exact: true }) });
+      await expect(row.locator(".tree-actions button")).toHaveCount(1);
+      await row.getByRole("button", { name: `Actions for ${name}` }).click();
+      const menu = page.getByRole("menu");
+      await expect(
+        menu.getByRole("menuitem", { name: "New folder", exact: true }),
+      ).toBeVisible();
+      await menu
+        .getByRole("menuitem", { name: "New folder", exact: true })
+        .click({ trial: true });
+      await expect(menu.getByRole("separator")).toHaveCount(1);
+      const box = await menu.boundingBox();
+      expect(box!.width).toBeLessThanOrEqual(224);
+      expect(box!.height).toBeLessThanOrEqual(mobile ? 340 : 260);
+      await page.screenshot({ path: `test-results/sidebar-menu-${width}.png` });
+      await page.keyboard.press("Escape");
+      await expect(
+        row.getByRole("button", { name: `Actions for ${name}` }),
+      ).toBeFocused();
+      if (mobile) await page.keyboard.press("Escape");
+      else {
+        await row.click({ button: "right" });
+        await expect(
+          page.getByRole("menuitem", { name: "New folder", exact: true }),
+        ).toBeVisible();
+        await page.keyboard.press("Escape");
+      }
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    const unread = sidebar.getByRole("link", {
+      name: "Unread notes",
+      exact: true,
+    });
+    await unread.hover();
+    await expect(unread).toHaveCSS("background-color", "rgb(48, 57, 74)");
+    await page.screenshot({ path: "test-results/sidebar-polish-dark.png" });
+  } finally {
+    for (const project of created)
+      await store.deleteProject(owner, project.id, project.name);
     await pool.end();
   }
 });
