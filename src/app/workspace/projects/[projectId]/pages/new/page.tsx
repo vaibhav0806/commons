@@ -15,8 +15,8 @@ export default async function NewPage({
   const actor = await requireParticipant(),
     { projectId } = await params,
     store = getStore();
-  const project = await store.getProject(actor, projectId),
-    pages = await store.pageTree(actor, projectId);
+  await store.getProject(actor, projectId);
+  const pages = await store.pageTree(actor, projectId);
   const query = await searchParams;
   const kind =
     query.kind === "folder" || query.kind === "collection" ? "folder" : "page";
@@ -24,10 +24,12 @@ export default async function NewPage({
   const closeHref = `/workspace/projects/${projectId}${parent ? `/pages/${parent.id}` : ""}`;
   return (
     <div className="project-page document-page">
-      <div className="document-toolbar">
-        <Link className="text-link" href={closeHref}>
-          {parent?.title || project.name}
-        </Link>
+      <div className="document-toolbar creation-toolbar">
+        {parent && (
+          <Link className="text-link" href={closeHref}>
+            {parent.title}
+          </Link>
+        )}
         <Link className="text-link" href={closeHref}>
           Cancel
         </Link>
