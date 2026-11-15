@@ -865,8 +865,18 @@ test("nested folder, collection views and discussions work on desktop and mobile
     await expect(page.getByRole("dialog")).toHaveCSS("opacity", "1");
     await page.screenshot({ path: "test-results/workspace-tree-mobile.png" });
     await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.waitForLoadState("networkidle");
+    const selectedRow = page.locator(".sidebar .tree-row[data-selected]");
+    const clipped = await selectedRow.evaluate((row) =>
+      [...row.querySelectorAll("button")].some(
+        (button) =>
+          button.getBoundingClientRect().right >
+          row.getBoundingClientRect().right + 1,
+      ),
+    );
+    expect(clipped).toBe(false);
     await page.screenshot({ path: "test-results/workspace-board-dark.png" });
   } finally {
     await client.close();

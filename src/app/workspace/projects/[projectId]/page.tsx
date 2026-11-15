@@ -7,10 +7,7 @@ import { Icon, AgentMark } from "@/components/brand";
 import { ActionForm, CopyButton } from "@/components/forms";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { NoteFields } from "@/components/note-fields";
-import {
-  ConnectAgentButton,
-  CommandSearchButton,
-} from "@/components/app-interactions";
+import { ConnectAgentButton } from "@/components/app-interactions";
 import { DetailSheet } from "@/components/detail-sheet";
 import { getStore } from "@/lib/db";
 import { appUrl, requireParticipant } from "@/lib/session";
@@ -86,15 +83,14 @@ export default async function ProjectPage({
           </div>
           <div className="project-heading-actions">
             <ContentPlus projectId={projectId} name={project.name} />
-            <CommandSearchButton />
             {actor.kind === "owner" && (
               <>
                 <ConnectAgentButton
-                  className="icon-button"
+                  className="button secondary"
                   projectId={projectId}
                   label="Connect an agent to this project"
                 >
-                  <Icon name="Plus" />
+                  <Icon name="UsersThree" /> Invite agent
                 </ConnectAgentButton>
                 <ActionMenu
                   label="Project actions"

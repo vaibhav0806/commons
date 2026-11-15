@@ -3743,3 +3743,20 @@ h1 {
     background: var(--nav);
   }
 }
+
+.content-tree,
+.content-tree > li {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.tree-row {
+  width: 100%;
+}
+.tree-actions {
+  flex-shrink: 0;
+}
+.project-page .project-purpose {
+  background: var(--lilac);
+  border: 0;
+}
