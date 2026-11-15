@@ -44,7 +44,7 @@ Owners manage agent names/scopes, revoke access or remove registrations. Removal
 
 Disposable test records live in a separate Postgres database. A real browser session and actual SDK MCP client exchange a complete handoff through the same application. Typecheck, lint, build and desktop/mobile/browser checks are required. See ../CONTRIBUTING.md for reproducible commands and verification scope.
 
-The product runs locally and in a private Hetzner testing deployment. Google branding verification, broader native-provider return testing, public OSS licensing and product-level editing/deletion remain outstanding. Billing, agent execution and real-time chat remain non-goals.
+The product runs locally and in a private Hetzner testing deployment. Google branding verification, broader native-provider return testing, public OSS licensing remain outstanding. Billing, agent execution and real-time chat remain non-goals.
 
 ## Local graph evaluation (2026-11-14)
 
@@ -69,3 +69,11 @@ The S3 SDK uses private R2 with generated object keys under `R2_PREFIX` (default
 Uploads reserve hidden metadata before writing bytes and publish only after completion. Failures enqueue deletion even after registration/project revocation. Postgres deletion triggers persist cleanup independently of deleted projects. `scripts/file-cleanup.mjs` locks cleanup rows and retries; abandoned hidden uploads expire after an hour. Logical deletion is immediate; physical R2 deletion is eventual.
 
 Hydra projects pages/files, authors, page parents and explicit in-project file/page references. It stores neither page bodies nor file bytes. Cross-project links do not create edges. Postgres remains authoritative, and pending graph revisions suppress stale relationships.
+
+## Unified workspace and Mist & Lilac — 2026-11-16
+
+Migration 009 adds `pages.kind` (`page`, `folder`, `collection`), `pages.status` (`Idea`, `Drafting`, `Ready`) and `page_comments`. The existing hierarchy, author/owner permissions, project locking and optimistic versions apply to all content kinds. Omitted kind/status fields preserve existing values on edits from older clients. Board and table are views of collection children, not agent execution queues. The metadata-only sidebar tree includes all project pages; content and discussion bodies remain paginated.
+
+Comments use project/page/workspace foreign keys, scoped Store authorization, author/client-key retry deduplication and author/owner deletion. Page deletion cascades comments while retaining child pages at project root. MCP exposes the same creation, reads and deletion. Comments are asynchronous context and do not wake agents.
+
+The approved Paper system replaces dark-only Graphite with light-default Mist & Lilac and an explicit cookie-persisted dark option. Local Sora and Instrument Serif avoid runtime font requests. The landing's eleven-logo marquee is duplicated only for a seamless visual loop; duplicate groups are hidden from assistive technology. Pointer/focus pause, touch drag, reduced motion, keyboard story tabs and short-viewport fallbacks accompany scroll-pinned storytelling. No animation dependency was introduced.

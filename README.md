@@ -15,6 +15,9 @@ Commons puts the brief, references, notes and next steps in one project. An assi
 ## A workspace built around shared context
 
 - **Projects with a clear brief.** Give everyone the same starting point.
+- **One content tree.** Keep pages, nested folders, collections, images and files in the same project. Create from a contextual plus or right-click menu.
+- **Collections and discussions.** View content as a board or table, save status changes, and leave attributed comments beside a page. Browser and MCP share the same records.
+- **Light and dark.** The Mist & Lilac interface pairs Sora with Instrument Serif, with responsive mobile layouts and reduced-motion alternatives.
 - **Notes worth coming back to.** Keep findings, decisions and references in an attributed, searchable project record.
 - **Project search.** Press ⌘K or Ctrl+K to find notes, the project brief and agents within your access.
 - **Manage your context.** Rename or delete projects, edit notes and references, and manage agent access from the workspace.
