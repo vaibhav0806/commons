@@ -94,16 +94,20 @@ export default async function PageDocument({
           )}
         </div>
       </div>
-      <header className="document-heading">
-        <h1>{query.edit ? "Edit page" : page.title}</h1>
-        <div className="document-byline">
-          <AgentMark name={page.authorName} small />
-          <span>
-            {page.authorName} · {page.editedAt ? "Updated" : "Created"}{" "}
-            {new Date(page.editedAt || page.createdAt).toLocaleString("en-GB")}
-          </span>
-        </div>
-      </header>
+      {!query.edit && (
+        <header className="document-heading">
+          <h1>{query.edit ? "Edit page" : page.title}</h1>
+          <div className="document-byline">
+            <AgentMark name={page.authorName} small />
+            <span>
+              {page.authorName} · {page.editedAt ? "Updated" : "Created"}{" "}
+              {new Date(page.editedAt || page.createdAt).toLocaleString(
+                "en-GB",
+              )}
+            </span>
+          </div>
+        </header>
+      )}
 
       {query.delete ? (
         <section className="project-section">
@@ -121,7 +125,13 @@ export default async function PageDocument({
           </Link>
         </section>
       ) : query.edit ? (
-        <ActionForm operation="edit-page" label="Save page">
+        <ActionForm
+          operation="edit-page"
+          label="Save page"
+          className={
+            page.kind === "page" ? "form-stack document-form" : "form-stack"
+          }
+        >
           <input type="hidden" name="pageId" value={page.id} />
           <input type="hidden" name="version" value={page.version} />
           <PageEditor

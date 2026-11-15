@@ -25,6 +25,12 @@ export type ActionState = {
   token?: string;
 };
 const field = (data: FormData, name: string) => String(data.get(name) ?? "");
+function pageBody(data: FormData): string {
+  const encoded = data.get("bodyJson");
+  return typeof encoded === "string"
+    ? JSON.parse(encoded)
+    : field(data, "body");
+}
 function noteReferences(data: FormData) {
   const urls = data.getAll("referenceUrl").map(String);
   const labels = data.getAll("referenceLabel").map(String);
@@ -229,7 +235,7 @@ export async function workspaceAction(
           projectId,
           {
             title: field(data, "title"),
-            body: field(data, "body"),
+            body: pageBody(data),
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as
@@ -246,7 +252,7 @@ export async function workspaceAction(
           field(data, "pageId"),
           {
             title: field(data, "title"),
-            body: field(data, "body"),
+            body: pageBody(data),
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as

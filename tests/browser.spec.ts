@@ -17,14 +17,14 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await page.waitForURL(/\/(workspace|setup)/);
   await page.goto("/workspace/new");
+  await expect(page).toHaveURL(/\/workspace$/);
+  await page
+    .locator(".project-heading")
+    .getByRole("button", { name: "New project", exact: true })
+    .click();
   const name = `CRUD ${Date.now()}`;
   await page.getByLabel("Project name", { exact: true }).fill(name);
-  await page
-    .getByLabel("Project brief", { exact: true })
-    .fill("Context for our agents.");
-  await page
-    .getByRole("button", { name: "Create project", exact: true })
-    .click();
+  await page.getByLabel("Project name", { exact: true }).press("Enter");
   await page.waitForURL(/\/workspace\/projects\//);
   const projectUrl = page.url(),
     projectId = new URL(projectUrl).pathname.split("/").at(-1)!;
@@ -533,7 +533,7 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "New page", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.getByRole("combobox", { name: "Status", exact: true }),
     ).toHaveCount(0);
@@ -546,17 +546,29 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     await page
       .getByLabel("Page title", { exact: true })
       .fill("Workspace brief");
+    await expect(
+      page.getByRole("textbox", { name: "Page content", exact: true }),
+    ).toBeVisible();
     await page
-      .getByLabel("Page content", { exact: true })
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Markdown source", exact: true })
+      .click();
+    await page
+      .getByLabel("Markdown source", { exact: true })
       .fill(
         "## Rendering works\n\n- [x] Shared Markdown\n\n| Item | Details |\n| --- | --- |\n| Context | Durable |\n\n```js\nconst shared = true;\n```\n\n<script>window.unsafeMarkdown = true</script>",
       );
-    await page.getByRole("button", { name: "Preview", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Page options", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "Document", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Rendering works" }),
     ).toBeVisible();
-    await expect(page.locator(".markdown-table table")).toBeVisible();
-    await expect(page.locator(".markdown-content pre")).toContainText(
+    await expect(page.locator(".document-editor table.children")).toBeVisible();
+    await expect(page.locator(".document-editor .cm-editor")).toContainText(
       "const shared",
     );
     expect(await page.evaluate(() => "unsafeMarkdown" in window)).toBe(false);
@@ -631,10 +643,10 @@ test("Paper workspace pages, Markdown, R2 uploads and MCP share the same private
     ).toBeVisible();
     await page.goto(`${pageUrl}?edit=1`);
     await page
-      .getByRole("button", { name: "Insert block", exact: true })
+      .getByRole("button", { name: "Page options", exact: true })
       .click();
     await page
-      .getByRole("button", { name: "File or image", exact: true })
+      .getByRole("menuitem", { name: "Attach a file", exact: true })
       .click();
     await page
       .getByRole("button", { name: "reference.png", exact: true })
@@ -950,18 +962,18 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
     await page.keyboard.press("Control+k");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     for (const width of [1440, 390]) {
+      await page.goto("/workspace");
       await page.setViewportSize({ width, height: 844 });
       const mobile = width === 390;
-      if (mobile)
-        await page
-          .getByRole("button", { name: "Open workspace navigation" })
-          .click();
+      await page
+        .locator(".project-heading")
+        .getByRole("button", { name: "New project", exact: true })
+        .click();
       const surface = mobile ? page.getByRole("dialog") : sidebar;
       const plus = surface.getByRole("button", {
         name: "New project",
         exact: true,
       });
-      await plus.click();
       const input = surface.getByRole("textbox", {
         name: "Project name",
         exact: true,
@@ -1035,6 +1047,7 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
         .locator(".project-index-row")
         .filter({ has: page.getByRole("heading", { name, exact: true }) });
       await indexRow.hover();
+      await expect(indexRow).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
       await expect(
         indexRow.getByRole("heading", { name, exact: true }),
       ).toHaveCSS("color", "rgb(61, 73, 85)");
@@ -1120,6 +1133,144 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
   } finally {
     for (const project of created)
       await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("document editing preserves Markdown and supports contextual keyboard editing", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(15000);
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(owner, `Editor ${Date.now()}`, "");
+  const original =
+    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n";
+  const existingPage = await store.createPage(owner, project.id, {
+    title: "Existing document",
+    parentId: null,
+    body: original,
+    kind: "page",
+  });
+  const base = `/workspace/projects/${project.id}`;
+  const docUrl = `${base}/pages/${existingPage.id}`;
+  const externalRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("private-tracker"))
+      externalRequests.push(request.url());
+  });
+  try {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${docUrl}?edit=1`);
+    const content = page.getByRole("textbox", {
+      name: "Page content",
+      exact: true,
+    });
+    await expect(content).toBeVisible();
+    await expect(
+      content.getByRole("heading", { name: "Existing Markdown" }),
+    ).toBeVisible();
+    await expect(content.locator('span[data-type="html"]')).toContainText(
+      "Keep this HTML",
+    );
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(docUrl);
+    expect((await store.getPage(owner, existingPage.id)).body).toBe(original);
+    expect(externalRequests).toEqual([]);
+    await page.goto(`${docUrl}?edit=1`);
+    await expect(content).toBeVisible();
+    await content.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("A new contribution");
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(docUrl);
+    const changed = (await store.getPage(owner, existingPage.id)).body;
+    expect(changed).toContain(
+      "![External reference](https://example.com/private-tracker.png)",
+    );
+    expect(changed).toContain("Keep this HTML as text");
+    expect(changed).toContain("A new contribution");
+
+    await page.goto(`${base}/pages/new`);
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("A document, not a form");
+    await expect(content).toBeVisible();
+    await content.click();
+    await page.keyboard.type("/heading 2");
+    const slash = page.locator('.milkdown-slash-menu[data-show="true"]');
+    await expect(slash).toBeVisible();
+    await expect(slash.getByText("Heading 2", { exact: true })).toBeVisible();
+    await page.screenshot({ path: "test-results/editor-slash-desktop.png" });
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("A shared decision");
+    await expect(content.locator("h2")).toHaveText("A shared decision");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Useful context");
+    for (let i = 0; i < "Useful context".length; i++)
+      await page.keyboard.press("Shift+ArrowLeft");
+    await page.getByRole("button", { name: "Bold", exact: true }).click();
+    await expect(content.locator("strong")).toHaveText("Useful context");
+    await content.press("ArrowRight");
+    await content.press("End");
+    await page.keyboard.press("Enter");
+    await expect(content.locator("strong")).toHaveText("Useful context");
+    await page.keyboard.type("/table");
+    await expect(slash.getByText("Table", { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(slash).toBeHidden();
+    await expect(content.locator("strong").first()).toHaveText(
+      "Useful context",
+    );
+    await content.locator("p").last().click();
+    await page.keyboard.press("End");
+    for (let i = 0; i < 6; i++) await page.keyboard.press("Backspace");
+    await expect(content.locator("strong").first()).toHaveText(
+      "Useful context",
+    );
+    await page.keyboard.type("/image");
+    await expect(slash.getByText("Image", { exact: true })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await page.locator('.milkdown input[type="file"]').setInputFiles({
+      name: "editor-image.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
+    await expect(content.locator('img[src^="/api/files/"]')).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.screenshot({ path: "test-results/editor-document-light.png" });
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await page.screenshot({ path: "test-results/editor-document-dark.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByLabel("Page title", { exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({ path: "test-results/editor-document-mobile.png" });
+    await page.getByRole("button", { name: "Save page", exact: true }).click();
+    await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+    const createdId = new URL(page.url()).pathname.split("/").at(-1)!;
+    const saved = await store.getPage(owner, createdId);
+    expect(saved.body).toContain("## A shared decision");
+    expect(saved.body).toContain("**Useful context**");
+    await expect(page.locator(".markdown-content strong")).toHaveText(
+      "Useful context",
+    );
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
     await pool.end();
   }
 });

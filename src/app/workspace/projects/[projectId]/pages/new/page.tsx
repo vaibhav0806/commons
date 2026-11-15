@@ -35,13 +35,18 @@ export default async function NewPage({
         </Link>
       </div>
       <div className="creation-form">
-        <header className="project-heading">
-          <div>
-            <h1>New {kind}</h1>
-          </div>
-        </header>
+        {kind !== "page" && (
+          <header className="project-heading">
+            <div>
+              <h1>New {kind}</h1>
+            </div>
+          </header>
+        )}
 
         <ActionForm
+          className={
+            kind === "page" ? "form-stack document-form" : "form-stack"
+          }
           operation="page"
           projectId={projectId}
           label={kind === "page" ? "Save page" : `Create ${kind}`}

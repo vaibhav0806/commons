@@ -87,7 +87,7 @@ function TreeRow({
           render={<div />}
           className="tree-row"
           data-selected={selected || undefined}
-          style={{ paddingLeft: Math.min(depth, 5) * 14 }}
+          style={{ paddingLeft: 8 + Math.min(depth, 5) * 14 }}
         >
           <button
             className="tree-disclosure"

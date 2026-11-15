@@ -13,6 +13,10 @@ const config: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "same-origin" },
+          {
+            key: "Content-Security-Policy",
+            value: "img-src 'self' data: blob:",
+          },
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },
