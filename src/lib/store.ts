@@ -1332,6 +1332,10 @@ export class Store {
     return results;
   }
 
+  async recentActivity(actor: Principal, projectId: string) {
+    await this.getProject(actor, projectId);
+    return this.rows<Activity>("SELECT a.*,p.name AS author_name FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 ORDER BY a.id DESC LIMIT 5", [projectId]);
+  }
   async activity(actor: Principal, projectId: string, after = 0) {
     await this.getProject(actor, projectId);
     return this.rows<Activity>(

@@ -1,10 +1,17 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "./brand";
 
+const subscribeToHydration = () => () => {};
+
 export function FileUpload({ projectId }: { projectId: string }) {
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const id = useId(),
     router = useRouter(),
     input = useRef<HTMLInputElement>(null),
@@ -107,7 +114,7 @@ export function FileUpload({ projectId }: { projectId: string }) {
           type="file"
           multiple
           className="visually-hidden"
-          disabled={status === "uploading"}
+          disabled={!hydrated || status === "uploading"}
           onChange={(event) => {
             if (event.target.files) void upload(event.target.files);
           }}
@@ -115,7 +122,7 @@ export function FileUpload({ projectId }: { projectId: string }) {
         <button
           className="button secondary"
           type="button"
-          disabled={status === "uploading"}
+          disabled={!hydrated || status === "uploading"}
           onClick={() => input.current?.click()}
         >
           Choose files

@@ -3,7 +3,12 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import type { ProjectFile } from "@/lib/store";
-import type { WorkspacePage } from "@/lib/store";
+import type {
+  PageKind,
+  PageStatus,
+  PageTreeItem,
+  WorkspacePage,
+} from "@/lib/store";
 import { MarkdownContent } from "./markdown";
 import { SelectField } from "./ui/select-field";
 import { Icon } from "./brand";
@@ -24,9 +29,15 @@ export function PageEditor({
   pages,
   files,
   projectId,
+  kind = "page",
+  parentId,
+  status = "Idea",
 }: {
   page?: WorkspacePage;
-  pages: WorkspacePage[];
+  pages: PageTreeItem[];
+  kind?: PageKind;
+  parentId?: string;
+  status?: PageStatus;
   files: Pick<ProjectFile, "id" | "name" | "mimeType">[];
   projectId: string;
 }) {
@@ -55,10 +66,57 @@ export function PageEditor({
       node?.setSelectionRange(from + value.length, from + value.length);
     });
   }
+  if ((page?.kind || kind) === "folder")
+    return (
+      <>
+        <input type="hidden" name="kind" value="folder" />
+        <label className="field">
+          <span>Name</span>
+          <input
+            name="title"
+            defaultValue={page?.title}
+            maxLength={160}
+            required
+            autoFocus
+            placeholder="Folder name"
+          />
+        </label>
+        <SelectField
+          label="Inside"
+          name="parentId"
+          defaultValue={page?.parentId || parentId || ""}
+          options={[
+            { value: "", label: "Top level in this project" },
+            ...pages
+              .filter((p) => p.id !== page?.id)
+              .map((p) => ({ value: p.id, label: p.title })),
+          ]}
+        />
+        <label className="field">
+          <span>Description (optional)</span>
+          <textarea
+            name="body"
+            defaultValue={page?.body}
+            maxLength={100000}
+            rows={3}
+          />
+        </label>
+      </>
+    );
   return (
     <>
+      <input type="hidden" name="kind" value={page?.kind || kind} />
+      <SelectField
+        label="Status"
+        name="status"
+        defaultValue={page?.status || status}
+        options={["Idea", "Drafting", "Ready"].map((value) => ({
+          value,
+          label: value,
+        }))}
+      />
       <label className="field">
-        <span>Page title</span>
+        <span>{(page?.kind || kind) === "page" ? "Page title" : "Name"}</span>
         <input
           name="title"
           defaultValue={page?.title}
@@ -68,9 +126,9 @@ export function PageEditor({
         />
       </label>
       <SelectField
-        label="Parent page"
+        label="Inside"
         name="parentId"
-        defaultValue={page?.parentId || ""}
+        defaultValue={page?.parentId || parentId || ""}
         options={[
           { value: "", label: "Top level in this project" },
           ...pages

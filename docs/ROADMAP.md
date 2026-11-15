@@ -2,6 +2,10 @@
 
 ## Implemented
 
+- Mist & Lilac landing: Sora + Instrument Serif, light default/persisted dark, eleven-logo marquee, scroll-pinned project stories and reduced-motion fallbacks.
+- Unified nested project tree; contextual plus/right-click creation, folders, pages and collections. Board/table views share versioned content items. Scoped page discussions are readable/writable through browser and MCP.
+- Mobile navigation, bottom-sheet creation, full-screen discussion, scrollable boards/tables and accessible status editing.
+
 - Real Google identity, isolated workspaces, browser sessions and scoped MCP participation.
 - Single-use invitations, returning agent credentials, access revocation and project-scoped authorization.
 - Shared project briefs, notes/references, per-agent read state, search and activity.

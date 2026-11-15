@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { Project } from "@/lib/store";
+import { ThemeToggle } from "./theme-toggle";
+import type { PageTreeItem, Project } from "@/lib/store";
 import { CommandSearchButton } from "./app-interactions";
 import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
 import { DialogSurface } from "./ui/dialog-surface";
@@ -13,10 +14,14 @@ export function WorkspaceHeader({
   name,
   projects,
   owner,
+  items,
+  actorId,
 }: {
   name: string;
   projects: Project[];
   owner: boolean;
+  items: PageTreeItem[];
+  actorId: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -46,6 +51,7 @@ export function WorkspaceHeader({
           <span>/</span>
           <span>{section}</span>
         </div>
+        <ThemeToggle />
         <CommandSearchButton />
       </header>
       <DialogSurface open={open} onOpenChange={setOpen} title={name}>
@@ -55,7 +61,12 @@ export function WorkspaceHeader({
             if ((event.target as HTMLElement).closest("a")) setOpen(false);
           }}
         >
-          <WorkspaceNav projects={projects} owner={owner} />
+          <WorkspaceNav
+            projects={projects}
+            items={items}
+            actorId={actorId}
+            owner={owner}
+          />
           <WorkspaceActions owner={owner} />
         </div>
       </DialogSurface>

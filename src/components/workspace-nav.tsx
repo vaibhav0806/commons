@@ -6,14 +6,19 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SelectField } from "./ui/select-field";
 import { Icon } from "./brand";
 import { ConnectAgentButton } from "./app-interactions";
-import type { Project } from "@/lib/store";
+import { ContentTree } from "./content-tree";
+import type { PageTreeItem, Project } from "@/lib/store";
 
 export function WorkspaceNav({
   projects,
   owner,
+  items,
+  actorId,
 }: {
   projects: Project[];
   owner: boolean;
+  items: PageTreeItem[];
+  actorId: string;
 }) {
   useEffect(() => {
     if (!owner)
@@ -62,43 +67,12 @@ export function WorkspaceNav({
           )}
         </div>
         <nav className="nav-group" aria-label="Projects">
-          {projects.map((p) => (
-            <div key={p.id}>
-              <Link
-                className="nav-item"
-                aria-current={pathname.includes(p.id) ? "page" : undefined}
-                key={p.id}
-                href={`/workspace/projects/${p.id}`}
-              >
-                <Icon name="Folder" />
-                {p.name}
-              </Link>
-              {pathname.includes(p.id) && (
-                <div className="project-nav-children">
-                  <Link
-                    className="nav-item"
-                    href={`/workspace/projects/${p.id}/pages`}
-                    aria-current={
-                      pathname.includes("/pages") ? "page" : undefined
-                    }
-                  >
-                    <Icon name="FileText" />
-                    Pages
-                  </Link>
-                  <Link
-                    className="nav-item"
-                    href={`/workspace/projects/${p.id}/files`}
-                    aria-current={
-                      pathname.includes("/files") ? "page" : undefined
-                    }
-                  >
-                    <Icon name="Folder" />
-                    Files &amp; images
-                  </Link>
-                </div>
-              )}
-            </div>
-          ))}
+          <ContentTree
+            projects={projects}
+            items={items}
+            owner={owner}
+            actorId={actorId}
+          />
         </nav>
       </div>
     </>
@@ -115,7 +89,7 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
         aria-current={pathname === "/workspace/agents" ? "page" : undefined}
       >
         <Icon name="UsersThree" />
-        Agents
+        Agents & access
       </Link>
       {owner && (
         <Link

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getStore } from "@/lib/db";
-import { CommonsError } from "@/lib/store";
+import { CommonsError, type PageKind, type PageStatus } from "@/lib/store";
 import {
   allowMockSignIn,
   currentParticipant,
@@ -175,6 +175,40 @@ export async function workspaceAction(
         destination = `/workspace/projects/${file.projectId}/files`;
         break;
       }
+      case "page-comment": {
+        const comment = await store.createComment(
+          actor,
+          field(data, "pageId"),
+          field(data, "body"),
+          field(data, "clientKey"),
+        );
+        destination = `/workspace/projects/${comment.projectId}/pages/${comment.pageId}?discussion=1`;
+        break;
+      }
+      case "delete-comment": {
+        const comment = await store.deleteComment(
+          actor,
+          field(data, "commentId"),
+        );
+        destination = `/workspace/projects/${comment.projectId}/pages/${comment.pageId}?discussion=1`;
+        break;
+      }
+      case "page-status": {
+        const page = await store.getPage(actor, field(data, "pageId"));
+        await store.updatePage(
+          actor,
+          page.id,
+          {
+            title: page.title,
+            body: page.body,
+            parentId: page.parentId,
+            status: field(data, "status") as PageStatus,
+          },
+          Number(field(data, "version")),
+        );
+        destination = `/workspace/projects/${page.projectId}/pages/${page.parentId || page.id}`;
+        break;
+      }
       case "page": {
         const page = await store.createPage(
           actor,
@@ -183,6 +217,9 @@ export async function workspaceAction(
             title: field(data, "title"),
             body: field(data, "body"),
             parentId: field(data, "parentId") || null,
+            kind: (field(data, "kind") || undefined) as PageKind | undefined,
+            status: (field(data, "status") || undefined) as
+              PageStatus | undefined,
           },
           field(data, "clientKey"),
         );
@@ -197,6 +234,9 @@ export async function workspaceAction(
             title: field(data, "title"),
             body: field(data, "body"),
             parentId: field(data, "parentId") || null,
+            kind: (field(data, "kind") || undefined) as PageKind | undefined,
+            status: (field(data, "status") || undefined) as
+              PageStatus | undefined,
           },
           Number(field(data, "version")),
         );
@@ -209,7 +249,7 @@ export async function workspaceAction(
           field(data, "pageId"),
           Number(field(data, "version")),
         );
-        destination = `/workspace/projects/${page.projectId}/pages`;
+        destination = `/workspace/projects/${page.projectId}`;
         break;
       }
       case "note": {

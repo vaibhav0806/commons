@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
-import { ProjectTabs } from "@/components/project-tabs";
+import { ContentPlus } from "@/components/content-tree";
 import { Icon, AgentMark } from "@/components/brand";
 import { ActionForm, CopyButton } from "@/components/forms";
 import { ActionMenu } from "@/components/ui/action-menu";
@@ -47,11 +47,16 @@ export default async function ProjectPage({
     unread = query.view === "unread";
   const offset = Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
     search = (query.q || "").slice(0, 200);
-  const [notePage, people, pageList, fileList] = await Promise.all([
+  const [notePage, people, pageList, fileList, activity] = await Promise.all([
     store.listNotes(actor, projectId, { query: search, unread, offset }),
     store.listParticipants(actor, projectId),
-    store.listPages(actor, projectId),
-    store.listFiles(actor, projectId),
+    store.listPages(actor, projectId, {
+      parentId: null,
+      query: search,
+      offset,
+    }),
+    store.listFiles(actor, projectId, { query: search, offset }),
+    store.recentActivity(actor, projectId),
   ]);
   let note: Note | undefined,
     detailError = false;
@@ -80,6 +85,7 @@ export default async function ProjectPage({
             {unread && <p>Context you haven’t marked as read yet.</p>}
           </div>
           <div className="project-heading-actions">
+            <ContentPlus projectId={projectId} name={project.name} />
             <CommandSearchButton />
             {actor.kind === "owner" && (
               <>
@@ -105,21 +111,6 @@ export default async function ProjectPage({
             )}
           </div>
         </header>
-        <ProjectTabs
-          projectId={projectId}
-          active={unread || query.view === "notes" ? "Notes" : "Overview"}
-        />
-        <nav className="project-mobile-tabs" aria-label="Project views">
-          <Link href={base} aria-current={!unread ? "page" : undefined}>
-            Overview
-          </Link>
-          <Link
-            href={`${base}?view=unread`}
-            aria-current={unread ? "page" : undefined}
-          >
-            Unread notes
-          </Link>
-        </nav>
         {!unread && (
           <div className="project-purpose">
             <div className="brief-label">
@@ -132,132 +123,216 @@ export default async function ProjectPage({
           </div>
         )}
         {!unread && !query.view && (
-          <section className="project-section">
-            <div className="section-title">
-              <h2>Pages</h2>
-              <Link className="text-link" href={`${base}/pages/new`}>
-                New page
-              </Link>
-            </div>
-            {pageList.pages.slice(0, 3).map((page) => (
-              <Link
-                className="context-row compact-row"
-                key={page.id}
-                href={`${base}/pages/${page.id}`}
-              >
-                <Icon name="FileText" />
-                <div className="row-copy">
-                  <h3>{page.title}</h3>
+          <div className="project-overview-grid">
+            <section className="project-section unified-content">
+              <div className="section-title">
+                <h2>Inside {project.name}</h2>
+              </div>
+              {pageList.pages.map((page) => (
+                <Link
+                  className="context-row"
+                  key={page.id}
+                  href={`${base}/pages/${page.id}`}
+                >
+                  <Icon name={page.kind === "page" ? "FileText" : "Folder"} />
+                  <div className="row-copy">
+                    <h3>{page.title}</h3>
+                    <p>{page.authorName}</p>
+                  </div>
+                  <span className="meta">{page.kind}</span>
+                  <Icon name="CaretRight" />
+                </Link>
+              ))}
+              {fileList.files.map((file) => (
+                <Link
+                  className="context-row"
+                  key={file.id}
+                  href={`${base}/files?file=${file.id}`}
+                >
+                  <Icon name="FileText" />
+                  <div className="row-copy">
+                    <h3>{file.name}</h3>
+                    <p>{file.authorName}</p>
+                  </div>
+                  <span className="meta">
+                    {file.mimeType.startsWith("image/") ? "Image" : "File"}
+                  </span>
+                  <Icon name="CaretRight" />
+                </Link>
+              ))}
+              {notePage.notes.map((note) => (
+                <Link
+                  className="context-row"
+                  key={note.id}
+                  href={`${base}?note=${note.id}`}
+                >
+                  <AgentMark name={note.authorName} small />
+                  <div className="row-copy">
+                    <strong>{note.title}</strong>
+                    <p>
+                      {note.authorName}
+                      {!note.read ? " · Unread" : ""}
+                    </p>
+                  </div>
+                  <Icon name="CaretRight" />
+                </Link>
+              ))}
+              {!pageList.pages.length &&
+                !fileList.files.length &&
+                !notePage.notes.length && (
+                  <div className="empty-state">
+                    <h2>Room for your next idea.</h2>
+                    <p>
+                      Add a page, folder or collection from the project’s +
+                      menu. Bring your files and agents into the same context.
+                    </p>
+                  </div>
+                )}
+              {(pageList.nextOffset !== null ||
+                fileList.nextOffset !== null ||
+                notePage.nextOffset !== null) && (
+                <Link
+                  className="text-link"
+                  href={`${base}?offset=${offset + 50}`}
+                >
+                  More content
+                </Link>
+              )}
+            </section>
+            <aside className="project-contributions">
+              <h2>Recent contributions</h2>
+              {activity.map((entry) => (
+                <div className="contribution-entry" key={entry.id}>
+                  <span className="contributor">
+                    <AgentMark name={entry.authorName} small />
+                    <strong>{entry.authorName}</strong>
+                  </span>
+                  <p>{entry.description}</p>
+                  <time>
+                    {new Date(entry.createdAt).toLocaleDateString("en-GB", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </time>
                 </div>
-                <span className="meta">{page.authorName}</span>
-                <Icon name="CaretRight" />
-              </Link>
-            ))}
-            {!pageList.pages.length && (
-              <Link className="context-row" href={`${base}/pages/new`}>
-                <Icon name="Plus" />
-                <span>Create a page or import your Markdown.</span>
-              </Link>
-            )}
-            <Link className="text-link" href={`${base}/pages`}>
-              View project pages
-            </Link>
-          </section>
-        )}
-        {!unread && !query.view && <Link className="context-row project-files-preview" href={`${base}/files`}><Icon name="Folder" /><div className="row-copy"><h3>Files &amp; images</h3><p>{fileList.files.length ? fileList.files.slice(0, 3).map((file) => file.name).join(", ") : "Bring documents, images and original material into the project."}</p></div><span className="meta">Browse files</span><Icon name="CaretRight" /></Link>}
-        <form className="project-search" action={base}>
-          <Icon name="MagnifyingGlass" />
-          {unread && <input type="hidden" name="view" value="unread" />}
-          <label className="visually-hidden" htmlFor="search">
-            Search project notes
-          </label>
-          <input
-            id="search"
-            type="search"
-            name="q"
-            placeholder="Find context in this project…"
-            defaultValue={search}
-            maxLength={200}
-          />
-          <button className="text-link" type="submit">
-            Search
-          </button>
-          {search && (
-            <Link href={closeHref} className="text-link">
-              Clear
-            </Link>
-          )}
-        </form>
-        <section className="project-section" aria-labelledby="notes-heading">
-          <div className="section-title">
-            <h2 id="notes-heading">{unread ? "New context" : "Notes"}</h2>
-            <Link
-              href={`${base}?create=note`}
-              className="section-add"
-              scroll={false}
-            >
-              <Icon name="Plus" />
-              New note
-            </Link>
+              ))}
+              {!activity.length && (
+                <p className="meta">
+                  Contributions will appear here as you and your agents work.
+                </p>
+              )}
+              <div className="context-hint">
+                <h3>Keep the context together</h3>
+                <p>
+                  Pages hold writing, images, files and collections. Your agents
+                  join through MCP or a browser.
+                </p>
+              </div>
+            </aside>
           </div>
-          <ul className="work-list">
-            {notePage.notes.length ? (
-              notePage.notes.map((n) => (
-                <li className="work-row" key={n.id}>
-                  <Link
-                    className="row-link"
-                    href={`${base}?note=${n.id}`}
-                    scroll={false}
-                  >
-                    <AgentMark name={n.authorName} small />
-                    <div className="row-copy">
-                      <strong>{n.title}</strong>
-                      <p className="note-excerpt">{n.body.slice(0, 160)}</p>
-                      <p>
-                        Note by {n.authorName}
-                        {!n.read && (
-                          <span className="unread-label"> · Unread</span>
-                        )}
-                        {n.editedAt && " · Edited"}
-                      </p>
-                    </div>
-                    <time
-                      dateTime={new Date(
-                        n.editedAt || n.createdAt,
-                      ).toISOString()}
-                    >
-                      {new Date(n.editedAt || n.createdAt).toLocaleDateString(
-                        "en-GB",
-                        { day: "numeric", month: "short" },
-                      )}
-                    </time>
-                    <Icon name="CaretRight" />
-                  </Link>
-                </li>
-              ))
-            ) : (
-              <li className="empty-list">
-                {search
-                  ? "No notes match your search."
-                  : unread
-                    ? "You’re caught up. New notes will appear here."
-                    : "Start with a useful note. Give the next assistant context to work from."}
-              </li>
-            )}
-          </ul>
-        </section>
-        {notePage.nextOffset !== null && (
-          <Link
-            className="show-more"
-            href={`${base}?offset=${offset + 50}${unread ? "&view=unread" : ""}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
-          >
-            Earlier notes <Icon name="ArrowRight" />
-          </Link>
         )}
-        {offset > 0 && (
-          <Link className="text-link" href={closeHref}>
-            Back to latest
-          </Link>
+        {(unread || query.view === "notes") && (
+          <>
+            <form className="project-search" action={base}>
+              <Icon name="MagnifyingGlass" />
+              {unread && <input type="hidden" name="view" value="unread" />}
+              <label className="visually-hidden" htmlFor="search">
+                Search project notes
+              </label>
+              <input
+                id="search"
+                type="search"
+                name="q"
+                placeholder="Find context in this project…"
+                defaultValue={search}
+                maxLength={200}
+              />
+              <button className="text-link" type="submit">
+                Search
+              </button>
+              {search && (
+                <Link href={closeHref} className="text-link">
+                  Clear
+                </Link>
+              )}
+            </form>
+            <section
+              className="project-section"
+              aria-labelledby="notes-heading"
+            >
+              <div className="section-title">
+                <h2 id="notes-heading">{unread ? "New context" : "Notes"}</h2>
+                <Link
+                  href={`${base}?create=note`}
+                  className="section-add"
+                  scroll={false}
+                >
+                  <Icon name="Plus" />
+                  New note
+                </Link>
+              </div>
+              <ul className="work-list">
+                {notePage.notes.length ? (
+                  notePage.notes.map((n) => (
+                    <li className="work-row" key={n.id}>
+                      <Link
+                        className="row-link"
+                        href={`${base}?note=${n.id}`}
+                        scroll={false}
+                      >
+                        <AgentMark name={n.authorName} small />
+                        <div className="row-copy">
+                          <strong>{n.title}</strong>
+                          <p className="note-excerpt">{n.body.slice(0, 160)}</p>
+                          <p>
+                            Note by {n.authorName}
+                            {!n.read && (
+                              <span className="unread-label"> · Unread</span>
+                            )}
+                            {n.editedAt && " · Edited"}
+                          </p>
+                        </div>
+                        <time
+                          dateTime={new Date(
+                            n.editedAt || n.createdAt,
+                          ).toISOString()}
+                        >
+                          {new Date(
+                            n.editedAt || n.createdAt,
+                          ).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </time>
+                        <Icon name="CaretRight" />
+                      </Link>
+                    </li>
+                  ))
+                ) : (
+                  <li className="empty-list">
+                    {search
+                      ? "No notes match your search."
+                      : unread
+                        ? "You’re caught up. New notes will appear here."
+                        : "Start with a useful note. Give the next assistant context to work from."}
+                  </li>
+                )}
+              </ul>
+            </section>
+            {notePage.nextOffset !== null && (
+              <Link
+                className="show-more"
+                href={`${base}?offset=${offset + 50}${unread ? "&view=unread" : ""}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
+              >
+                Earlier notes <Icon name="ArrowRight" />
+              </Link>
+            )}
+            {offset > 0 && (
+              <Link className="text-link" href={closeHref}>
+                Back to latest
+              </Link>
+            )}
+          </>
         )}
         <footer className="project-footnote">
           <Icon name="LockSimple" />

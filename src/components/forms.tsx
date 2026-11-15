@@ -244,7 +244,12 @@ export function CopyButton({
     <>
       <button
         type="button"
-        className={variant === "primary" ? "button" : "button secondary"}
+        className={
+          variant === "primary"
+            ? "button copy-control"
+            : "button secondary copy-control"
+        }
+        aria-label={copied ? "Copied" : label}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
@@ -255,7 +260,7 @@ export function CopyButton({
         }}
       >
         <Icon name={copied ? "Check" : "Copy"} />
-        {copied ? "Copied" : label}
+        <span>{copied ? "Copied" : label}</span>
       </button>
       {manual && (
         <label className="field">

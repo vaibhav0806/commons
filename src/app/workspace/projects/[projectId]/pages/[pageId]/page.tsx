@@ -7,7 +7,10 @@ import { AgentMark } from "@/components/brand";
 import { ActionForm, CopyButton } from "@/components/forms";
 import { MarkdownContent } from "@/components/markdown";
 import { PageEditor } from "@/components/page-editor";
-import { ProjectTabs } from "@/components/project-tabs";
+import { CollectionView } from "@/components/collection-view";
+import { PageDiscussion } from "@/components/page-discussion";
+import { ContentPlus } from "@/components/content-tree";
+import { DetailSheet } from "@/components/detail-sheet";
 import { appUrl } from "@/lib/config";
 
 export default async function PageDocument({
@@ -15,7 +18,15 @@ export default async function PageDocument({
   searchParams,
 }: {
   params: Promise<{ projectId: string; pageId: string }>;
-  searchParams: Promise<{ edit?: string; delete?: string }>;
+  searchParams: Promise<{
+    edit?: string;
+    delete?: string;
+    view?: string;
+    discussion?: string;
+    item?: string;
+    offset?: string;
+    comments?: string;
+  }>;
 }) {
   const actor = await requireParticipant(),
     { projectId, pageId } = await params,
@@ -29,19 +40,43 @@ export default async function PageDocument({
   const canEdit = actor.kind === "owner" || actor.id === page.authorId;
   if ((query.edit || query.delete) && !canEdit) notFound();
   const base = `/workspace/projects/${projectId}/pages/${pageId}`;
-  const children = (await store.listPages(actor, projectId)).pages.filter(
-    (p) => p.parentId === pageId,
-  );
+  const childResult = await store.listPages(actor, projectId, {
+    parentId: pageId,
+    offset: Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
+  });
+  const children = childResult.pages;
+  const parent = page.parentId
+    ? await store.getPage(actor, page.parentId)
+    : null;
+  const item = query.item
+    ? await store.getPage(actor, query.item).catch((error) => {
+        if (error instanceof CommonsError) return null;
+        throw error;
+      })
+    : null;
+  const selected = item?.parentId === pageId ? item : null;
   return (
     <div className="project-page document-page">
       <div className="document-toolbar">
         <Link
           className="text-link"
-          href={`/workspace/projects/${projectId}/pages`}
+          href={
+            parent
+              ? `/workspace/projects/${projectId}/pages/${parent.id}`
+              : `/workspace/projects/${projectId}`
+          }
         >
-          Project pages
+          {parent?.title || "Project"}
         </Link>
         <div className="document-actions">
+          <ContentPlus
+            projectId={projectId}
+            parentId={page.id}
+            name={page.title}
+          />
+          <Link className="button secondary" href={`${base}?discussion=1`}>
+            Discussion
+          </Link>
           <CopyButton
             text={`${appUrl().origin}${base}`}
             label="Copy page link"
@@ -68,7 +103,7 @@ export default async function PageDocument({
           </span>
         </div>
       </header>
-      <ProjectTabs projectId={projectId} active="Pages" />
+
       {query.delete ? (
         <section className="project-section">
           <h2>Delete this page?</h2>
@@ -92,17 +127,27 @@ export default async function PageDocument({
             page={page}
             projectId={projectId}
             files={(await store.listFiles(actor, projectId)).files}
-            pages={(await store.listPages(actor, projectId)).pages}
+            pages={await store.pageTree(actor, projectId)}
           />
         </ActionForm>
       ) : (
         <>
-          <MarkdownContent
-            body={page.body || "This page is ready for its first content."}
-          />
-          {!!children.length && (
+          {(page.body || page.kind === "page") && (
+            <MarkdownContent
+              body={page.body || "This page is ready for its first content."}
+            />
+          )}
+          {page.kind === "collection" && (
+            <CollectionView
+              collection={page}
+              items={children}
+              actor={actor}
+              view={query.view}
+            />
+          )}
+          {page.kind !== "collection" && !!children.length && (
             <section className="project-section">
-              <h2>Inside this page</h2>
+              <h2>Inside {page.title}</h2>
               {children.map((child) => (
                 <Link
                   className="context-row"
@@ -114,6 +159,19 @@ export default async function PageDocument({
               ))}
             </section>
           )}
+          {childResult.nextOffset !== null && (
+            <Link
+              className="text-link"
+              href={`${base}?view=${query.view || "board"}&offset=${childResult.nextOffset}`}
+            >
+              More items
+            </Link>
+          )}
+          {Number(query.offset) > 0 && (
+            <Link className="text-link" href={base}>
+              Back to first items
+            </Link>
+          )}
           {canEdit && (
             <div className="document-end-actions">
               <Link className="text-link danger-text" href={`${base}?delete=1`}>
@@ -122,6 +180,38 @@ export default async function PageDocument({
             </div>
           )}
         </>
+      )}
+      {query.discussion && (
+        <DetailSheet title={`Discussion · ${page.title}`} closeHref={base}>
+          <PageDiscussion
+            page={page}
+            actor={actor}
+            offset={Math.max(0, Math.min(1000000, Number(query.comments) || 0))}
+          />
+        </DetailSheet>
+      )}
+      {selected && (
+        <DetailSheet
+          title={selected.title}
+          closeHref={`${base}${query.view === "table" ? "?view=table" : ""}`}
+        >
+          <div className="item-detail">
+            <Link
+              className="text-link"
+              href={`/workspace/projects/${projectId}/pages/${selected.id}`}
+            >
+              Open as page ↗
+            </Link>
+            <h1>{selected.title}</h1>
+            <span className="status-pill" data-status={selected.status}>
+              {selected.status}
+            </span>
+            <MarkdownContent
+              body={selected.body || "Ready for its first content."}
+            />
+            <PageDiscussion page={selected} actor={actor} />
+          </div>
+        </DetailSheet>
       )}
     </div>
   );

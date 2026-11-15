@@ -6,8 +6,10 @@ import { Menu } from "@base-ui/react/menu";
 export function ActionMenu({
   label,
   items,
+  trigger,
 }: {
   label: string;
+  trigger?: React.ReactNode;
   items: { label: string; href: string; danger?: boolean }[];
 }) {
   return (
@@ -16,7 +18,7 @@ export function ActionMenu({
         className="icon-button entity-menu-trigger"
         aria-label={label}
       >
-        ⋯
+        {trigger || "⋯"}
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner
