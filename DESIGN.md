@@ -46,7 +46,7 @@ Failed edits are recoverable from same-tab session storage. Conflicts show a com
 
 ## Focused Explorer and inline media — November 16
 
-Sidebar destinations are Agents, Explorer and Settings. A header control collapses the desktop sidebar and remembers the preference; mobile retains its navigation drawer. Disclosure arrows are centered SVGs. Project contents do not receive a filled hover background.
+Sidebar destinations are Agents and Settings. A header control collapses the desktop sidebar and remembers the preference; mobile retains its navigation drawer. Disclosure arrows are centered SVGs. Project contents do not receive a filled hover background.
 
 Project upload menus open a contextual dialog. Page attachments upload inside the document without navigation. Clipboard file bytes take precedence over accompanying HTML image URLs; pasted and dropped images use authenticated R2 uploads, with an inline placeholder while transferring. Safe raster images display in the document; other dropped files become links. The slash-menu Image action uses the same private upload path. Existing external Markdown images remain unloaded for privacy.
 
@@ -61,3 +61,7 @@ Home keeps one main New project action and omits the duplicate empty-state butto
 Project Activity is available from the project action menu in a contextual panel, with compact author/action sentences and timestamps. It has no permanent section in the project contents area. Signed-in landing navigation omits the duplicate Workspace link; the hero remains the primary entry. Destructive action labels omit ellipses while retaining confirmations.
 
 Plain HTML line-break tags are converted into Markdown hard breaks in the reader and editor. Code spans/fences remain literal, tags with attributes remain text, and arbitrary HTML is not enabled. Opening and closing an unchanged document preserves the original source.
+
+## Explorer retirement — November 16
+
+The owner removed the Explorer section from the workspace. Its sidebar destination and visual explorer are retired; old graph URLs redirect to Home. HydraDB context traversal and projection remain backend capabilities. The Agents heading has no terminal punctuation. HydraDB attribution appears only in the landing footer.

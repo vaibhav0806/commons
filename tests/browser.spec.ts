@@ -710,6 +710,13 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator("nav .brandmark")).toBeVisible();
+  await expect.poll(() => page.locator('#projects img[src^="/landing/"]').evaluateAll(
+    (images) => images.length === 3 && images.every((image) => {
+      const img = image as HTMLImageElement;
+      return img.complete && img.naturalWidth > 0;
+    }),
+  )).toBe(true);
+
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: "Copy setup prompt" }).first().click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
@@ -1588,7 +1595,7 @@ test("sidebar collapse and contextual uploads preserve the document and private 
       page
         .locator(".sidebar")
         .getByRole("link", { name: "Explorer", exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     const content = page.getByRole("textbox", {
       name: "Page content",
       exact: true,
@@ -1723,115 +1730,18 @@ test("sidebar collapse and contextual uploads preserve the document and private 
   }
 });
 
-test("Explorer follows real Hydra references, filters gaps and works on mobile", async ({
-  page,
-}) => {
-  const { Pool } = await import("pg");
-  const { Store } = await import("../src/lib/store");
-  const { syncGraphProject } = await import("../src/lib/graph-projection");
-  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-  const store = new Store(pool, process.env.COMMONS_SECRET!);
-  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
-    .actor;
-  const project = await store.createProject(
-    owner,
-    `Explorer ${Date.now()}`,
-    "",
-  );
-  const evidence = await store.createPage(owner, project.id, {
-    title: "Interview findings",
-    body: "Three teams need shared context.",
-    parentId: null,
-  });
-  const brief = await store.createPage(owner, project.id, {
-    title: "Launch brief",
-    body: `[Interviews](/workspace/projects/${project.id}/pages/${evidence.id})`,
-    parentId: null,
-  });
-  const decision = await store.createPage(owner, project.id, {
-    title: "Positioning decision",
-    body: `[Brief](/workspace/projects/${project.id}/pages/${brief.id})`,
-    parentId: null,
-  });
-  try {
-    await syncGraphProject(pool, project.id);
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/start");
-    await page.getByRole("button", { name: "Continue with Google" }).click();
-    await page.waitForURL(/\/workspace/);
-    await page.goto(`/workspace/graph?project=${project.id}`);
-    await expect(page.getByRole("status")).toHaveText("Synced with HydraDB");
-    const records = page.getByRole("complementary", {
-      name: "Explorer records",
-    });
-    await records.getByRole("button", { name: /Positioning decision/ }).click();
-    const connections = page.getByRole("region", { name: "Connections" });
-    await expect(
-      connections.getByRole("heading", { name: "Positioning decision" }),
-    ).toBeVisible();
-    await expect(
-      connections.getByRole("button", {
-        name: "Interview findings via Launch brief →",
-      }),
-    ).toBeVisible();
-    await connections
-      .getByRole("button", { name: /Interview findings via/ })
-      .click();
-    await expect(
-      connections.getByRole("heading", {
-        name: "Interview findings",
-        exact: true,
-      }),
-    ).toBeVisible();
-    await expect(
-      connections.getByRole("button", { name: /Launch brief/ }),
-    ).toBeVisible();
-    await connections
-      .getByRole("button", { name: "← Back", exact: true })
-      .click();
-    await expect(
-      connections.getByRole("heading", { name: "Positioning decision" }),
-    ).toBeVisible();
-    await connections
-      .getByRole("button", { name: "People", exact: true })
-      .click();
-    await expect(
-      connections.getByRole("button", { name: /Owner/ }),
-    ).toBeVisible();
-    await connections
-      .getByRole("button", { name: "References", exact: true })
-      .click();
-    await page.getByText("Context health", { exact: false }).first().click();
-    await expect(
-      page.getByText("Pages linking to source material"),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: /Review items without references/ })
-      .click();
-    await expect(
-      records.getByRole("button", { name: /Interview findings/ }),
-    ).toBeVisible();
-    await expect(
-      records.getByRole("button", { name: /Positioning decision/ }),
-    ).toHaveCount(0);
-    await page.screenshot({ path: "test-results/explorer-light.png" });
-    await page.getByRole("button", { name: "Switch to dark theme" }).click();
-    await page.screenshot({ path: "test-results/explorer-dark.png" });
-    await page.setViewportSize({ width: 390, height: 844 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-    await page.screenshot({
-      path: "test-results/explorer-mobile.png",
-      fullPage: true,
-    });
-    await connections.getByRole("link", { name: "Open ↗" }).click();
-    await expect(page).toHaveURL(new RegExp(`/pages/${decision.id}$`));
-  } finally {
-    await store.deleteProject(owner, project.id, project.name);
-    await syncGraphProject(pool, project.id);
-    await pool.end();
+test("workspace omits Explorer and redirects old graph links", async ({ page }) => {
+  await page.goto("/start");
+  await page.getByRole("button", { name: "Continue with Google" }).click();
+  await page.waitForURL(/\/workspace/);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/workspace/agents");
+    await expect(page.getByRole("heading", { name: "Agents", exact: true })).toBeVisible();
+    await expect(page.locator('a[href="/workspace/graph"]')).toHaveCount(0);
+    await expect(page.locator('nav[aria-label="Workspace actions"] a[href="/workspace/settings"]')).toHaveCount(1);
+    await page.goto("/workspace/graph?project=retired");
+    await expect(page).toHaveURL(/\/workspace$/);
+    await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
   }
 });

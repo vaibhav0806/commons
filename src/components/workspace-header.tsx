@@ -45,7 +45,6 @@ export function WorkspaceHeader({
     {
       agents: "Agents",
       settings: "Settings",
-      graph: "Explorer",
       new: "New project",
     }[pathname.split("/")[2] || ""] ||
     "Home";

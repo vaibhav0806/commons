@@ -36,7 +36,7 @@ export default async function Agents({
       <div className="project-page" data-workspace-background>
         <header className="project-heading">
           <div>
-            <h1>Agents.</h1>
+            <h1>Agents</h1>
           </div>
           {owner ? (
             <ConnectAgentButton className="button">

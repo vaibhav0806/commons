@@ -428,7 +428,8 @@ export function ProjectStories() {
                       alt={story.alt}
                       width="900"
                       height="600"
-                      loading="lazy"
+                      loading="eager"
+                      decoding="async"
                     />
                     <strong>{story.visual}</strong>
                   </div>
