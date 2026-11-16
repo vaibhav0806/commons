@@ -188,3 +188,11 @@ Application revision `1ff5f0d` is deployed on app and both workers with image `s
 HydraDB attribution is restricted to the landing footer with its original official symbol. Explorer navigation and visual UI are removed; old graph URLs redirect Home. Backend graph projection and agent context traversal remain intact. The heading reads Agents. All three homepage project photographs load eagerly; the footer landscape remains lazy-loaded.
 
 Lint/typecheck, production build, landing and inline-media browser checks passed. The retirement regression passed after scoping the Settings assertion to the sidebar navigation (the profile also links to Settings; mobile navigation is hidden until opened). Hosted acceptance verified all three tab images loaded before selection, the Agents heading, absent Explorer links, old-route redirect, retained Settings navigation, and footer logo/link at desktop/390px/320px in both themes without overflow. Health is OK and the test workspace was removed.
+
+## Mist social identity — 2026-11-16
+
+Application revision `8f09890` is deployed on app and both workers with image `sha256:4c233dc1c29956e459d0ea9e0e12d7dd3428b0d9aa4cce0c1fe1d11500675812`. Verified backup `backups/pre-brand-20261116.dump` and rollback image `commons:pre-brand-1ff5f0d` are retained. No migration.
+
+The 1200 × 630 OG/Twitter image uses the current landing headline, original meadow, Sora and Instrument Serif. SVG/ICO/Apple/installable icons share the Commons mark in slate on lilac. The brand archive and outlined wordmarks follow the current design system, including font licenses. The manifest uses the light canvas.
+
+Lint/typecheck and production build passed. Local and hosted browser checks on Home and Privacy verified social metadata, versioned OG image URL, exact served image bytes, image dimensions, all favicon/Apple assets and manifest icon dimensions. All SVG exports render, the 16px favicon was visually checked, the zip matches source assets, and hosted health is OK.

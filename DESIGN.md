@@ -69,3 +69,5 @@ The owner removed the Explorer section from the workspace. Its sidebar destinati
 ## Social identity — November 16
 
 Social sharing uses a static 1200 × 630 Mist card with the existing Commons mark, Sora wordmark, Instrument Serif headline and the original landing meadow. SVG, ICO, Apple and installable app icons share slate ink on a lilac tile; maskable exports keep the mark inside the safe circle. The downloadable kit follows the current palette and typography.
+
+Project names in the Home index use body-sized Sora Medium (15px), with 36px icon tiles and compact rows. On mobile, the disclosure remains aligned beside the title; nonempty counts sit below the title and empty counts occupy no space.

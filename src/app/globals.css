@@ -2679,6 +2679,16 @@ input.join-code {
   border-top: 1px solid var(--line);
   min-width: 0;
 }
+.project-index-row {
+  gap: 16px;
+  padding: 18px 0;
+}
+.project-index-row h2 {
+  font-size: var(--type-body);
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .context-row:hover {
   background: transparent;
 }
@@ -2703,22 +2713,25 @@ input.join-code {
 .project-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   background: linear-gradient(135deg, var(--raised), var(--surface));
   border: 1px solid var(--line);
   border-radius: var(--radius-surface);
 }
 .project-icon .icon {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
 }
 :root:not([data-theme="dark"]) .project-icon {
   background: var(--raised);
 }
 .project-count {
   min-width: 150px;
+}
+.project-count:empty {
+  display: none;
 }
 .context-chip {
   width: fit-content;
@@ -2777,14 +2790,21 @@ input.join-code {
     flex-wrap: wrap;
   }
   .project-index-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 18px;
     gap: 12px;
-    flex-wrap: wrap;
   }
   .project-index-row .row-copy {
-    min-width: 180px;
+    min-width: 0;
+  }
+  .project-index-row > .icon {
+    grid-column: 3;
+    grid-row: 1;
   }
   .project-count {
-    padding-left: 60px;
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
   }
   .context-row {
     gap: 12px;
