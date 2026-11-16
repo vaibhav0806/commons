@@ -95,6 +95,7 @@ export default async function ProjectPage({
             <ActionMenu
               label="Project actions"
               items={[
+                { label: "Files", href: `${base}/files` },
                 { label: "Activity", href: `${base}?activity=1` },
                 ...(actor.kind === "owner"
                   ? [

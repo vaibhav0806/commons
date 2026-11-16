@@ -76,9 +76,11 @@ h3 {
 [tabindex="-1"]:focus {
   outline: none;
 }
-::selection {
-  color: var(--on-accent);
-  background: var(--accent);
+::selection,
+.milkdown .ProseMirror *::selection {
+  color: var(--selection-ink);
+  background: var(--selection-bg);
+  text-shadow: none;
 }
 * {
   scrollbar-width: thin;

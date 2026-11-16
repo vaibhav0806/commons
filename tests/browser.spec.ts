@@ -2029,3 +2029,65 @@ test("agents choose an identity at onboarding and can change it without renaming
     await pool.end();
   }
 });
+
+test("project summaries match visible content and selected text stays readable", async ({ browser, baseURL }) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const login = await store.createLocalOwner(`content-${crypto.randomUUID()}@example.test`, "Content owner");
+  const project = await store.createProject(login.actor, "Content project", "");
+  const doc = await store.createPage(login.actor, project.id, { title: "Tracker", body: "Read [the company](https://example.test) and **the application status**.\n\n| Company | Status |\n| --- | --- |\n| Example | Draft |", parentId: null });
+  await store.createPage(login.actor, project.id, { title: "Companies", kind: "folder", body: "", parentId: null });
+  await store.createPage(login.actor, project.id, { title: "Earlier collection", kind: "collection", body: "", parentId: null });
+  await store.createNote(login.actor, project.id, { title: "Legacy handoff", body: "Keep existing context", references: [] }, crypto.randomUUID());
+  const file = await store.reserveFile(login.actor, project.id, { name: "source.txt", size: 0, mimeType: "text/plain", checksum: "0".repeat(64) });
+  await store.completeFile(login.actor, file.id);
+  const context = await browser.newContext({ baseURL });
+  await context.addCookies([{ name: "commons_session", value: login.token, url: baseURL!, httpOnly: true, sameSite: "Lax" }]);
+  const page = await context.newPage();
+  const base = `/workspace/projects/${project.id}`;
+  try {
+    await page.goto("/workspace");
+    await expect(page.locator(".project-index-row").filter({ hasText: "Content project" }).locator(".project-count")).toHaveText("1 page · 2 folders");
+    await expect(page.getByRole("heading", { name: "Recently shared" })).toHaveCount(0);
+    await page.goto(base);
+    await expect(page.locator(".unified-content")).toContainText("Tracker");
+    await expect(page.locator(".unified-content")).not.toContainText("source.txt");
+    await page.getByRole("button", { name: "Project actions", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Files", exact: true }).click();
+    await expect(page.locator(".file-table")).toContainText("source.txt");
+    for (const theme of ["light", "dark"]) {
+      await context.addCookies([{ name: "commons-theme", value: theme, url: baseURL! }]);
+      for (const edit of [false, true]) {
+        await page.goto(`${base}/pages/${doc.id}${edit ? "?edit=1" : ""}`);
+        const container = page.locator(edit ? ".milkdown .ProseMirror" : ".markdown-content");
+        await expect(container).toBeVisible();
+        const contrasts = await container.evaluate((el) => {
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          window.getSelection()!.removeAllRanges();
+          window.getSelection()!.addRange(range);
+          const luminance = (color: string) => {
+            const rgb = color.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4);
+            return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+          };
+          return [...el.querySelectorAll("p, a, strong, td")].map(node => {
+            const style = getComputedStyle(node, "::selection");
+            const a = luminance(style.color), b = luminance(style.backgroundColor);
+            return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+          });
+        });
+        expect(contrasts.length).toBeGreaterThan(0);
+        expect(Math.min(...contrasts)).toBeGreaterThanOrEqual(7);
+        await page.screenshot({ path: `test-results/selection-${theme}-${edit ? "editor" : "reader"}.png` });
+      }
+    }
+    expect((await store.listNotes(login.actor, project.id)).notes).toHaveLength(1);
+    expect((await store.listFiles(login.actor, project.id)).files).toHaveLength(1);
+  } finally {
+    await context.close();
+    await store.deleteWorkspace(login.actor, "DELETE", true);
+    await pool.end();
+  }
+});
