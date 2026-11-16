@@ -33,7 +33,7 @@ export default async function Home() {
             A workspace for you and the agents you already use. Share the brief,
             collect their contributions, and pick up where you left off.
           </p>
-          <Link className={styles.cta} href={destination}>
+          <Link className={styles.cta} href={destination} prefetch={!!participant}>
             {action}
           </Link>
           <SetupPrompt />
@@ -124,7 +124,7 @@ export default async function Home() {
           </p>
         </div>
         <div className={styles.joinActions}>
-          <Link className={styles.cta} href={destination}>
+          <Link className={styles.cta} href={destination} prefetch={!!participant}>
             {action}
           </Link>
           <SetupPrompt />
