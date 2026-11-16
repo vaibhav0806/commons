@@ -204,3 +204,11 @@ Application revision `18b1a86` is deployed on app and both workers with image `s
 Home project names use 15px Sora Medium with 36px icon tiles and tighter rows. Mobile disclosure arrows stay in the title row; nonempty counts sit below it and empty counts are hidden.
 
 Lint/typecheck and the final production build passed. Local and hosted browser checks verified typography, icon dimensions, working navigation, both themes at 1440/390/320px, aligned arrows for empty and populated projects, no horizontal overflow and no browser errors. Hosted health is OK; the isolated review workspaces were removed.
+
+## Inline folders and contextual menus — 2026-11-16
+
+Application revision `1b048c6` is deployed on app and both workers with image `sha256:284f69de963e0545467edd71573ec7f6474bb360b94f4756dcc8b3ab06139e8d`. Verified backup `backups/pre-inline-folders-20261116.dump` and rollback image `commons:pre-inline-folders-18b1a86` are retained. No migration.
+
+Folder creation uses the shared inline name field in the sidebar/mobile drawer. Parent branches expand automatically, Enter creates, Escape/outside pointer cancels, and a stable save key prevents duplicates on retry. Page menus contain page-specific actions, folder menus say New subfolder, and document pages no longer show add-child controls. Old folder form URLs return to their parent. Contents titles match the 15px project list, author metadata is 13px, and narrow project headers put actions below the title. OG artwork and its brand-kit copy omit the URL; social metadata uses a new image version.
+
+Lint/typecheck and final production build passed. Production-browser scenarios cover inline projects, nested folders/list-board-table/discussion, and the new folder flow with IME, focus, cancellation, parent placement, mobile drawers, legacy URLs and retry after the server commits but the response is lost. The nested regression was updated to await the new folder heading because inline creation stays on the existing folder URL until success. Local and hosted walkthroughs verified 1440/390/320px in both themes, page-specific menus, Contents typography, no overflow and no browser errors. Hosted Home/Privacy metadata and image bytes match the URL-free artwork. Health is OK; temporary workspaces were deleted.
