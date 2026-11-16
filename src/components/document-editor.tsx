@@ -8,6 +8,7 @@ import {
   type Ref,
 } from "react";
 import type { Crepe } from "@milkdown/crepe";
+import { remarkHtmlBreaks } from "@/lib/remark-html-breaks";
 
 export type DocumentEditorHandle = {
   markdown: () => string;
@@ -55,7 +56,7 @@ export function DocumentEditor({
       const [
         { Crepe },
         { replaceAll, insert },
-        { editorViewCtx },
+        { editorViewCtx, remarkPluginsCtx },
         { imageBlockSchema },
         { uploadConfig, uploadPlugin },
       ] = await Promise.all([
@@ -135,6 +136,10 @@ export function DocumentEditor({
       });
       // Keep standard Markdown alt text; Crepe otherwise stores resize ratios there.
       instance.editor.config((ctx) => {
+        ctx.update(remarkPluginsCtx, (plugins) => [
+          ...plugins,
+          { plugin: remarkHtmlBreaks, options: {} },
+        ]);
         ctx.update(uploadConfig.key, (previous) => ({
           ...previous,
           enableHtmlFileUploader: true,
