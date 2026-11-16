@@ -1099,6 +1099,8 @@ input.join-code {
   height: 12px;
 }
 .picker {
+  display: grid;
+  gap: var(--space-1);
   position: absolute;
   top: calc(100% - 8px);
   left: 0;
@@ -2163,6 +2165,8 @@ input.join-code {
   transform: translateY(-4px);
 }
 .select-list {
+  display: grid;
+  gap: var(--space-1);
   max-height: min(320px, var(--available-height));
   overflow-y: auto;
   outline: none;
@@ -2331,6 +2335,8 @@ input.join-code {
   min-width: 0;
 }
 .command-results {
+  display: grid;
+  gap: var(--space-1);
   max-height: min(420px, 50svh);
   overflow-y: auto;
   padding: 0 8px 8px;
@@ -2493,7 +2499,7 @@ input.join-code {
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   display: grid;
-  gap: 0;
+  gap: var(--space-1);
 }
 .entity-menu-items [role="menuitem"] {
   display: flex;
@@ -3361,9 +3367,14 @@ h1 {
   color: var(--muted);
 }
 .content-tree {
+  display: grid;
+  gap: var(--space-1);
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.content-tree .content-tree {
+  margin-top: var(--space-1);
 }
 .tree-row {
   display: flex;
@@ -4012,6 +4023,9 @@ textarea.document-title-input:focus {
   padding: 8px 10px;
   gap: 10px;
   border-radius: 4px;
+}
+.document-editor .milkdown .milkdown-slash-menu .menu-group li + li {
+  margin-top: var(--space-1);
 }
 .document-editor .milkdown .milkdown-slash-menu .menu-group li svg {
   width: 18px;
