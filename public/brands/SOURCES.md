@@ -22,3 +22,7 @@ Brand references: [OpenAI](https://openai.com/brand/), [Anthropic](https://www.a
 ## November 16 landing roster
 
 The owner-selected roster also uses Muse (`muse.ai/images/landing/brand/muse-logo.svg`), Hermes (`hermes-agent.nousresearch.com`, official icon), OpenClaw (`openclaw.ai/brand/openclaw-mascot.svg`), and the Dots, Poke, Cue and Duet marks retained from the reviewed Paper source. These are illustrative contributor identities, not certification badges. All eleven remain in the marquee; repeated groups are decorative and hidden from assistive technology. Named workspace avatars are inferred from participant display names, not verified provider identities.
+
+## HydraDB footer attribution
+
+- `hydradb.svg`: original orange symbol from the footer of [HydraDB's official site](https://hydradb.com/), downloaded 16 November 2026 from https://framerusercontent.com/images/Kmp846YuCgTSUXThMpXzg0wCGxw.svg. Used unchanged for the landing footer's linked Powered by HydraDB attribution.

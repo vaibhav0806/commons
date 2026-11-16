@@ -528,6 +528,7 @@
 }
 .footerBottom {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -540,6 +541,16 @@
 .footerBottom span a {
   margin-left: 4px;
   color: var(--text);
+}
+.footerMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.poweredBy {
+  gap: 6px;
+  white-space: nowrap;
 }
 @media (max-width: 1000px) {
   .hero {
