@@ -32,7 +32,7 @@ export function DetailSheet({
     const onKey = (event: KeyboardEvent) => {
       if (
         document.querySelector(
-          "[data-select-popup]:not([data-ending-style]), [data-command-menu]:not([data-ending-style])",
+          '[role="alertdialog"], [data-select-popup]:not([data-ending-style]), [data-command-menu]:not([data-ending-style])',
         )
       )
         return;
@@ -82,7 +82,7 @@ export function DetailSheet({
         e.inert = false;
       });
       requestAnimationFrame(() => {
-        if (document.querySelector('[role="dialog"]')) return;
+        if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
         const link = origin
           ? [...document.querySelectorAll<HTMLAnchorElement>("a[href]")].find(
               (a) => a.getAttribute("href") === origin,

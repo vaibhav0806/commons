@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { AgentIdentityField } from "@/components/agent-identity-field";
 import { ActionForm } from "@/components/forms";
-import { DetailSheet } from "@/components/detail-sheet";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { ConnectAgentButton } from "@/components/app-interactions";
 import { getStore } from "@/lib/db";
 import { requireParticipant, sessionCookie } from "@/lib/session";
@@ -78,6 +79,7 @@ export default async function Settings({
                     required
                   />
                 </label>
+                {!owner && <AgentIdentityField value={actor.agentIdentity} />}
               </ActionForm>
               <dl className="account-facts">
                 {owner && (
@@ -209,9 +211,12 @@ export default async function Settings({
                 ))}
               </ul>
               {sessions.length > 1 && (
-                <ActionForm
+                <ConfirmationDialog
+                  title="Sign out other sessions?"
+                  description="Your other browser sessions will end. This session stays signed in."
                   operation="sign-out-others"
                   label="Sign out other sessions"
+                  triggerLabel="Sign out other sessions"
                 />
               )}
             </section>
@@ -244,17 +249,19 @@ export default async function Settings({
                             {invite.id.slice(0, 8)}
                           </p>
                         </div>
-                        <ActionForm
+                        <ConfirmationDialog
+                          title="Cancel invitation?"
+                          description="This invitation will stop working. You can generate a new one whenever you need it."
                           operation="cancel-invitation"
                           label="Cancel invitation"
-                          className="inline-form"
+                          triggerLabel="Cancel invitation"
                         >
                           <input
                             type="hidden"
                             name="invitationId"
                             value={invite.id}
                           />
-                        </ActionForm>
+                        </ConfirmationDialog>
                       </li>
                     ))}
                   </ul>
@@ -271,58 +278,38 @@ export default async function Settings({
       </div>
       {owner &&
         (query.delete === "workspace" || query.delete === "account") && (
-          <DetailSheet
+          <ConfirmationDialog
             title={
               query.delete === "account"
                 ? "Delete your account?"
                 : "Delete workspace?"
             }
+            description={`This permanently deletes ${counts?.projects} projects, ${counts?.notes} notes, all pages, files, agent connections and invitations. ${query.delete === "account" ? "You’ll be signed out and your Commons Google identity will be removed." : "Your account remains and an empty workspace replaces this one."} This cannot be undone.`}
+            operation={`delete-${query.delete}`}
+            label={
+              query.delete === "account" ? "Delete account" : "Delete workspace"
+            }
             closeHref={base}
           >
-            <p className="detail-intro">
-              This permanently deletes {counts?.projects} projects,{" "}
-              {counts?.notes} notes, all agent connections and invitations.{" "}
-              {query.delete === "account"
-                ? "You’ll be signed out and your Commons Google identity will be removed."
-                : "Your account remains and an empty workspace replaces this one."}{" "}
-              This cannot be undone.
-            </p>
-            <ActionForm
-              operation={`delete-${query.delete}`}
-              label={
-                query.delete === "account"
-                  ? "Delete account"
-                  : "Delete workspace"
-              }
-              pendingLabel="Deleting"
-              danger
-            >
-              <label className="field">
-                <span>
-                  Type {query.delete === "account" ? "DELETE" : workspace.name}{" "}
-                  to confirm
-                </span>
-                <input name="confirmation" required autoComplete="off" />
-              </label>
-            </ActionForm>
-          </DetailSheet>
+            <label className="field">
+              <span>
+                Type {query.delete === "account" ? "DELETE" : workspace.name} to
+                confirm
+              </span>
+              <input name="confirmation" required autoComplete="off" />
+            </label>
+          </ConfirmationDialog>
         )}
       {selectedSession && (
-        <DetailSheet title="Revoke connection?" closeHref={base}>
-          <p className="detail-intro">
-            End access for {selectedSession.label}?{" "}
-            {selectedSession.current
-              ? "This is your current session. You’ll be signed out."
-              : "That browser or client will need to reconnect."}
-          </p>
-          <ActionForm
-            operation="revoke-session"
-            label="Revoke connection"
-            danger
-          >
-            <input type="hidden" name="sessionId" value={selectedSession.id} />
-          </ActionForm>
-        </DetailSheet>
+        <ConfirmationDialog
+          title="Revoke connection?"
+          description={`End access for ${selectedSession.label}? ${selectedSession.current ? "This is your current session. You’ll be signed out." : "That browser or client will need to reconnect."}`}
+          operation="revoke-session"
+          label="Revoke connection"
+          closeHref={base}
+        >
+          <input type="hidden" name="sessionId" value={selectedSession.id} />
+        </ConfirmationDialog>
       )}
     </>
   );

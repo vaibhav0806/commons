@@ -4,8 +4,9 @@ import { getStore } from "@/lib/db";
 import { ProjectTabs } from "@/components/project-tabs";
 import { FileUpload } from "@/components/file-upload";
 import { Icon } from "@/components/brand";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DetailSheet } from "@/components/detail-sheet";
-import { ActionForm, CopyButton } from "@/components/forms";
+import { CopyButton } from "@/components/forms";
 import { appUrl } from "@/lib/config";
 
 export default async function Files({
@@ -123,68 +124,58 @@ export default async function Files({
           </Link>
         )}
       </div>
-      {query.file && (
+      {file && query.delete && canDelete && (
+        <ConfirmationDialog
+          title="Delete file?"
+          description={`Delete “${file.name}” from the project? Pages linking to it keep their text, but the original file will no longer open.`}
+          operation="delete-file"
+          label="Delete file"
+          closeHref={`${base}?file=${file.id}`}
+        >
+          <input type="hidden" name="fileId" value={file.id} />
+        </ConfirmationDialog>
+      )}
+      {query.file && !(file && query.delete && canDelete) && (
         <DetailSheet title={file?.name || "File unavailable"} closeHref={base}>
           {file ? (
             <>
-              {query.delete && canDelete ? (
-                <>
-                  <p className="detail-intro">
-                    Delete this file from the project? Pages linking to it will
-                    keep their text, but the original file will no longer open.
-                  </p>
-                  <ActionForm
-                    operation="delete-file"
-                    label="Delete file"
-                    danger
-                  >
-                    <input type="hidden" name="fileId" value={file.id} />
-                  </ActionForm>
-                  <Link className="text-link" href={`${base}?file=${file.id}`}>
-                    Keep file
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <p className="detail-intro">
-                    Added by {file.authorName} · {bytes(file.size)}
-                  </p>
-                  {image && (
-                    <img
-                      className="file-image-preview"
-                      src={`/api/files/${file.id}?preview=1`}
-                      alt={file.name}
-                    />
-                  )}
-                  <div className="file-detail-actions">
-                    <a
-                      className="button"
-                      href={`/api/files/${file.id}`}
-                      download={file.name}
-                    >
-                      Download original
-                    </a>
-                    <CopyButton
-                      text={`${appUrl().origin}/api/files/${file.id}`}
-                      label="Copy file link"
-                    />
-                    <CopyButton
-                      text={`${image ? "!" : ""}[${file.name.replace(/[\[\]]/g, "")} ](/api/files/${file.id}${image ? "?preview=1" : ""})`}
-                      label="Copy Markdown"
-                    />
-                  </div>
-                  <p className="meta">
-                    Only participants with project access can open this file.
-                  </p>
-                  {canDelete && (
-                    <Link
-                      className="text-link danger-text"
-                      href={`${base}?file=${file.id}&delete=1`}
-                    >
-                      Delete file
-                    </Link>
-                  )}
-                </>
+              <p className="detail-intro">
+                Added by {file.authorName} · {bytes(file.size)}
+              </p>
+              {image && (
+                <img
+                  className="file-image-preview"
+                  src={`/api/files/${file.id}?preview=1`}
+                  alt={file.name}
+                />
+              )}
+              <div className="file-detail-actions">
+                <a
+                  className="button"
+                  href={`/api/files/${file.id}`}
+                  download={file.name}
+                >
+                  Download original
+                </a>
+                <CopyButton
+                  text={`${appUrl().origin}/api/files/${file.id}`}
+                  label="Copy file link"
+                />
+                <CopyButton
+                  text={`${image ? "!" : ""}[${file.name.replace(/[\[\]]/g, "")} ](/api/files/${file.id}${image ? "?preview=1" : ""})`}
+                  label="Copy Markdown"
+                />
+              </div>
+              <p className="meta">
+                Only participants with project access can open this file.
+              </p>
+              {canDelete && (
+                <Link
+                  className="text-link danger-text"
+                  href={`${base}?file=${file.id}&delete=1`}
+                >
+                  Delete file
+                </Link>
               )}
             </>
           ) : (

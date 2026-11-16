@@ -180,3 +180,53 @@ Application revision `b5299f3` is deployed on app and both workers with image `s
 The landing footer uses an original locally hosted meadow illustration (81KB WebP), a theme-aware fade, concise navigation and operator links. The image is decorative and lazy-loaded; mobile uses two small navigation columns. Source attribution is in public/landing/CREDITS.md.
 
 Route auditing confirmed no remaining global loading interstitial. The first hosted walkthrough caught scroll/resize callbacks accessing detached landing refs during navigation; guards now stop those callbacks. The final production build, lint/typecheck and landing browser regression pass, including desktop/mobile Privacy round trips. Hosted acceptance verified artwork decoding, both themes at 1440/390/320px without overflow, Privacy/home/join/return transitions, public entry routes and authenticated Home/Agents/Explorer/Settings routes without the Opening Commons splash or browser errors. Health is OK and disposable review workspaces were removed. Screenshots: `/Users/vaibhav/Downloads/commons-footer-2026-11-16`.
+
+## Footer attribution and Explorer retirement — 2026-11-16
+
+Application revision `1ff5f0d` is deployed on app and both workers with image `sha256:4e4b133ddf4ba9c6ad52432cf382757d6e1bd060b644d948a22562b83635c5da`. Verified backup `backups/pre-navigation-20261116.dump` and rollback image `commons:pre-navigation-b5299f3` are retained. No migration. Deleted Explorer component files were explicitly removed from the archive-based server checkout.
+
+HydraDB attribution is restricted to the landing footer with its original official symbol. Explorer navigation and visual UI are removed; old graph URLs redirect Home. Backend graph projection and agent context traversal remain intact. The heading reads Agents. All three homepage project photographs load eagerly; the footer landscape remains lazy-loaded.
+
+Lint/typecheck, production build, landing and inline-media browser checks passed. The retirement regression passed after scoping the Settings assertion to the sidebar navigation (the profile also links to Settings; mobile navigation is hidden until opened). Hosted acceptance verified all three tab images loaded before selection, the Agents heading, absent Explorer links, old-route redirect, retained Settings navigation, and footer logo/link at desktop/390px/320px in both themes without overflow. Health is OK and the test workspace was removed.
+
+## Mist social identity — 2026-11-16
+
+Application revision `8f09890` is deployed on app and both workers with image `sha256:4c233dc1c29956e459d0ea9e0e12d7dd3428b0d9aa4cce0c1fe1d11500675812`. Verified backup `backups/pre-brand-20261116.dump` and rollback image `commons:pre-brand-1ff5f0d` are retained. No migration.
+
+The 1200 × 630 OG/Twitter image uses the current landing headline, original meadow, Sora and Instrument Serif. SVG/ICO/Apple/installable icons share the Commons mark in slate on lilac. The brand archive and outlined wordmarks follow the current design system, including font licenses. The manifest uses the light canvas.
+
+Lint/typecheck and production build passed. Local and hosted browser checks on Home and Privacy verified social metadata, versioned OG image URL, exact served image bytes, image dimensions, all favicon/Apple assets and manifest icon dimensions. All SVG exports render, the 16px favicon was visually checked, the zip matches source assets, and hosted health is OK.
+
+## Compact project list titles — 2026-11-16
+
+Application revision `18b1a86` is deployed on app and both workers with image `sha256:ece6a8dd43d23a44d46631bd08f4626b87092a1bf7c8554ffc80df626c8f0df8`. Verified backup `backups/pre-project-sizing-20261116.dump` and rollback image `commons:pre-project-sizing-8f09890` are retained. No migration.
+
+Home project names use 15px Sora Medium with 36px icon tiles and tighter rows. Mobile disclosure arrows stay in the title row; nonempty counts sit below it and empty counts are hidden.
+
+Lint/typecheck and the final production build passed. Local and hosted browser checks verified typography, icon dimensions, working navigation, both themes at 1440/390/320px, aligned arrows for empty and populated projects, no horizontal overflow and no browser errors. Hosted health is OK; the isolated review workspaces were removed.
+
+## Inline folders and contextual menus — 2026-11-16
+
+Application revision `1b048c6` is deployed on app and both workers with image `sha256:284f69de963e0545467edd71573ec7f6474bb360b94f4756dcc8b3ab06139e8d`. Verified backup `backups/pre-inline-folders-20261116.dump` and rollback image `commons:pre-inline-folders-18b1a86` are retained. No migration.
+
+Folder creation uses the shared inline name field in the sidebar/mobile drawer. Parent branches expand automatically, Enter creates, Escape/outside pointer cancels, and a stable save key prevents duplicates on retry. Page menus contain page-specific actions, folder menus say New subfolder, and document pages no longer show add-child controls. Old folder form URLs return to their parent. Contents titles match the 15px project list, author metadata is 13px, and narrow project headers put actions below the title. OG artwork and its brand-kit copy omit the URL; social metadata uses a new image version.
+
+Lint/typecheck and final production build passed. Production-browser scenarios cover inline projects, nested folders/list-board-table/discussion, and the new folder flow with IME, focus, cancellation, parent placement, mobile drawers, legacy URLs and retry after the server commits but the response is lost. The nested regression was updated to await the new folder heading because inline creation stays on the existing folder URL until success. Local and hosted walkthroughs verified 1440/390/320px in both themes, page-specific menus, Contents typography, no overflow and no browser errors. Hosted Home/Privacy metadata and image bytes match the URL-free artwork. Health is OK; temporary workspaces were deleted.
+
+## Centered confirmations and optional agent types — local verification, 2026-11-16
+
+Removed Home’s duplicate New project button; sidebar creation remains. All destructive browser flows now use the shared centered alert dialog, including pages/folders, files, notes, projects, workspace/account, agents, sessions, comments, invitations and other-session sign-out. Page/folder content remains behind the blurred backdrop. Typed checks and domain permissions remain intact.
+
+Migration 010 adds optional agent identity. Enrollment and profile/owner edits validate the shared eleven-item landing catalog. Existing registrations and omitted identities stay neutral; names no longer guess a logo. Setup instructions and onboarding docs include the optional API field.
+
+Verified lint/typecheck, production build, 18 Store tests, 5 HTTP MCP tests and 3 workspace/file/R2 tests. All 16 browser cases passed: the complete suite passed 15 and one timed out before application interaction during Chrome context setup; that case then passed alone. New regressions cover real delete/revoke effects, cancellation, validation errors, retained child pages, nested discussion confirmation, selected avatars, clearing identity and old-client enrollment. A separate local production walkthrough checked both themes at 1440/390/320px, copied setup instructions, browser enrollment with OpenAI Dots, owner clearing the identity, no duplicate Home creation button and zero page errors. Disposable review workspace removed.
+
+Hosted verification: application revision `4d5a7bd` is deployed on app and both workers with image `sha256:3eb8e7837ff845edf83f3cc9c9f18663cfb64bcba2bf5dd80588d347d4e4879e`. Migration `010_agent_identity.sql` applied successfully and public health returns OK. Verified backup `backups/pre-confirmations-20261116.dump` and rollback image `commons:pre-confirmations-1b048c6` are retained. The live walkthrough verified all twelve selector entries (eleven identities plus neutral), copied setup instructions, mobile OpenAI Dots enrollment, persisted logo rendering, owner clearing the choice, revoke cancellation, sidebar creation and page confirmation context/focus/blur in both themes at 1440/390/320px. No browser page errors; final screenshots checked after dropdown animation and image decoding. Both disposable review workspaces were removed.
+
+## Content summaries and readable selection — 2026-11-16
+
+Application revision `1807814` is deployed on app and both workers with image `sha256:6bbbca7fceec4dab1e6e760079f04789b7b5504f9a8fa0fcebf9586ddc333e64`. Hosted health is OK. Verified Postgres backup `backups/pre-content-polish-20261116.dump` and rollback image `commons:pre-content-polish-4d5a7bd` are retained. No schema migration.
+
+Home counts the complete metadata tree, splits pages from folders and omits hidden-upload/legacy-note counts and the Recently shared feed. Project actions expose Files. Legacy notes, collection records and uploaded originals are preserved. Selected text uses independent background/ink tokens; both reader and editor retain at least 7:1 contrast in light/dark themes.
+
+Lint/typecheck and optimized build passed. Production browser regressions verify more than 50 records, folder/legacy-collection counts, file discovery, legacy data retention and reader/editor selection contrast, including links and table cells. The existing nested folder/list/board/table/discussion regression also passed. Hosted checks verified the page/folder counts, Files menu, absent legacy feed, linked Markdown tracker tables, dark selection colors and no horizontal overflow at 1440/390/320px in both themes. Live MCP context traversal returned ready, untruncated paths for three scenarios. The temporary project-scoped verification participant was removed afterward.

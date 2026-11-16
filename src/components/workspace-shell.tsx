@@ -27,9 +27,11 @@ export function WorkspaceShell({
     const upload = (event: Event) =>
       setUploadProject((event as CustomEvent<string>).detail);
     window.addEventListener("commons:create-project", create);
+    window.addEventListener("commons:create-folder", create);
     window.addEventListener("commons:upload", upload);
     return () => {
       window.removeEventListener("commons:create-project", create);
+      window.removeEventListener("commons:create-folder", create);
       window.removeEventListener("commons:upload", upload);
     };
   }, []);

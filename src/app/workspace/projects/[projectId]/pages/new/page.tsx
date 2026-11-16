@@ -1,7 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { redirect } from "next/navigation";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
-import { ActionForm } from "@/components/forms";
 import { PageEditor } from "@/components/page-editor";
 import Link from "next/link";
 
@@ -22,6 +21,7 @@ export default async function NewPage({
     query.kind === "folder" || query.kind === "collection" ? "folder" : "page";
   const parent = pages.find((page) => page.id === query.parent);
   const closeHref = `/workspace/projects/${projectId}${parent ? `/pages/${parent.id}` : ""}`;
+  if (kind === "folder") redirect(closeHref);
   return (
     <div className="project-page document-page">
       <div className="document-toolbar creation-toolbar">
@@ -31,48 +31,22 @@ export default async function NewPage({
           </Link>
         )}
         <Link className="text-link" href={closeHref}>
-          {kind === "page" ? "Back to project" : "Cancel"}
+          Back to project
         </Link>
       </div>
       <div className="creation-form">
-        {kind !== "page" && (
-          <header className="project-heading">
-            <div>
-              <h1>New {kind}</h1>
-            </div>
-          </header>
-        )}
-
-        {kind === "page" ? (
-          <PageEditor
-            actorId={actor.id}
-            pages={pages}
-            parentId={parent?.id}
-            status={
-              query.status === "Drafting" || query.status === "Ready"
-                ? query.status
-                : "Idea"
-            }
-            projectId={projectId}
-            files={(await store.listFiles(actor, projectId)).files}
-          />
-        ) : (
-          <ActionForm
-            className="form-stack"
-            operation="page"
-            projectId={projectId}
-            label={`Create ${kind}`}
-          >
-            <input name="clientKey" type="hidden" value={randomUUID()} />
-            <PageEditor
-              pages={pages}
-              kind={kind}
-              parentId={parent?.id}
-              projectId={projectId}
-              files={[]}
-            />
-          </ActionForm>
-        )}
+        <PageEditor
+          actorId={actor.id}
+          pages={pages}
+          parentId={parent?.id}
+          status={
+            query.status === "Drafting" || query.status === "Ready"
+              ? query.status
+              : "Idea"
+          }
+          projectId={projectId}
+          files={(await store.listFiles(actor, projectId)).files}
+        />
       </div>
     </div>
   );

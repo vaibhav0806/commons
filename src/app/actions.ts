@@ -6,7 +6,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getStore } from "@/lib/db";
-import { CommonsError, type PageKind, type PageStatus } from "@/lib/store";
+import {
+  CommonsError,
+  type PageKind,
+  type PageStatus,
+  type PageTreeItem,
+} from "@/lib/store";
 import {
   allowMockSignIn,
   currentParticipant,
@@ -135,6 +140,7 @@ export async function joinWorkspace(
       invitationId,
       field(data, "code"),
       field(data, "name"),
+      field(data, "agentIdentity") || null,
     );
     await setSession(joined.token, true);
   } catch (error) {
@@ -151,6 +157,32 @@ export async function createSidebarProject(name: string): Promise<{
     const project = await getStore().createProject(actor, name, "");
     revalidatePath("/workspace", "layout");
     return { projectId: project.id };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function createSidebarFolder(
+  projectId: string,
+  parentId: string | undefined,
+  title: string,
+  clientKey: string,
+): Promise<{ page?: PageTreeItem; error?: string }> {
+  const actor = await requireParticipant();
+  try {
+    const page = await getStore().createPage(
+      actor,
+      projectId,
+      {
+        title,
+        body: "",
+        parentId: parentId || null,
+        kind: "folder",
+      },
+      clientKey,
+    );
+    revalidatePath("/workspace", "layout");
+    return { page };
   } catch (error) {
     return errorState(error);
   }
@@ -239,7 +271,8 @@ export async function workspaceAction(
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as
-              PageStatus | undefined,
+              | PageStatus
+              | undefined,
           },
           field(data, "clientKey"),
         );
@@ -256,7 +289,8 @@ export async function workspaceAction(
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as
-              PageStatus | undefined,
+              | PageStatus
+              | undefined,
           },
           Number(field(data, "version")),
         );
@@ -332,7 +366,13 @@ export async function workspaceAction(
         break;
       }
       case "profile":
-        await store.updateProfile(actor, field(data, "name"));
+        await store.updateProfile(
+          actor,
+          field(data, "name"),
+          data.has("agentIdentity")
+            ? field(data, "agentIdentity") || null
+            : undefined,
+        );
         break;
       case "rename-workspace":
         await store.renameWorkspace(actor, field(data, "name"));
@@ -343,6 +383,9 @@ export async function workspaceAction(
           field(data, "participantId"),
           field(data, "name"),
           projectId || null,
+          data.has("agentIdentity")
+            ? field(data, "agentIdentity") || null
+            : undefined,
         );
         destination = "/workspace/agents";
         break;

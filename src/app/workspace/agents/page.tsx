@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ConnectAgentButton } from "@/components/app-interactions";
+import { AgentIdentityField } from "@/components/agent-identity-field";
 import { ActionForm } from "@/components/forms";
 import { AgentMark, Icon } from "@/components/brand";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DetailSheet } from "@/components/detail-sheet";
 import { SelectField } from "@/components/ui/select-field";
 import { getStore } from "@/lib/db";
@@ -36,7 +38,7 @@ export default async function Agents({
       <div className="project-page" data-workspace-background>
         <header className="project-heading">
           <div>
-            <h1>Agents.</h1>
+            <h1>Agents</h1>
           </div>
           {owner ? (
             <ConnectAgentButton className="button">
@@ -67,7 +69,7 @@ export default async function Agents({
             <ul className="agent-list">
               {agents.map((p) => (
                 <li key={p.id} data-agent-id={p.id} id={`agent-${p.id}`}>
-                  <AgentMark name={p.name} />
+                  <AgentMark identity={p.agentIdentity} />
                   <div className="agent-summary">
                     <h2>{p.name}</h2>
                     <p>
@@ -96,144 +98,127 @@ export default async function Agents({
           )}
         </section>
       </div>
-      {selected && (
-        <DetailSheet
+      {selected &&
+      (query.action === "remove" ||
+        query.action === "revoke" ||
+        selectedSession) ? (
+        <ConfirmationDialog
           title={
             query.action === "remove"
               ? "Remove agent?"
               : query.action === "revoke"
                 ? "Revoke access?"
-                : selectedSession
-                  ? "Revoke credential?"
-                  : selected.name
+                : "Revoke credential?"
           }
-          closeHref="/workspace/agents"
+          description={
+            selectedSession
+              ? `End the ${selectedSession.label} connection for ${selected.name}? Other credentials remain active.`
+              : `${selected.name} will lose browser and MCP access immediately. ${query.action === "remove" ? "Their registration will also disappear from this list." : "Their registration stays visible as revoked."} Shared notes keep their original authorship.`
+          }
+          operation={
+            query.action === "remove"
+              ? "remove-agent"
+              : query.action === "revoke"
+                ? "revoke"
+                : "revoke-session"
+          }
+          label={
+            query.action === "remove"
+              ? "Remove agent"
+              : query.action === "revoke"
+                ? "Revoke access"
+                : "Revoke credential"
+          }
+          closeHref={`/workspace/agents?agent=${selected.id}`}
         >
-          {query.action === "remove" || query.action === "revoke" ? (
-            <>
-              <p className="detail-intro">
-                {selected.name} will lose browser and MCP access immediately.{" "}
-                {query.action === "remove"
-                  ? "Their registration will also disappear from this list."
-                  : "Their registration stays visible as revoked."}{" "}
-                Shared notes keep their original authorship.
-              </p>
-              <ActionForm
-                operation={
-                  query.action === "remove" ? "remove-agent" : "revoke"
-                }
-                label={
-                  query.action === "remove" ? "Remove agent" : "Revoke access"
-                }
-                danger
-              >
+          <input type="hidden" name="participantId" value={selected.id} />
+          {selectedSession && (
+            <input type="hidden" name="sessionId" value={selectedSession.id} />
+          )}
+        </ConfirmationDialog>
+      ) : (
+        selected && (
+          <DetailSheet title={selected.name} closeHref="/workspace/agents">
+            <p className="detail-intro">
+              Joined {new Date(selected.createdAt).toLocaleDateString()} ·{" "}
+              {selected.revokedAt ? "Access revoked" : "Active registration"}
+            </p>
+            {!selected.revokedAt && (
+              <ActionForm operation="edit-agent" label="Save agent">
                 <input type="hidden" name="participantId" value={selected.id} />
-              </ActionForm>
-            </>
-          ) : selectedSession ? (
-            <>
-              <p className="detail-intro">
-                End the {selectedSession.label} connection for {selected.name}?
-                Other credentials remain active.
-              </p>
-              <ActionForm
-                operation="revoke-session"
-                label="Revoke credential"
-                danger
-              >
-                <input
-                  type="hidden"
-                  name="sessionId"
-                  value={selectedSession.id}
+                <label className="field">
+                  <span>Agent name</span>
+                  <input
+                    name="name"
+                    defaultValue={selected.name}
+                    minLength={2}
+                    maxLength={60}
+                    required
+                  />
+                </label>
+                <AgentIdentityField value={selected.agentIdentity} />
+                <SelectField
+                  label="Agent access"
+                  name="projectId"
+                  defaultValue={selected.projectId || ""}
+                  options={[
+                    { value: "", label: "Entire workspace" },
+                    ...projects.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    })),
+                  ]}
+                  description="Access changes apply immediately to existing browser and MCP connections."
                 />
               </ActionForm>
-            </>
-          ) : (
-            <>
-              <p className="detail-intro">
-                Joined {new Date(selected.createdAt).toLocaleDateString()} ·{" "}
-                {selected.revokedAt ? "Access revoked" : "Active registration"}
-              </p>
-              {!selected.revokedAt && (
-                <ActionForm operation="edit-agent" label="Save agent">
-                  <input
-                    type="hidden"
-                    name="participantId"
-                    value={selected.id}
-                  />
-                  <label className="field">
-                    <span>Agent name</span>
-                    <input
-                      name="name"
-                      defaultValue={selected.name}
-                      minLength={2}
-                      maxLength={60}
-                      required
-                    />
-                  </label>
-                  <SelectField
-                    label="Agent access"
-                    name="projectId"
-                    defaultValue={selected.projectId || ""}
-                    options={[
-                      { value: "", label: "Entire workspace" },
-                      ...projects.map((p) => ({
-                        value: p.id,
-                        label: p.name,
-                      })),
-                    ]}
-                    description="Access changes apply immediately to existing browser and MCP connections."
-                  />
-                </ActionForm>
+            )}
+            <section className="settings-section">
+              <h2>Connections</h2>
+              {sessions.length ? (
+                <ul className="settings-list">
+                  {sessions.map((session) => (
+                    <li key={session.id}>
+                      <div>
+                        <strong>{session.label}</strong>
+                        <p className="meta">
+                          Expires{" "}
+                          {new Date(session.expiresAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Link
+                        className="text-link"
+                        href={`/workspace/agents?agent=${selected.id}&session=${session.id}`}
+                        scroll={false}
+                      >
+                        Revoke
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="meta">No active connections.</p>
               )}
-              <section className="settings-section">
-                <h2>Connections</h2>
-                {sessions.length ? (
-                  <ul className="settings-list">
-                    {sessions.map((session) => (
-                      <li key={session.id}>
-                        <div>
-                          <strong>{session.label}</strong>
-                          <p className="meta">
-                            Expires{" "}
-                            {new Date(session.expiresAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Link
-                          className="text-link"
-                          href={`/workspace/agents?agent=${selected.id}&session=${session.id}`}
-                          scroll={false}
-                        >
-                          Revoke
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="meta">No active connections.</p>
-                )}
-              </section>
-              <div className="entity-actions">
-                {!selected.revokedAt && (
-                  <Link
-                    className="text-link danger-text"
-                    href={`/workspace/agents?agent=${selected.id}&action=revoke`}
-                    scroll={false}
-                  >
-                    Revoke access
-                  </Link>
-                )}
+            </section>
+            <div className="entity-actions">
+              {!selected.revokedAt && (
                 <Link
                   className="text-link danger-text"
-                  href={`/workspace/agents?agent=${selected.id}&action=remove`}
+                  href={`/workspace/agents?agent=${selected.id}&action=revoke`}
                   scroll={false}
                 >
-                  Remove agent
+                  Revoke access
                 </Link>
-              </div>
-            </>
-          )}
-        </DetailSheet>
+              )}
+              <Link
+                className="text-link danger-text"
+                href={`/workspace/agents?agent=${selected.id}&action=remove`}
+                scroll={false}
+              >
+                Remove agent
+              </Link>
+            </div>
+          </DetailSheet>
+        )
       )}
     </>
   );

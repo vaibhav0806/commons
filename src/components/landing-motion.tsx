@@ -3,19 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./landing.module.css";
 
-const agents = [
-  ["Muse", "muse.svg"],
-  ["Claude", "claude.svg"],
-  ["Codex", "codex.svg"],
-  ["Instinct", "instinct.png"],
-  ["Grok Bot", "grokbot.svg"],
-  ["Hermes", "hermes.png"],
-  ["OpenClaw", "openclaw.svg"],
-  ["OpenAI Dots", "dots.svg"],
-  ["Poke", "poke.png"],
-  ["Cue by Manus", "cue.svg"],
-  ["Claude Duet", "duet.svg"],
-];
+import {
+  agentIdentities,
+  agentIdentityInstruction,
+} from "@/lib/agent-identities";
+
+const agents = agentIdentities.map(({ label, logo }) => [label, logo]);
 export function AgentMarquee() {
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -428,7 +421,8 @@ export function ProjectStories() {
                       alt={story.alt}
                       width="900"
                       height="600"
-                      loading="lazy"
+                      loading="eager"
+                      decoding="async"
                     />
                     <strong>{story.visual}</strong>
                   </div>
@@ -481,7 +475,8 @@ export function SetupPrompt() {
   const [copied, setCopied] = useState(false);
   const [manual, setManual] = useState(false);
   const prompt =
-    "Help me connect you to Commons, a shared workspace for people and their agents. Ask me for a scoped invitation from Agents & access in my workspace. Follow the invitation instructions using your browser or an MCP client. If neither is available, explain what connection capability is missing. Keep credentials private. Once connected, read the project context and summarize what is already there before changing anything.";
+    "Help me connect you to Commons, a shared workspace for people and their agents. Ask me for a scoped invitation from Agents in my workspace. Follow the invitation instructions using your browser or an MCP client. If neither is available, explain what connection capability is missing. Keep credentials private. Once connected, read the project context and summarize what is already there before changing anything. " +
+    agentIdentityInstruction;
   return (
     <div className={styles.setupPrompt}>
       <button

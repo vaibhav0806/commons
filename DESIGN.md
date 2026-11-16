@@ -22,7 +22,7 @@ Sidebar creation asks only for a project name. Enter commits; Escape returns foc
 
 Each tree row has one ellipsis and a matching right-click menu. Selected and hovered rows use neutral mist, with no separate button fill inside the row. Project/content titles retain ink color on hover. Menus use 32px desktop/44px touch rows; selects share the flat surface and restrained shadow. Only actual nonzero counts and existing brief snippets appear on home. Workspace name lives in the sidebar; header breadcrumbs show project/page context. Unread navigation is retired; old URLs redirect, while stored read state and scoped API/MCP retrieval remain intact.
 
-Create choices are Page, Folder and Upload/import. Page creation/editing and folder items open in the main workspace area, not a side sheet. New pages start with a title and body, with parent/status supplied from context. Folders expose List/Board/Table views. Existing collection records remain compatible and retain their data, but are presented as folders; there is no separate collection or note creation choice in the tree. Discussion and consequential confirmations may still use contextual panels.
+Create choices are Page, Folder and Upload/import. Page creation/editing and folder items open in the main workspace area, not a side sheet. New pages start with a title and body, with parent/status supplied from context. Folders expose List/Board/Table views. Existing collection records remain compatible and retain their data, but are presented as folders; there is no separate collection or note creation choice in the tree. Discussion uses contextual panels. Consequential actions use compact centered confirmation dialogs with a blurred backdrop.
 
 Muse was consulted twice through OpenRouter (`meta/muse-wonder`, high reasoning). The latest owner feedback supersedes the earlier suggested check/cancel buttons. Adopted principles: one neutral highlight per row, no nested hover fills, no teaching paragraphs/empty count lists, gesture-based project drafts, real error feedback and clear permission labels. References: [Notion sidebar](https://www.notion.com/help/navigate-with-the-sidebar), [Notion subpages](https://www.notion.com/help/create-a-subpage), and [Linear sidebar customization](https://linear.app/changelog/2024-12-18-personalized-sidebar). These are interaction references, not claims of new November 2026 releases.
 
@@ -46,7 +46,7 @@ Failed edits are recoverable from same-tab session storage. Conflicts show a com
 
 ## Focused Explorer and inline media — November 16
 
-Sidebar destinations are Agents, Explorer and Settings. A header control collapses the desktop sidebar and remembers the preference; mobile retains its navigation drawer. Disclosure arrows are centered SVGs. Project contents do not receive a filled hover background.
+Sidebar destinations are Agents and Settings. A header control collapses the desktop sidebar and remembers the preference; mobile retains its navigation drawer. Disclosure arrows are centered SVGs. Project contents do not receive a filled hover background.
 
 Project upload menus open a contextual dialog. Page attachments upload inside the document without navigation. Clipboard file bytes take precedence over accompanying HTML image URLs; pasted and dropped images use authenticated R2 uploads, with an inline placeholder while transferring. Safe raster images display in the document; other dropped files become links. The slash-menu Image action uses the same private upload path. Existing external Markdown images remain unloaded for privacy.
 
@@ -61,3 +61,29 @@ Home keeps one main New project action and omits the duplicate empty-state butto
 Project Activity is available from the project action menu in a contextual panel, with compact author/action sentences and timestamps. It has no permanent section in the project contents area. Signed-in landing navigation omits the duplicate Workspace link; the hero remains the primary entry. Destructive action labels omit ellipses while retaining confirmations.
 
 Plain HTML line-break tags are converted into Markdown hard breaks in the reader and editor. Code spans/fences remain literal, tags with attributes remain text, and arbitrary HTML is not enabled. Opening and closing an unchanged document preserves the original source.
+
+## Explorer retirement — November 16
+
+The owner removed the Explorer section from the workspace. Its sidebar destination and visual explorer are retired; old graph URLs redirect to Home. HydraDB context traversal and projection remain backend capabilities. The Agents heading has no terminal punctuation. HydraDB attribution appears only in the landing footer.
+
+## Social identity — November 16
+
+Social sharing uses a static 1200 × 630 Mist card with the existing Commons mark, Sora wordmark, Instrument Serif headline and the original landing meadow. SVG, ICO, Apple and installable app icons share slate ink on a lilac tile; maskable exports keep the mark inside the safe circle. The downloadable kit follows the current palette and typography.
+
+Project names in the Home index use body-sized Sora Medium (15px), with 36px icon tiles and compact rows. On mobile, the disclosure remains aligned beside the title; nonempty counts sit below the title and empty counts occupy no space.
+
+## Contextual creation — November 16
+
+Folders use the same inline name field as projects, placed inside the selected project/folder tree. Enter creates; Escape or an outside pointer dismisses. Mobile opens the navigation drawer, and a collapsed desktop sidebar opens automatically. Creation retains the parent and a stable save key across retries. Old folder-creation URLs return to their parent instead of opening a form page.
+
+Page row menus contain page-specific actions (Discussion, Rename or move, Delete where permitted), without creation options. Projects offer New folder; folders offer New subfolder. Document pages have no add-child toolbar. Existing nested content remains accessible. Contents list titles use the same 15px medium typography as the Home project list, with smaller author metadata. Social artwork omits the printed URL.
+
+## Confirmation dialogs and agent identities — November 16
+
+Delete, revoke, remove, cancel-invitation and sign-out-other-session actions use one centered, accessible confirmation dialog. Keep Cancel initially focused, trap keyboard focus, and allow Escape/backdrop dismissal before submission. During submission, disable dismissal and duplicate actions. Show real errors inside the dialog. Document content remains visible behind page/folder deletion prompts. Existing action URLs open the same dialog; project/workspace/account confirmations retain their typed checks. Home has no duplicate New project button: use the sidebar Projects plus.
+
+Agents explicitly choose one of the eleven landing identities during browser or API enrollment. Display the saved mark in contributor avatars and participant lists; names never determine a provider logo. Other/not-sure and older registrations use a neutral icon. Agent settings and owner management can update or clear this cosmetic choice. The shared catalog supplies landing logos, onboarding choices and copied setup instructions.
+
+## Project summaries and text selection — November 16
+
+Home summarizes agents, pages and folders. It no longer surfaces the legacy Recently shared notes feed or counts uploaded files as visible project contents. Original uploads remain accessible through Project actions → Files. Legacy notes and collection records retain their data and API compatibility; collection records render as folders. Text selection uses dedicated lilac background and dark ink tokens in both the document reader and editor, independent of button foreground colors.

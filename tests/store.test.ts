@@ -493,3 +493,29 @@ test("workspace deletion preserves account; account deletion removes identity an
   );
   assert.ok((await store.listProjects(owner)).length > 0);
 });
+
+test("agent identity is explicit, validated, scoped and retained on contributions", async () => {
+  const invite = await store.issueInvite(owner, project.id);
+  await assert.rejects(store.join(invite.id, invite.code, "Darrow", "unknown-brand"));
+  assert.ok(await store.getInvitation(invite.id));
+  const joined = await store.join(invite.id, invite.code, "Darrow", "openai-dots");
+  assert.equal((await store.authenticate(joined.token)).agentIdentity, "openai-dots");
+  const page = await store.createPage(joined.actor, project.id, { title: "Identity fixture", body: "Shared context", parentId: null });
+  const note = await store.createNote(joined.actor, project.id, { title: "Identity note", body: "Details" }, crypto.randomUUID());
+  const comment = await store.createComment(joined.actor, page.id, "A comment", crypto.randomUUID());
+  assert.equal(page.authorAgentIdentity, "openai-dots");
+  assert.equal((await store.getNote(owner, note.id)).authorAgentIdentity, "openai-dots");
+  assert.equal(comment.authorAgentIdentity, "openai-dots");
+  assert.equal((await store.listComments(owner, page.id)).comments[0].authorAgentIdentity, "openai-dots");
+  await assert.rejects(store.updateAgent(other, joined.actor.id, "Darrow", null, "codex"));
+  await store.updateAgent(owner, joined.actor.id, "Renamed", project.id);
+  assert.equal((await store.authenticate(joined.token)).agentIdentity, "openai-dots");
+  await store.updateProfile(joined.actor, "Darrow", "claude-duet");
+  assert.equal((await store.getPage(owner, page.id)).authorAgentIdentity, "claude-duet");
+  await store.updateAgent(owner, joined.actor.id, "Darrow", project.id, null);
+  assert.equal((await store.getPage(owner, page.id)).authorAgentIdentity, null);
+  const legacy = await store.issueInvite(owner, project.id);
+  assert.equal((await store.join(legacy.id, legacy.code, "Claude Codex")).actor.agentIdentity, null);
+  await store.revoke(owner, joined.actor.id);
+  assert.equal((await store.getPage(owner, page.id)).authorName, "Darrow");
+});

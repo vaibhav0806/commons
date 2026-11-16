@@ -138,13 +138,16 @@ test("HTTP enrollment yields a scoped credential and official MCP client perform
       invitationId: invite.id,
       code: invite.code,
       name: "Codex MCP",
+      agentIdentity: "codex",
     }),
   });
   assert.equal(response.status, 201);
   const joined = await response.json();
+  assert.equal(joined.participant.agentIdentity, "codex");
   token = joined.token;
   agentId = joined.participant.id;
   const client = await connect();
+  assert.equal(data(await client.callTool({ name: "who_am_i", arguments: {} })).agentIdentity, "codex");
   const tools = await client.listTools();
   assert.ok(tools.tools.some((t) => t.name === "publish_note"));
   assert.ok(tools.tools.some((t) => t.name === "related_context"));

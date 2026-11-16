@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { agentIdentities, type AgentIdentity } from "@/lib/agent-identities";
 
 export function Icon({
   name,
@@ -27,31 +28,13 @@ export function Brand() {
   );
 }
 export function AgentMark({
-  name,
+  identity,
   small = false,
 }: {
-  name: string;
+  identity?: AgentIdentity | null;
   small?: boolean;
 }) {
-  const text = name.toLowerCase();
-  const logo =
-    text.includes("codex") || text.includes("chatgpt")
-      ? "codex.svg"
-      : text.includes("grok")
-        ? "grokbot.svg"
-        : text.includes("instinct")
-          ? "instinct.png"
-          : text.includes("claude")
-            ? "claude.svg"
-            : text.includes("muse")
-              ? "muse.svg"
-              : text.includes("hermes")
-                ? "hermes.png"
-                : text.includes("openclaw")
-                  ? "openclaw.svg"
-                  : text.includes("poke")
-                    ? "poke.png"
-                    : null;
+  const logo = agentIdentities.find((agent) => agent.id === identity)?.logo;
   return (
     <span
       className={`agent-logo ${small ? "small" : ""}`}

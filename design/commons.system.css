@@ -40,6 +40,8 @@
   --primary: #e0dbe8;
   --primary-hover: #d2cbdd;
   --on-accent: #3d4955;
+  --selection-bg: #e0dbe8;
+  --selection-ink: #252435;
   --focus: #81728f;
   --field-focus: #81728f;
   --success: #42613f;
@@ -119,6 +121,8 @@
   --primary: #363241;
   --primary-hover: #474055;
   --on-accent: #e1e5ed;
+  --selection-bg: #c9c4de;
+  --selection-ink: #252435;
   --focus: #c9c4de;
   --field-focus: #c9c4de;
   --success: #afcaaa;

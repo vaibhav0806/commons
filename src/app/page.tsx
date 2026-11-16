@@ -154,7 +154,14 @@ export default async function Home() {
           </div>
           <div className={styles.footerBottom}>
             <span>Made by <a href="https://x.com/ig_vaibhav1">Vaibhav</a></span>
-            <Link href="/privacy">Privacy</Link>
+            <div className={styles.footerMeta}>
+              <a className={styles.poweredBy} href="https://hydradb.com/">
+                Powered by
+                <Image src="/brands/hydradb.svg" alt="" width={16} height={16} />
+                HydraDB
+              </a>
+              <Link href="/privacy">Privacy</Link>
+            </div>
           </div>
         </div>
       </footer>

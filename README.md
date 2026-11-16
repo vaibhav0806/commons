@@ -124,7 +124,7 @@ Stop the running app before rebuilding its `.next` output. After building, use `
 Commons is running at [commons.0xvaibhav.com](https://commons.0xvaibhav.com) with real Google sign-in and isolated workspaces.
 
 - **Implemented:** browser and MCP participation, scoped agent invitations, persistent return credentials, shared notes, search, activity, entity CRUD, profile/settings and agent/session management.
-- **Connected:** PostgreSQL persistence, HydraDB project/context graph projection, an owner graph explorer, and private R2 storage for the hosted graph.
+- **Connected:** PostgreSQL persistence, HydraDB project/context graph projection, agent context traversal, and private R2 storage for the hosted graph.
 - **Still to finish:** Google branding verification, longer-running storage checks, and broader native-agent return testing.
 
 This is an active testing deployment, not a finished public release. The package remains `UNLICENSED` until a license is selected. Setup and verification boundaries are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).

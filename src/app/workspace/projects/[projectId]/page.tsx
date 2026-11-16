@@ -8,6 +8,7 @@ import { ActionForm, CopyButton } from "@/components/forms";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { NoteFields } from "@/components/note-fields";
 import { ConnectAgentButton } from "@/components/app-interactions";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DetailSheet } from "@/components/detail-sheet";
 import { getStore } from "@/lib/db";
 import { appUrl, requireParticipant } from "@/lib/session";
@@ -94,6 +95,7 @@ export default async function ProjectPage({
             <ActionMenu
               label="Project actions"
               items={[
+                { label: "Files", href: `${base}/files` },
                 { label: "Activity", href: `${base}?activity=1` },
                 ...(actor.kind === "owner"
                   ? [
@@ -206,7 +208,7 @@ export default async function ProjectPage({
                         href={`${base}?note=${n.id}`}
                         scroll={false}
                       >
-                        <AgentMark name={n.authorName} small />
+                        <AgentMark identity={n.authorAgentIdentity} small />
                         <div className="row-copy">
                           <strong>{n.title}</strong>
                           <p className="note-excerpt">{n.body.slice(0, 160)}</p>
@@ -328,27 +330,33 @@ export default async function ProjectPage({
         </DetailSheet>
       )}
       {query.delete === "project" && actor.kind === "owner" && (
-        <DetailSheet title="Delete project?" closeHref={closeHref}>
-          <p className="detail-intro">
-            This permanently deletes {project.name}, its notes and activity.
-            Project-only agents lose access and unused project invitations stop
-            working. Other projects are unaffected.
-          </p>
-          <ActionForm
-            operation="delete-project"
-            projectId={projectId}
-            label="Delete project"
-            pendingLabel="Deleting"
-            danger
-          >
-            <label className="field">
-              <span>Type {project.name} to confirm</span>
-              <input name="confirmation" autoComplete="off" required />
-            </label>
-          </ActionForm>
-        </DetailSheet>
+        <ConfirmationDialog
+          title="Delete project?"
+          description={`This permanently deletes “${project.name}”, its pages, files, notes and activity. Project-only agents lose access and unused project invitations stop working. Other projects are unaffected.`}
+          operation="delete-project"
+          projectId={projectId}
+          label="Delete project"
+          closeHref={closeHref}
+        >
+          <label className="field">
+            <span>Type {project.name} to confirm</span>
+            <input name="confirmation" autoComplete="off" required />
+          </label>
+        </ConfirmationDialog>
       )}
-      {note && (
+      {note && query.delete === "note" && canEditNote && (
+        <ConfirmationDialog
+          title="Delete note?"
+          description={`Permanently delete “${note.title}” and its references? This cannot be undone.`}
+          operation="delete-note"
+          label="Delete note"
+          closeHref={`${base}?note=${note.id}`}
+        >
+          <input type="hidden" name="noteId" value={note.id} />
+          <input type="hidden" name="version" value={note.version} />
+        </ConfirmationDialog>
+      )}
+      {note && !(query.delete === "note" && canEditNote) && (
         <DetailSheet
           title={
             query.edit === "note"
@@ -371,25 +379,6 @@ export default async function ProjectPage({
               <input type="hidden" name="version" value={note.version} />
               <NoteFields note={note} />
             </ActionForm>
-          ) : query.delete === "note" && canEditNote ? (
-            <>
-              <p className="detail-intro">
-                Permanently delete “{note.title}” and its references? This
-                cannot be undone.
-              </p>
-              <ActionForm
-                operation="delete-note"
-                label="Delete note"
-                pendingLabel="Deleting"
-                danger
-              >
-                <input type="hidden" name="noteId" value={note.id} />
-                <input type="hidden" name="version" value={note.version} />
-              </ActionForm>
-              <Link className="text-link" href={`${base}?note=${note.id}`}>
-                Keep note
-              </Link>
-            </>
           ) : (
             <>
               <p className="detail-intro">

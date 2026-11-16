@@ -119,7 +119,7 @@ export function CollectionView({
                   <td>{statusControl(item)}</td>
                   <td>
                     <span className="contributor">
-                      <AgentMark name={item.authorName} small />
+                      <AgentMark identity={item.authorAgentIdentity} small />
                       {item.authorName}
                     </span>
                   </td>
@@ -168,7 +168,7 @@ export function CollectionView({
                         {item.body.replace(/[#*`>]/g, "").slice(0, 120) || ""}
                       </p>
                       <span className="contributor">
-                        <AgentMark name={item.authorName} small />
+                        <AgentMark identity={item.authorAgentIdentity} small />
                         {item.authorName}
                       </span>
                     </Link>

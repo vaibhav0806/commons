@@ -1,19 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ContextMenu } from "@base-ui/react/context-menu";
 import type { PageTreeItem, Project } from "@/lib/store";
 import { Icon } from "./brand";
 import { ActionMenu } from "./ui/action-menu";
+import { InlineName } from "./inline-name";
+import { createSidebarFolder } from "@/app/actions";
+
+export type FolderDraft = {
+  projectId: string;
+  parentId?: string;
+  clientKey: string;
+};
+
+function folderPath(items: PageTreeItem[], draft: FolderDraft) {
+  const path = [draft.projectId];
+  let parentId = draft.parentId;
+  while (parentId && !path.includes(parentId)) {
+    path.push(parentId);
+    parentId =
+      items.find((item) => item.id === parentId)?.parentId || undefined;
+  }
+  return path;
+}
 
 export function contentActions(projectId: string, parentId?: string) {
   const base = `/workspace/projects/${projectId}`;
   const inside = parentId ? `&parent=${parentId}` : "";
   return [
     { label: "New page", href: `${base}/pages/new?kind=page${inside}` },
-    { label: "New folder", href: `${base}/pages/new?kind=folder${inside}` },
+    {
+      label: parentId ? "New subfolder" : "New folder",
+      href: `${base}/pages/new?kind=folder${inside}`,
+      onClick: () =>
+        window.dispatchEvent(
+          new CustomEvent("commons:create-folder", {
+            detail: {
+              projectId,
+              parentId,
+              clientKey: crypto.randomUUID(),
+            } satisfies FolderDraft,
+          }),
+        ),
+    },
     {
       label: "Upload or import",
       href: "#upload-files",
@@ -49,6 +81,11 @@ function TreeRow({
   actorId,
   depth = 0,
   ancestors = [],
+  expandedRows,
+  onToggle,
+  folder,
+  onCancel,
+  onCreate,
 }: {
   project: Project;
   item?: PageTreeItem;
@@ -57,21 +94,32 @@ function TreeRow({
   actorId: string;
   depth?: number;
   ancestors?: string[];
+  expandedRows: Record<string, boolean>;
+  onToggle: (id: string, expanded: boolean) => void;
+  folder?: FolderDraft;
+  onCancel: () => void;
+  onCreate: (name: string) => Promise<string | undefined>;
 }) {
   const pathname = usePathname();
+  const row = useRef<HTMLDivElement>(null);
   const id = item?.id || project.id,
     title = item?.title || project.name;
   const children = items.filter((p) => p.parentId === (item?.id || null));
-  const [expanded, setExpanded] = useState(
-    !item ||
+  const expanded =
+    expandedRows[id] ??
+    (!item ||
       pathname.includes(id) ||
-      children.some((p) => pathname.includes(p.id)),
-  );
+      children.some((p) => pathname.includes(p.id)));
+  const creating =
+    folder?.projectId === project.id &&
+    (folder.parentId || null) === (item?.id || null);
   const href = `/workspace/projects/${project.id}${item ? `/pages/${id}` : ""}`;
   const selected = pathname === href;
   const editable = owner || item?.authorId === actorId;
   const actions = [
-    ...contentActions(project.id, item?.id),
+    ...(item?.kind === "page"
+      ? [{ label: "Discussion", href: `${href}?discussion=1` }]
+      : contentActions(project.id, item?.id)),
     ...(editable
       ? [
           {
@@ -91,6 +139,7 @@ function TreeRow({
     <li>
       <ContextMenu.Root>
         <ContextMenu.Trigger
+          ref={row}
           render={<div />}
           className="tree-row"
           data-selected={selected || undefined}
@@ -100,11 +149,11 @@ function TreeRow({
             className="tree-disclosure"
             aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
             aria-expanded={expanded}
-            onClick={() => setExpanded(!expanded)}
-            disabled={!children.length}
+            onClick={() => onToggle(id, !expanded)}
+            disabled={!children.length && !creating}
           >
             <Icon name={item?.kind === "page" ? "FileText" : "Folder"} />
-            {!!children.length && (
+            {(!!children.length || creating) && (
               <svg
                 className="tree-chevron"
                 data-expanded={expanded}
@@ -161,26 +210,56 @@ function TreeRow({
           </ContextMenu.Positioner>
         </ContextMenu.Portal>
       </ContextMenu.Root>
-      {expanded && !!children.length && !ancestors.includes(id) && (
-        <ul className="content-tree">
-          {children.map((child) => (
-            <TreeRow
-              key={child.id}
-              project={project}
-              item={child}
-              items={items}
-              owner={owner}
-              actorId={actorId}
-              depth={depth + 1}
-              ancestors={[...ancestors, id]}
-            />
-          ))}
-        </ul>
-      )}
+      {expanded &&
+        (!!children.length || creating) &&
+        !ancestors.includes(id) && (
+          <ul className="content-tree">
+            {creating && folder && (
+              <li
+                className="tree-draft"
+                style={{ paddingLeft: 8 + Math.min(depth + 1, 5) * 14 }}
+              >
+                <InlineName
+                  key={folder.clientKey}
+                  kind="folder"
+                  onCancel={(restoreFocus) => {
+                    onCancel();
+                    if (restoreFocus)
+                      row.current
+                        ?.querySelector<HTMLButtonElement>(
+                          ".tree-actions button",
+                        )
+                        ?.focus();
+                  }}
+                  onCreate={onCreate}
+                />
+              </li>
+            )}
+            {children.map((child) => (
+              <TreeRow
+                key={child.id}
+                project={project}
+                item={child}
+                items={items}
+                owner={owner}
+                actorId={actorId}
+                depth={depth + 1}
+                ancestors={[...ancestors, id]}
+                expandedRows={expandedRows}
+                onToggle={onToggle}
+                folder={folder}
+                onCancel={onCancel}
+                onCreate={onCreate}
+              />
+            ))}
+          </ul>
+        )}
     </li>
   );
 }
 export function ContentTree({
+  initialFolder,
+  onNavigate,
   projects,
   items,
   owner,
@@ -190,7 +269,19 @@ export function ContentTree({
   items: PageTreeItem[];
   owner: boolean;
   actorId: string;
+  initialFolder?: FolderDraft;
+  onNavigate?: () => void;
 }) {
+  const router = useRouter();
+  const [folder, setFolder] = useState(initialFolder);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>(
+    () =>
+      Object.fromEntries(
+        initialFolder
+          ? folderPath(items, initialFolder).map((id) => [id, true])
+          : [],
+      ),
+  );
   const [saved, setSaved] = useState<PageTreeItem[]>([]);
   useEffect(() => {
     const update = (event: Event) => {
@@ -203,6 +294,27 @@ export function ContentTree({
     window.addEventListener("commons:page-saved", update);
     return () => window.removeEventListener("commons:page-saved", update);
   }, []);
+  useEffect(() => {
+    const create = (event: Event) => {
+      if (window.matchMedia("(max-width: 900px)").matches !== !!onNavigate)
+        return;
+      const draft = (event as CustomEvent<FolderDraft>).detail;
+      setFolder(draft);
+      setExpandedRows((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          folderPath([...items, ...saved], draft).map((id) => [id, true]),
+        ),
+      }));
+    };
+    const cancel = () => setFolder(undefined);
+    window.addEventListener("commons:create-folder", create);
+    window.addEventListener("commons:create-project", cancel);
+    return () => {
+      window.removeEventListener("commons:create-folder", create);
+      window.removeEventListener("commons:create-project", cancel);
+    };
+  }, [items, saved, onNavigate]);
   const visibleItems = [
     ...items.filter((item) => !saved.some((page) => page.id === item.id)),
     ...saved,
@@ -216,6 +328,32 @@ export function ContentTree({
           items={visibleItems.filter((p) => p.projectId === project.id)}
           owner={owner}
           actorId={actorId}
+          expandedRows={expandedRows}
+          onToggle={(id, expanded) =>
+            setExpandedRows((current) => ({ ...current, [id]: expanded }))
+          }
+          folder={folder}
+          onCancel={() => setFolder(undefined)}
+          onCreate={async (name) => {
+            if (!folder) return;
+            const result = await createSidebarFolder(
+              folder.projectId,
+              folder.parentId,
+              name,
+              folder.clientKey,
+            );
+            if (result.page) {
+              window.dispatchEvent(
+                new CustomEvent("commons:page-saved", { detail: result.page }),
+              );
+              setFolder(undefined);
+              onNavigate?.();
+              router.push(
+                `/workspace/projects/${result.page.projectId}/pages/${result.page.id}`,
+              );
+            }
+            return result.error;
+          }}
         />
       ))}
     </ul>
