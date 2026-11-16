@@ -1537,8 +1537,8 @@ input.join-code {
 }
 .context-story {
   --context-edge: var(--line);
-  --context-muted: var(--muted);
-  --context-ink: var(--text);
+  --context-muted: #a7b2c2;
+  --context-ink: #e1e5ed;
   max-width: 900px;
   color: var(--context-ink);
 }

@@ -90,4 +90,6 @@ Home summarizes agents, pages and folders. It no longer surfaces the legacy Rece
 
 ## Separate interaction highlights — November 16
 
+The landing's illustrative launch cards retain dark surfaces in both themes. Their local primary and muted text colors stay light, independent of the surrounding page theme, so author names, calendar entries and draft posts remain readable.
+
 Tree rows have a 4px gap between siblings and between a parent and its expanded children, including mobile navigation. Action menus, select lists, mention pickers, search results and editor slash-menu rows use the same minimum spacing so adjacent selected, hovered or focused surfaces remain distinct. Existing navigation and settings tabs retain their larger gaps; landing story tabs remain intentionally connected.
