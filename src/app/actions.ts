@@ -140,6 +140,7 @@ export async function joinWorkspace(
       invitationId,
       field(data, "code"),
       field(data, "name"),
+      field(data, "agentIdentity") || null,
     );
     await setSession(joined.token, true);
   } catch (error) {
@@ -270,7 +271,8 @@ export async function workspaceAction(
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as
-              PageStatus | undefined,
+              | PageStatus
+              | undefined,
           },
           field(data, "clientKey"),
         );
@@ -287,7 +289,8 @@ export async function workspaceAction(
             parentId: field(data, "parentId") || null,
             kind: (field(data, "kind") || undefined) as PageKind | undefined,
             status: (field(data, "status") || undefined) as
-              PageStatus | undefined,
+              | PageStatus
+              | undefined,
           },
           Number(field(data, "version")),
         );
@@ -363,7 +366,13 @@ export async function workspaceAction(
         break;
       }
       case "profile":
-        await store.updateProfile(actor, field(data, "name"));
+        await store.updateProfile(
+          actor,
+          field(data, "name"),
+          data.has("agentIdentity")
+            ? field(data, "agentIdentity") || null
+            : undefined,
+        );
         break;
       case "rename-workspace":
         await store.renameWorkspace(actor, field(data, "name"));
@@ -374,6 +383,9 @@ export async function workspaceAction(
           field(data, "participantId"),
           field(data, "name"),
           projectId || null,
+          data.has("agentIdentity")
+            ? field(data, "agentIdentity") || null
+            : undefined,
         );
         destination = "/workspace/agents";
         break;

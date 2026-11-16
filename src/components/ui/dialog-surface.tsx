@@ -13,13 +13,15 @@ export function DialogSurface({
   variant = "panel",
   initialFocus,
   finalFocus,
+  dismissible = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
   children: ReactNode;
-  variant?: "panel" | "command";
+  variant?: "panel" | "command" | "confirmation";
+  dismissible?: boolean;
   initialFocus?: RefObject<HTMLElement | null>;
   finalFocus?: RefObject<HTMLElement | null>;
 }) {
@@ -29,13 +31,19 @@ export function DialogSurface({
         <Dialog.Backdrop
           className="dialog-backdrop"
           data-command-overlay={variant === "command" ? "" : undefined}
+          data-confirmation-overlay={
+            variant === "confirmation" ? "" : undefined
+          }
         />
         <Dialog.Popup
           className={
-            variant === "command"
-              ? "command-dialog"
-              : "dialog-surface detail-sheet"
+            variant === "confirmation"
+              ? "confirmation-dialog"
+              : variant === "command"
+                ? "command-dialog"
+                : "dialog-surface detail-sheet"
           }
+          role={variant === "confirmation" ? "alertdialog" : "dialog"}
           initialFocus={initialFocus}
           finalFocus={finalFocus}
           data-command-menu={variant === "command" ? "" : undefined}
@@ -44,7 +52,11 @@ export function DialogSurface({
             <Dialog.Title render={<h2 />} className="dialog-title">
               {title}
             </Dialog.Title>
-            <Dialog.Close className="icon-button" aria-label="Close dialog">
+            <Dialog.Close
+              className="icon-button"
+              aria-label="Close dialog"
+              disabled={!dismissible}
+            >
               <Icon name="X" />
             </Dialog.Close>
           </div>

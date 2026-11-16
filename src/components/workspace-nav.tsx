@@ -162,15 +162,3 @@ export function MobileProjectSwitcher({ projects }: { projects: Project[] }) {
     </div>
   );
 }
-
-export function NewProjectButton({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="button"
-      onClick={() => window.dispatchEvent(new Event("commons:create-project"))}
-    >
-      {children}
-    </button>
-  );
-}

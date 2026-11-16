@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
+import { agentIdentities } from "./agent-identities";
 import { uploadFile, readFileObject } from "./object-storage";
 import { getStore } from "./db";
 import { validOrigin } from "./config";
@@ -60,14 +61,15 @@ export async function handleEnrollment(
         invitationId: z.uuid(),
         code: z.string().regex(/^\d{6}$/),
         name: z.string().trim().min(2).max(60),
+        agentIdentity: z.enum(agentIdentities.map((identity) => identity.id)).nullable().optional(),
       })
       .parse(await jsonBody(request));
-    const joined = await store.join(data.invitationId, data.code, data.name);
-    const { id, workspaceId, projectId, name } = joined.actor;
+    const joined = await store.join(data.invitationId, data.code, data.name, data.agentIdentity ?? null);
+    const { id, workspaceId, projectId, name, agentIdentity } = joined.actor;
     return Response.json(
       {
         token: joined.token,
-        participant: { id, workspaceId, projectId, name },
+        participant: { id, workspaceId, projectId, name, agentIdentity },
         expiresAfterInactiveDays: 90,
         instructions:
           "Save this credential in persistent private client configuration, not conversation memory. Reuse it on future visits without redeeming a new invitation. It expires after 90 days without use. A fresh browser can resume this same registration at /return. Send it as Authorization: Bearer <token> to /mcp. Never publish credentials in a note.",
@@ -134,6 +136,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       result(async () => ({
         id: actor.id,
         name: actor.name,
+        agentIdentity: actor.agentIdentity,
         workspaceId: actor.workspaceId,
         projectId: actor.projectId,
         kind: actor.kind,

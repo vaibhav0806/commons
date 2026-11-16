@@ -4066,3 +4066,76 @@ textarea.document-title-input:focus {
 .command-dialog > .file-drop-zone, .command-dialog > .upload-state,
 .command-dialog > .success-feedback { margin: 20px; }
 .editor-file-picker .file-drop-zone { margin-top: 16px; }
+
+.dialog-backdrop[data-confirmation-overlay] {
+  z-index: 90;
+  background: #0005;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.confirmation-dialog {
+  position: fixed;
+  z-index: 91;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 80px #0003;
+}
+.confirmation-dialog .sheet-top {
+  min-height: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
+  align-items: flex-start;
+}
+.confirmation-dialog .dialog-title {
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.confirmation-dialog .sheet-top .icon-button {
+  flex: 0 0 32px;
+  width: 32px;
+  min-height: 32px;
+}
+.confirmation-dialog .detail-intro {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.confirmation-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.confirmation-form .field { margin: 0 0 24px; }
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.confirmation-actions .button {
+  min-height: 40px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+@media (max-width: 600px) {
+  .confirmation-dialog { padding: 20px; }
+  .confirmation-actions .button { min-height: 44px; }
+  .confirmation-dialog .sheet-top .icon-button { min-height: 44px; flex-basis: 44px; }
+}
+.select-value:has(img), .select-option:has(img) { display: flex; align-items: center; gap: 10px; }
+.select-value img, .select-option img { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 50%; background: #fff; }

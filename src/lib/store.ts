@@ -8,6 +8,7 @@ import {
 } from "node:crypto";
 import { Pool, types, type PoolClient } from "pg";
 import { z } from "zod";
+import { agentIdentities, type AgentIdentity } from "./agent-identities";
 import { graphEnabled, graphQuery } from "./graph";
 import { referencePaths, resourceHref } from "./explorer";
 
@@ -26,6 +27,7 @@ export type Principal = {
   projectId: string | null;
   kind: "owner" | "agent";
   name: string;
+  agentIdentity: AgentIdentity | null;
   email: string | null;
   createdAt: number;
   lastSeen: number;
@@ -53,15 +55,15 @@ export type Note = {
   projectId: string;
   workspaceId: string;
   authorId: string;
-  authorName: string;
+  authorName: string; authorAgentIdentity?: AgentIdentity | null;
   title: string;
   body: string;
   referenceLinks: { label: string; url: string }[];
   createdAt: number;
   read: boolean;
 };
-export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
-const fileSelect = "SELECT f.*,p.name AS author_name FROM project_files f JOIN participants p ON p.id=f.author_id";
+export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; authorAgentIdentity?: AgentIdentity | null; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
+const fileSelect = "SELECT f.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM project_files f JOIN participants p ON p.id=f.author_id";
 export type PageKind = "page" | "folder" | "collection";
 export type PageStatus = "Idea" | "Drafting" | "Ready";
 export type PageInput = {
@@ -78,13 +80,13 @@ export type WorkspacePage = PageInput & {
   projectId: string;
   workspaceId: string;
   authorId: string;
-  authorName: string;
+  authorName: string; authorAgentIdentity?: AgentIdentity | null;
   version: number;
   createdAt: number;
   editedAt: number | null;
 };
 export type PageTreeItem = Pick<WorkspacePage, "id" | "projectId" | "parentId" | "title" | "kind" | "status" | "authorId">;
-export type PageComment = { id: string; pageId: string; projectId: string; authorId: string; authorName: string; body: string; createdAt: number };
+export type PageComment = { id: string; pageId: string; projectId: string; authorId: string; authorName: string; authorAgentIdentity?: AgentIdentity | null; body: string; createdAt: number };
 const pageSchema = z.object({
   kind: z.enum(["page", "folder", "collection"]).optional(),
   status: z.enum(["Idea", "Drafting", "Ready"]).optional(),
@@ -93,7 +95,7 @@ const pageSchema = z.object({
   parentId: z.uuid().nullable(),
 });
 const pageSelect =
-  "SELECT d.*,p.name AS author_name FROM pages d JOIN participants p ON p.id=d.author_id";
+  "SELECT d.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM pages d JOIN participants p ON p.id=d.author_id";
 export type SearchResult = {
   id: string;
   kind: "note" | "project" | "agent" | "page" | "file";
@@ -104,11 +106,12 @@ export type SearchResult = {
 export type Activity = {
   id: number;
   projectId: string;
-  authorName: string;
+  authorName: string; authorAgentIdentity?: AgentIdentity | null;
   description: string;
   resourceId: string;
   createdAt: number;
 };
+const agentIdentitySchema = z.enum(agentIdentities.map((identity) => identity.id)).nullable();
 const idSchema = z.uuid();
 const nameSchema = z
   .string()
@@ -146,7 +149,7 @@ const camel = (row: Record<string, unknown>) =>
     ]),
   );
 const noteSelect =
-  "SELECT n.*,p.name AS author_name,EXISTS(SELECT 1 FROM reads r WHERE r.note_id=n.id AND r.participant_id=$1 AND r.read_at>=coalesce(n.edited_at,n.created_at)) AS read FROM notes n JOIN participants p ON p.id=n.author_id";
+  "SELECT n.*,p.name AS author_name,p.agent_identity AS author_agent_identity,EXISTS(SELECT 1 FROM reads r WHERE r.note_id=n.id AND r.participant_id=$1 AND r.read_at>=coalesce(n.edited_at,n.created_at)) AS read FROM notes n JOIN participants p ON p.id=n.author_id";
 export class Store {
   constructor(
     private pool: Pool,
@@ -465,7 +468,7 @@ export class Store {
     if (includeRevoked) await this.owner(current);
     const scope = projectId || current.projectId;
     return this.rows<Participant>(
-      `SELECT id,workspace_id,project_id,kind,name,created_at,last_seen,revoked_at,removed_at FROM participants WHERE workspace_id=$1
+      `SELECT id,workspace_id,project_id,kind,name,agent_identity,created_at,last_seen,revoked_at,removed_at FROM participants WHERE workspace_id=$1
       AND ($2::uuid IS NULL OR project_id IS NULL OR project_id=$2) AND removed_at IS NULL AND ($3 OR revoked_at IS NULL) ORDER BY created_at,id`,
       [current.workspaceId, scope, includeRevoked],
     );
@@ -499,7 +502,8 @@ export class Store {
       [idSchema.parse(id), this.clock()],
     );
   }
-  async join(id: string, code: string, name: string) {
+  async join(id: string, code: string, name: string, agentIdentity: string | null = null) {
+    const identity = agentIdentitySchema.parse(agentIdentity);
     idSchema.parse(id);
     const agentName = nameSchema.parse(name);
     z.string()
@@ -530,8 +534,8 @@ export class Store {
         [now, id],
       );
       await tx.connection.query(
-        "INSERT INTO participants(id,workspace_id,project_id,kind,name,created_at,last_seen) VALUES($1,$2,$3,'agent',$4,$5,$5)",
-        [agentId, invite.workspaceId, invite.projectId, agentName, now],
+        "INSERT INTO participants(id,workspace_id,project_id,kind,name,created_at,last_seen,agent_identity) VALUES($1,$2,$3,'agent',$4,$5,$5,$6)",
+        [agentId, invite.workspaceId, invite.projectId, agentName, now, identity],
       );
       const actor = await tx.active(agentId);
       if (invite.projectId)
@@ -782,11 +786,13 @@ export class Store {
       await tx.eraseProject(projectId);
     });
   }
-  async updateProfile(actor: Principal, name: string) {
+  async updateProfile(actor: Principal, name: string, agentIdentity?: string | null) {
     const current = await this.active(actor.id);
-    await this.connection.query("UPDATE participants SET name=$1 WHERE id=$2", [
+    await this.connection.query("UPDATE participants SET name=$1,agent_identity=CASE WHEN $3 THEN $4 ELSE agent_identity END WHERE id=$2", [
       nameSchema.parse(name),
       current.id,
+      current.kind === "agent" && agentIdentity !== undefined,
+      agentIdentitySchema.parse(agentIdentity ?? null),
     ]);
   }
   async updateAgent(
@@ -794,17 +800,21 @@ export class Store {
     participantId: string,
     name: string,
     projectId: string | null,
+    agentIdentity?: string | null,
   ) {
+    const identity = agentIdentitySchema.parse(agentIdentity ?? null);
     return this.transaction(async (tx) => {
       const current = await tx.owner(actor);
       if (projectId) await tx.getProject(current, projectId);
       const changed = await tx.connection.query(
-        "UPDATE participants SET name=$1,project_id=$2 WHERE id=$3 AND workspace_id=$4 AND kind='agent' AND revoked_at IS NULL AND removed_at IS NULL",
+        "UPDATE participants SET name=$1,project_id=$2,agent_identity=CASE WHEN $5 THEN $6 ELSE agent_identity END WHERE id=$3 AND workspace_id=$4 AND kind='agent' AND revoked_at IS NULL AND removed_at IS NULL",
         [
           nameSchema.parse(name),
           projectId,
           idSchema.parse(participantId),
           current.workspaceId,
+          agentIdentity !== undefined,
+          identity,
         ],
       );
       if (!changed.rowCount)
@@ -1100,7 +1110,7 @@ export class Store {
   }
   async listComments(actor: Principal, pageId: string, offset = 0) {
     await this.getPage(actor, pageId);
-    const comments = await this.rows<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.page_id=$1 ORDER BY c.created_at,c.id LIMIT 51 OFFSET $2", [pageId, z.number().int().min(0).max(1000000).parse(offset)]);
+    const comments = await this.rows<PageComment>("SELECT c.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.page_id=$1 ORDER BY c.created_at,c.id LIMIT 51 OFFSET $2", [pageId, z.number().int().min(0).max(1000000).parse(offset)]);
     return { comments: comments.slice(0, 50), nextOffset: comments.length > 50 ? offset + 50 : null };
   }
   async createComment(actor: Principal, pageId: string, body: string, clientKey: string) {
@@ -1110,7 +1120,7 @@ export class Store {
       idSchema.parse(clientKey);
       await tx.connection.query("SELECT id FROM pages WHERE id=$1 FOR UPDATE", [pageId]);
       await tx.connection.query("SELECT pg_advisory_xact_lock(hashtext($1))", ["comment:" + current.id + clientKey]);
-      const prior = await tx.one<PageComment>("SELECT c.*,p.name AS author_name FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.author_id=$1 AND c.client_key=$2", [current.id, clientKey]);
+      const prior = await tx.one<PageComment>("SELECT c.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.author_id=$1 AND c.client_key=$2", [current.id, clientKey]);
       if (prior) {
         if (prior.pageId !== pageId) throw new CommonsError("This save key belongs to another page.", 409);
         return prior;
@@ -1118,7 +1128,7 @@ export class Store {
       const id = randomUUID(), createdAt = this.clock();
       await tx.connection.query("INSERT INTO page_comments(id,page_id,project_id,workspace_id,author_id,body,client_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id, pageId, page.projectId, page.workspaceId, current.id, text, clientKey, createdAt]);
       await tx.record(current, page.projectId, "Commented on a page", pageId);
-      return { id, pageId, projectId: page.projectId, authorId: current.id, authorName: current.name, body: text, createdAt };
+      return { id, pageId, projectId: page.projectId, authorId: current.id, authorName: current.name, authorAgentIdentity: current.agentIdentity, body: text, createdAt };
     });
   }
   async deleteComment(actor: Principal, commentId: string) {
@@ -1373,12 +1383,12 @@ export class Store {
 
   async recentActivity(actor: Principal, projectId: string) {
     await this.getProject(actor, projectId);
-    return this.rows<Activity>("SELECT a.*,p.name AS author_name FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 ORDER BY a.id DESC LIMIT 5", [projectId]);
+    return this.rows<Activity>("SELECT a.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 ORDER BY a.id DESC LIMIT 5", [projectId]);
   }
   async activity(actor: Principal, projectId: string, after = 0) {
     await this.getProject(actor, projectId);
     return this.rows<Activity>(
-      "SELECT a.*,p.name AS author_name FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 AND a.id>$2 ORDER BY a.id ASC LIMIT 50",
+      "SELECT a.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM activity a JOIN participants p ON p.id=a.author_id WHERE a.project_id=$1 AND a.id>$2 ORDER BY a.id ASC LIMIT 50",
       [projectId, z.number().int().min(0).parse(after)],
     );
   }

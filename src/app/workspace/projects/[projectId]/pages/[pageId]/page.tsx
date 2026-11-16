@@ -10,6 +10,7 @@ import { PageEditor } from "@/components/page-editor";
 import { CollectionView } from "@/components/collection-view";
 import { PageDiscussion } from "@/components/page-discussion";
 import { ContentPlus } from "@/components/content-tree";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DetailSheet } from "@/components/detail-sheet";
 
 export default async function PageDocument({
@@ -95,7 +96,7 @@ export default async function PageDocument({
         <header className="document-heading">
           <h1>{query.edit ? "Edit page" : page.title}</h1>
           <div className="document-byline">
-            <AgentMark name={page.authorName} small />
+            <AgentMark identity={page.authorAgentIdentity} small />
             <span>
               {page.authorName} · {page.editedAt ? "Updated" : "Created"}{" "}
               {new Date(page.editedAt || page.createdAt).toLocaleString(
@@ -106,22 +107,19 @@ export default async function PageDocument({
         </header>
       )}
 
-      {query.delete ? (
-        <section className="project-section">
-          <h2>Delete this page?</h2>
-          <p>
-            Its child pages stay in the project at the top level. Linked files
-            stay in the file library.
-          </p>
-          <ActionForm operation="delete-page" label="Delete page" danger>
-            <input type="hidden" name="pageId" value={page.id} />
-            <input type="hidden" name="version" value={page.version} />
-          </ActionForm>
-          <Link className="text-link" href={base}>
-            Keep page
-          </Link>
-        </section>
-      ) : query.edit ? (
+      {query.delete && (
+        <ConfirmationDialog
+          title={`Delete ${page.kind === "page" ? "page" : "folder"}?`}
+          description={`Delete “${page.title}”? Child pages will move to the project’s top level. Linked files will stay in the file library.`}
+          operation="delete-page"
+          label={page.kind === "page" ? "Delete page" : "Delete folder"}
+          closeHref={base}
+        >
+          <input type="hidden" name="pageId" value={page.id} />
+          <input type="hidden" name="version" value={page.version} />
+        </ConfirmationDialog>
+      )}
+      {query.edit ? (
         page.kind === "page" ? (
           <PageEditor
             actorId={actor.id}

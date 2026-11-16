@@ -1,4 +1,3 @@
-import { NewProjectButton } from "@/components/workspace-nav";
 import Link from "next/link";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
@@ -29,12 +28,6 @@ export default async function Workspace() {
         <div>
           <h1>Projects</h1>
         </div>
-        {actor.kind === "owner" && (
-          <NewProjectButton>
-            <Icon name="Plus" />
-            New project
-          </NewProjectButton>
-        )}
       </header>
       <section className="project-section">
         <div className="section-title">
@@ -99,7 +92,7 @@ export default async function Workspace() {
                 key={note.id}
                 href={`/workspace/projects/${note.projectId}?note=${note.id}`}
               >
-                <AgentMark name={note.authorName} small />
+                <AgentMark identity={note.authorAgentIdentity} small />
                 <div className="row-copy">
                   <h3>{note.title}</h3>
                   <p>{note.body.slice(0, 180)}</p>

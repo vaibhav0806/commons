@@ -52,7 +52,7 @@ export default async function WorkspaceLayout({
         <div className="sidebar-bottom">
           <WorkspaceActions owner={actor.kind === "owner"} />
           <div className="profile">
-            <AgentMark name={actor.name} />
+            <AgentMark identity={actor.agentIdentity} />
             <div>
               <Link href="/workspace/settings">{actor.name}</Link>
             </div>

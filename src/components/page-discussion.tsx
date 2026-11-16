@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import type { Principal, WorkspacePage } from "@/lib/store";
 import { getStore } from "@/lib/db";
+import { ConfirmationDialog } from "./confirmation-dialog";
 import { ActionForm } from "./forms";
 import { AgentMark } from "./brand";
 import { MarkdownContent } from "./markdown";
@@ -22,7 +23,7 @@ export async function PageDiscussion({
         <article key={comment.id} className="page-comment">
           <header>
             <span className="contributor">
-              <AgentMark name={comment.authorName} small />
+              <AgentMark identity={comment.authorAgentIdentity} small />
               <strong>{comment.authorName}</strong>
             </span>
             <time>
@@ -34,13 +35,15 @@ export async function PageDiscussion({
           </header>
           <MarkdownContent body={comment.body} />
           {(actor.kind === "owner" || actor.id === comment.authorId) && (
-            <ActionForm
+            <ConfirmationDialog
+              title="Delete comment?"
+              description="This permanently removes the comment from the discussion."
               operation="delete-comment"
               label="Delete comment"
-              className="comment-delete"
+              triggerLabel="Delete comment"
             >
               <input type="hidden" name="commentId" value={comment.id} />
-            </ActionForm>
+            </ConfirmationDialog>
           )}
         </article>
       ))}

@@ -4,7 +4,12 @@ import { useId, useState } from "react";
 import { Select } from "@base-ui/react/select";
 import { Icon } from "@/components/brand";
 
-export type SelectOption = { value: string; label: string; disabled?: boolean };
+export type SelectOption = {
+  value: string;
+  label: string;
+  image?: string;
+  disabled?: boolean;
+};
 
 export function SelectField({
   label,
@@ -32,6 +37,7 @@ export function SelectField({
   const helpId = useId();
   const [localValue, setLocalValue] = useState(defaultValue || "");
   const selected = value === undefined ? localValue : value;
+  const selectedOption = options.find((option) => option.value === selected);
   const emptyValue = "__commons_empty__";
   const items = options.map((option) => ({
     ...option,
@@ -66,7 +72,12 @@ export function SelectField({
           className="select-trigger"
           aria-describedby={description ? helpId : undefined}
         >
-          <Select.Value className="select-value" placeholder={placeholder} />
+          <span className="select-value">
+            {selectedOption?.image && (
+              <img src={selectedOption.image} alt="" width="22" height="22" />
+            )}
+            <Select.Value placeholder={placeholder} />
+          </span>
           <Select.Icon className="select-chevron">
             <Icon name="CaretDown" />
           </Select.Icon>
@@ -88,6 +99,9 @@ export function SelectField({
                     data-option-value={option.value}
                     disabled={option.disabled}
                   >
+                    {option.image && (
+                      <img src={option.image} alt="" width="22" height="22" />
+                    )}
                     <Select.ItemText>{option.label}</Select.ItemText>
                     <Select.ItemIndicator className="select-check">
                       <Icon name="Check" />

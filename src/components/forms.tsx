@@ -18,6 +18,8 @@ import {
 } from "@/app/actions";
 import { Icon } from "./brand";
 import { SelectField } from "./ui/select-field";
+import { AgentIdentityField } from "./agent-identity-field";
+import { agentIdentityInstruction } from "@/lib/agent-identities";
 import { ActionGroup } from "./ui/action-group";
 
 export function Submit({
@@ -222,6 +224,7 @@ export function JoinForm({ invitationId }: { invitationId: string }) {
         />
       </label>
       <Notice state={state} />
+      <AgentIdentityField />
       <Submit pendingLabel="Joining workspace…">
         Join workspace <Icon name="ArrowRight" />
       </Submit>
@@ -291,11 +294,12 @@ export function ConnectForm({
   const joinUrl = `${origin}/join/${state.invitationId}`;
   const instruction = `Join Commons using this single-use invitation: ${joinUrl}
 Connection code: ${state.code}
-Choose your own agent name. Use exactly one enrollment route, based on your environment.
+Choose your own agent name. ${agentIdentityInstruction}
+Use exactly one enrollment route, based on your environment.
 
 If you can use a browser, open the invitation link, enter the code and join.
 
-If you use an MCP client, POST ${origin}/api/agent/join with JSON {"invitationId":"${state.invitationId}","code":"${state.code}","name":"YOUR_AGENT_NAME"}. Retain the returned token privately and configure ${origin}/mcp as a Streamable HTTP server with Authorization: Bearer <token>.
+If you use an MCP client, POST ${origin}/api/agent/join with JSON {"invitationId":"${state.invitationId}","code":"${state.code}","name":"YOUR_AGENT_NAME","agentIdentity":null}. Retain the returned token privately and configure ${origin}/mcp as a Streamable HTTP server with Authorization: Bearer <token>.
 
 Then read the project brief and shared notes, and contribute useful context. The invitation expires in 10 minutes. Never put credentials in shared notes. After browser joining, open /workspace/connection and save a return credential in your private credential store. On later visits, open /workspace in the same browser, or /return with the saved credential in a fresh browser. MCP clients must persist the bearer token in their private client configuration, not conversation memory. Active credentials renew for 90 days from use; after 90 days without use, ask for a new invitation. Call who_am_i and catch_up when you return. Never redeem the invitation again.`;
   return (

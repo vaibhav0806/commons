@@ -19,7 +19,7 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await page.goto("/workspace/new");
   await expect(page).toHaveURL(/\/workspace$/);
   await page
-    .locator(".project-heading")
+    .locator(".sidebar")
     .getByRole("button", { name: "New project", exact: true })
     .click();
   const name = `CRUD ${Date.now()}`;
@@ -458,6 +458,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     await page
       .getByRole("button", { name: "Cancel invitation", exact: true })
       .click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Cancel invitation", exact: true }).click();
     await expect(
       page.getByText("No pending invitations.", { exact: true }),
     ).toBeVisible();
@@ -471,6 +472,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     await page
       .getByRole("button", { name: "Sign out other sessions", exact: true })
       .click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Sign out other sessions", exact: true }).click();
     await expect(
       page.getByRole("button", {
         name: "Sign out other sessions",
@@ -1019,15 +1021,23 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       await page.goto("/workspace");
       await page.setViewportSize({ width, height: 844 });
       const mobile = width === 390;
-      await page
-        .locator(".project-heading")
-        .getByRole("button", { name: "New project", exact: true })
-        .click();
+      await expect(
+        page.locator(".project-heading").getByRole("button", {
+          name: "New project",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      if (mobile) {
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      }
       const surface = mobile ? page.getByRole("dialog") : sidebar;
       const plus = surface.getByRole("button", {
         name: "New project",
         exact: true,
       });
+      await plus.click();
       const input = surface.getByRole("textbox", {
         name: "Project name",
         exact: true,
@@ -1886,6 +1896,136 @@ test("folders create inline with contextual menus, cancellation and retry", asyn
     }
   } finally {
     await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("destructive confirmations preserve context and require an explicit action", async ({ browser, baseURL }) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const login = await store.createLocalOwner(`dialogs-${crypto.randomUUID()}@example.test`, "Dialog owner");
+  const project = await store.createProject(login.actor, "Dialog project", "");
+  const document = await store.createPage(login.actor, project.id, { title: "Document to keep", body: "The document stays behind the confirmation.", parentId: null });
+  const folder = await store.createPage(login.actor, project.id, { title: "Folder to remove", kind: "folder", body: "", parentId: null });
+  const child = await store.createPage(login.actor, project.id, { title: "Retained child", body: "Keep me", parentId: folder.id });
+  const file = await store.reserveFile(login.actor, project.id, { name: "confirmation.txt", size: 0, mimeType: "text/plain", checksum: "0".repeat(64) });
+  await store.completeFile(login.actor, file.id);
+  const invite = await store.issueInvite(login.actor, project.id);
+  const agent = await store.join(invite.id, invite.code, "Dialog agent");
+  await store.createComment(login.actor, document.id, "Comment to remove", crypto.randomUUID());
+  const context = await browser.newContext({ baseURL });
+  await context.addCookies([{ name: "commons_session", value: login.token, url: baseURL!, httpOnly: true, sameSite: "Lax" }]);
+  const page = await context.newPage();
+  const base = `/workspace/projects/${project.id}`;
+  const documentUrl = `${base}/pages/${document.id}`;
+  try {
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const theme of ["light", "dark"]) {
+        await context.addCookies([{ name: "commons-theme", value: theme, url: baseURL! }]);
+        await page.goto(documentUrl);
+        await page.getByRole("link", { name: "Delete page", exact: true }).click();
+        const dialog = page.getByRole("alertdialog", { name: "Delete page?" });
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+        await expect(page.locator(".document-page")).toContainText("The document stays behind the confirmation.");
+        await expect(page.locator("[data-confirmation-overlay]")).toHaveCSS("backdrop-filter", "blur(6px)");
+        const bounds = await dialog.boundingBox();
+        expect(bounds!.width).toBeLessThanOrEqual(440);
+        expect(bounds!.height).toBeLessThan(500);
+        expect(Math.abs(bounds!.x + bounds!.width / 2 - width / 2)).toBeLessThan(2);
+        await page.keyboard.press("Tab");
+        expect(await dialog.evaluate((el) => el.contains(window.document.activeElement))).toBe(true);
+        await page.screenshot({ path: `test-results/confirmation-${theme}-${width}.png` });
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("alertdialog")).toHaveCount(0);
+        expect((await store.getPage(login.actor, document.id)).body).toContain("document stays");
+      }
+    }
+    await page.goto(`${base}?delete=project`);
+    const projectDialog = page.getByRole("alertdialog");
+    await projectDialog.getByLabel(`Type ${project.name} to confirm`).fill("Wrong name");
+    await projectDialog.getByRole("button", { name: "Delete project", exact: true }).click();
+    await expect(projectDialog.getByRole("alert")).toBeVisible();
+    expect((await store.getProject(login.actor, project.id)).name).toBe(project.name);
+    await projectDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    await page.goto(`${base}/pages/${folder.id}?delete=1`);
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete folder", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${project.id}$`));
+    expect((await store.getPage(login.actor, child.id)).parentId).toBeNull();
+    await page.goto(`${base}/files?file=${file.id}&delete=1`);
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete file", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${project.id}/files$`));
+    expect((await store.listFiles(login.actor, project.id)).files).toHaveLength(0);
+    await page.goto(`${documentUrl}?discussion=1`);
+    await page.getByRole("button", { name: "Delete comment", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Discussion", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete comment", exact: true })).toBeFocused();
+    await page.getByRole("button", { name: "Delete comment", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete comment", exact: true }).click();
+    await expect(page.getByText("Comment to remove", { exact: true })).toHaveCount(0);
+    for (const action of ["revoke", "remove"]) {
+      await page.goto(`/workspace/agents?agent=${agent.actor.id}&action=${action}`);
+      await page.getByRole("alertdialog").getByRole("button", { name: action === "revoke" ? "Revoke access" : "Remove agent", exact: true }).click();
+      await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    }
+    expect((await store.listParticipants(login.actor, undefined, true)).some((p) => p.id === agent.actor.id)).toBe(false);
+  } finally {
+    await context.close();
+    await store.deleteWorkspace(login.actor, "DELETE", true);
+    await pool.end();
+  }
+});
+
+test("agents choose an identity at onboarding and can change it without renaming", async ({ browser, baseURL }) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const login = await store.createLocalOwner(`identity-${crypto.randomUUID()}@example.test`, "Identity owner");
+  const project = await store.createProject(login.actor, "Identity project", "");
+  const invitation = await store.issueInvite(login.actor, project.id);
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 } });
+  const page = await context.newPage();
+  try {
+    await page.goto(`/join/${invitation.id}`);
+    await page.getByLabel("Connection code", { exact: true }).fill(invitation.code);
+    await page.getByLabel("What should we call you?", { exact: true }).fill("Darrow");
+    await page.getByRole("combobox", { name: "Agent type", exact: true }).click();
+    await expect(page.getByRole("option")).toHaveCount(12);
+    await page.getByRole("option", { name: "OpenAI Dots", exact: true }).click();
+    await page.getByRole("button", { name: "Join workspace", exact: true }).click();
+    await expect(page).toHaveURL(/\/workspace/);
+    const agent = (await store.listParticipants(login.actor, project.id)).find((p) => p.name === "Darrow")!;
+    expect(agent.agentIdentity).toBe("openai-dots");
+    const cookie = (await context.cookies()).find((c) => c.name === "commons_session")!;
+    const actor = await store.authenticate(cookie.value);
+    const document = await store.createPage(actor, project.id, { title: "Dots contribution", body: "Hello", parentId: null });
+    await page.goto(`/workspace/projects/${project.id}/pages/${document.id}`);
+    await expect(page.locator(".document-byline .agent-logo img")).toHaveAttribute("src", "/brands/dots.svg");
+    await page.goto("/workspace/settings");
+    await page.getByRole("combobox", { name: "Agent type", exact: true }).click();
+    await page.getByRole("option", { name: "Other / not sure", exact: true }).click();
+    await page.getByRole("button", { name: "Save profile", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("Saved");
+    await page.goto(`/workspace/projects/${project.id}/pages/${document.id}`);
+    await expect(page.locator(".document-byline .agent-logo img")).toHaveCount(0);
+    await expect(page.locator(".document-byline")).toContainText("Darrow");
+    await context.addCookies([{ name: "commons_session", value: login.token, url: baseURL!, httpOnly: true, sameSite: "Lax" }]);
+    await page.goto(`/workspace/agents?agent=${agent.id}`);
+    await page.getByRole("combobox", { name: "Agent type", exact: true }).click();
+    await page.getByRole("option", { name: "Claude Duet", exact: true }).click();
+    await page.getByRole("button", { name: "Save agent", exact: true }).click();
+    await expect(page).toHaveURL(/\/workspace\/agents$/);
+    await expect(page.locator(`[data-agent-id="${agent.id}"] .agent-logo img`)).toHaveAttribute("src", "/brands/duet.svg");
+  } finally {
+    await context.close();
+    await store.deleteWorkspace(login.actor, "DELETE", true);
     await pool.end();
   }
 });
