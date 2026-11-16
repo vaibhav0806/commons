@@ -140,3 +140,11 @@ All 13 production-mode browser tests pass, as do lint/typecheck, production buil
 Hosted acceptance verified a real photograph pasted into the editor, retained after reload and read through MCP; anonymous private-image denial; inline attachment without navigation; contextual project upload dialog; desktop sidebar preference; neutral contents hover; two-hop source paths through the hosted Hydra engine; and responsive light/dark Explorer. Agent revocation was checked through actual MCP HTTP. The isolated workspace was removed and pre-existing project IDs were preserved. Screenshots: `/Users/vaibhav/Downloads/commons-explorer-2026-11-16`.
 
 Track 2 is the intended submission direction. The curated two-source retrieval fixture demonstrates explicit provenance; a vector-baseline comparison and measured token savings remain outstanding. Muse consultation could not run because its configured T3 provider was disabled.
+
+## Workspace spacing and reduced chrome — 2026-11-16
+
+Application revision `e1e7ad794762cda0896591e50b2c14bdc6513dab` is deployed on app, graph-sync and file-cleanup with image `sha256:d802f8247d879f463ba7586e43da4085849962d465d2878d25136c531d1751f3`. The database backup `backups/pre-polish-20261116.dump` was verified; rollback image `commons:pre-polish-4ca6433` is retained. No schema changes.
+
+Home has one main creation action. Settings/Explorer spacing is consistent, project contents occupy the full width, and Activity is a collapsed disclosure with compact rows. Landing section navigation and the setup-prompt helper sentence are removed.
+
+Validation passed: lint/typecheck, production build, three existing production-browser scenarios covering navigation/settings/landing, and isolated local plus hosted acceptance for empty states, 32px Settings spacing at desktop/mobile widths, keyboard Activity disclosure, full-width contents, landing removals and mobile overflow. Hosted health is OK. The disposable acceptance workspace was removed. Screenshots: `/Users/vaibhav/Downloads/commons-polish-2026-11-16`.
