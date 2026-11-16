@@ -1692,6 +1692,19 @@ test("sidebar collapse and contextual uploads preserve the document and private 
       ),
     ).toBe(true);
     await page.screenshot({ path: "test-results/inline-media-mobile.png" });
+    await page.goto(`/workspace/projects/${project.id}`);
+    const contents = page.locator(".unified-content");
+    await expect(contents.locator(".context-row")).toHaveCount(1);
+    await expect(contents.getByRole("link")).toHaveAttribute(
+      "href",
+      new URL(docUrl).pathname,
+    );
+    await expect(contents).not.toContainText("project.png");
+    await expect(contents).not.toContainText("attached.png");
+    expect(
+      (await store.listFiles(owner, project.id)).files.length,
+    ).toBeGreaterThan(0);
+
   } finally {
     await store.deleteProject(owner, project.id, project.name);
     await pool.end();
