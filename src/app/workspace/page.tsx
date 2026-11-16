@@ -11,7 +11,7 @@ export default async function Workspace() {
     projects.map(async (project) => ({
       project,
       people: await store.listParticipants(actor, project.id),
-      pages: await store.listPages(actor, project.id),
+      pages: await store.pageTree(actor, project.id),
     })),
   );
   return (
@@ -45,26 +45,17 @@ export default async function Workspace() {
               </div>
               <span className="meta project-count">
                 {[
+                  [people.filter((p) => p.kind === "agent").length, "agent"],
+                  [pages.filter((page) => page.kind === "page").length, "page"],
                   [
-                    people.filter((p) => p.kind === "agent").length,
-                    "agent",
-                    false,
-                  ],
-                  [
-                    pages.pages.filter((page) => page.kind === "page").length,
-                    "page",
-                    pages.nextOffset !== null,
-                  ],
-                  [
-                    pages.pages.filter((page) => page.kind !== "page").length,
+                    pages.filter((page) => page.kind !== "page").length,
                     "folder",
-                    pages.nextOffset !== null,
                   ],
                 ]
                   .filter(([count]) => Number(count) > 0)
                   .map(
-                    ([count, label, more]) =>
-                      `${count}${more ? "+" : ""} ${label}${count === 1 ? "" : "s"}`,
+                    ([count, label]) =>
+                      `${count} ${label}${count === 1 ? "" : "s"}`,
                   )
                   .join(" · ")}
               </span>

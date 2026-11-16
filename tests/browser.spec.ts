@@ -2051,6 +2051,9 @@ test("project summaries match visible content and selected text stays readable",
     await page.goto("/workspace");
     await expect(page.locator(".project-index-row").filter({ hasText: "Content project" }).locator(".project-count")).toHaveText("1 page · 2 folders");
     await expect(page.getByRole("heading", { name: "Recently shared" })).toHaveCount(0);
+    for (let i = 0; i < 48; i++) await store.createPage(login.actor, project.id, { title: `Nested page ${i}`, body: "", parentId: doc.id });
+    await page.reload();
+    await expect(page.locator(".project-index-row").filter({ hasText: "Content project" }).locator(".project-count")).toHaveText("49 pages · 2 folders");
     await page.goto(base);
     await expect(page.locator(".unified-content")).toContainText("Tracker");
     await expect(page.locator(".unified-content")).not.toContainText("source.txt");
