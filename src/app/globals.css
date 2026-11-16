@@ -2530,6 +2530,7 @@ input.join-code {
   border-bottom: 1px solid var(--line);
   padding-bottom: 16px;
   margin-bottom: 32px;
+  margin-top: 32px;
 }
 .settings-tabs a {
   padding: 10px 16px;
@@ -3274,31 +3275,58 @@ h1 {
 }
 .project-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr);
-  gap: 50px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+.project-add-brief {
+  display: inline-flex;
+  margin-top: 16px;
 }
 .project-overview-grid .project-section {
   margin: 0;
 }
-.project-contributions h2,
 .unified-content h2,
 .page-discussion h2 {
   font: 500 16px/1.6 var(--font-body);
 }
-.project-contributions h2 {
-  margin-bottom: 18px;
+.project-contributions {
+  border-top: 1px solid var(--line);
+}
+.project-contributions > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 13px;
+}
+.project-contributions > summary::-webkit-details-marker {
+  display: none;
+}
+.project-contributions[open] > summary .icon {
+  transform: rotate(90deg);
 }
 .contribution-entry {
-  padding: 18px 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 12px 0;
+  font-size: 13px;
   border-bottom: 1px solid var(--line);
 }
 .contribution-entry p {
   font-size: 13px;
-  margin: 10px 0 5px 34px;
+  margin: 0;
+  flex: 1 1 180px;
   color: var(--body-ink);
 }
 .contribution-entry time {
-  margin-left: 34px;
+  margin-left: auto;
   font-size: 11px;
   color: var(--muted);
 }
@@ -3606,13 +3634,6 @@ h1 {
 @media (max-width: 1100px) {
   .project-page {
     padding: 32px;
-  }
-  .project-overview-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 40px;
-  }
-  .project-contributions {
-    max-width: 600px;
   }
   .collection-board {
     gap: 12px;

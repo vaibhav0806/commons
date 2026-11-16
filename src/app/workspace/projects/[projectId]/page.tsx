@@ -110,7 +110,10 @@ export default async function ProjectPage({
             <p>{project.brief}</p>
           </div>
         ) : actor.kind === "owner" ? (
-          <Link className="text-link" href={`${base}?edit=project`}>
+          <Link
+            className="text-link project-add-brief"
+            href={`${base}?edit=project`}
+          >
             Add brief
           </Link>
         ) : null}
@@ -187,8 +190,10 @@ export default async function ProjectPage({
                 </Link>
               )}
             </section>
-            <aside className="project-contributions">
-              <h2>Recent contributions</h2>
+            <details className="project-contributions">
+              <summary>
+                <Icon name="CaretRight" /> Activity
+              </summary>
               {activity.map((entry) => (
                 <div className="contribution-entry" key={entry.id}>
                   <span className="contributor">
@@ -196,7 +201,7 @@ export default async function ProjectPage({
                     <strong>{entry.authorName}</strong>
                   </span>
                   <p>{entry.description}</p>
-                  <time>
+                  <time dateTime={new Date(entry.createdAt).toISOString()}>
                     {new Date(entry.createdAt).toLocaleDateString("en-GB", {
                       month: "short",
                       day: "numeric",
@@ -207,7 +212,7 @@ export default async function ProjectPage({
               {!activity.length && (
                 <p className="meta">No contributions yet.</p>
               )}
-            </aside>
+            </details>
           </div>
         )}
         {query.view === "notes" && (

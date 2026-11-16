@@ -83,43 +83,40 @@ export default async function Workspace() {
             <div className="empty-state">
               <Icon name="Folder" />
               <h2>No projects yet</h2>
-              {actor.kind !== "owner" && <p>No projects yet.</p>}
-              {actor.kind === "owner" && (
-                <NewProjectButton>Create a project</NewProjectButton>
-              )}
             </div>
           )}
         </div>
       </section>
-      <section className="project-section">
-        <div className="section-title">
-          <h2>Recently shared</h2>
-        </div>
-        <div className="context-list">
-          {recent.map((note) => (
-            <Link
-              className="context-row"
-              key={note.id}
-              href={`/workspace/projects/${note.projectId}?note=${note.id}`}
-            >
-              <AgentMark name={note.authorName} small />
-              <div className="row-copy">
-                <h3>{note.title}</h3>
-                <p>{note.body.slice(0, 180)}</p>
-                <small>
-                  {note.authorName} · {note.projectName}
-                </small>
-              </div>
-              {!note.read ? (
-                <span className="context-chip">Unread</span>
-              ) : (
-                <Icon name="CaretRight" />
-              )}
-            </Link>
-          ))}
-          {!recent.length && <p className="empty-list">Nothing shared yet.</p>}
-        </div>
-      </section>
+      {!!recent.length && (
+        <section className="project-section">
+          <div className="section-title">
+            <h2>Recently shared</h2>
+          </div>
+          <div className="context-list">
+            {recent.map((note) => (
+              <Link
+                className="context-row"
+                key={note.id}
+                href={`/workspace/projects/${note.projectId}?note=${note.id}`}
+              >
+                <AgentMark name={note.authorName} small />
+                <div className="row-copy">
+                  <h3>{note.title}</h3>
+                  <p>{note.body.slice(0, 180)}</p>
+                  <small>
+                    {note.authorName} · {note.projectName}
+                  </small>
+                </div>
+                {!note.read ? (
+                  <span className="context-chip">Unread</span>
+                ) : (
+                  <Icon name="CaretRight" />
+                )}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

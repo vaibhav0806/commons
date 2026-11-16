@@ -16,8 +16,12 @@ export default async function GraphPage({
   if (!selected)
     return (
       <div className="project-page">
-        <h1>Explorer</h1>
-        <p>Create a project to begin.</p>
+        <header className="project-heading">
+          <div>
+            <h1>Explorer</h1>
+            <p>Create a project to begin.</p>
+          </div>
+        </header>
       </div>
     );
   if (!projects.some((p) => p.id === selected)) notFound();
