@@ -4,14 +4,13 @@ import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
 import { CommonsError } from "@/lib/store";
 import { AgentMark } from "@/components/brand";
-import { ActionForm, CopyButton } from "@/components/forms";
+import { ActionForm } from "@/components/forms";
 import { MarkdownContent } from "@/components/markdown";
 import { PageEditor } from "@/components/page-editor";
 import { CollectionView } from "@/components/collection-view";
 import { PageDiscussion } from "@/components/page-discussion";
 import { ContentPlus } from "@/components/content-tree";
 import { DetailSheet } from "@/components/detail-sheet";
-import { appUrl } from "@/lib/config";
 
 export default async function PageDocument({
   params,
@@ -78,10 +77,6 @@ export default async function PageDocument({
           <Link className="button secondary" href={`${base}?discussion=1`}>
             Discussion
           </Link>
-          <CopyButton
-            text={`${appUrl().origin}${base}`}
-            label="Copy page link"
-          />
           {canEdit && !query.edit && (
             <Link className="button" href={`${base}?edit=1`}>
               Edit page
@@ -199,7 +194,7 @@ export default async function PageDocument({
         </>
       )}
       {query.discussion && (
-        <DetailSheet title={`Discussion · ${page.title}`} closeHref={base}>
+        <DetailSheet title="Discussion" label={page.title} closeHref={base}>
           <PageDiscussion
             page={page}
             actor={actor}

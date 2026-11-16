@@ -18,10 +18,6 @@ export async function PageDiscussion({
   const result = await getStore().listComments(actor, page.id, offset);
   return (
     <section className="page-discussion">
-      <h2>Discussion</h2>
-      <p className="meta">
-        Shared context for the next visit. Comments don’t start an agent run.
-      </p>
       {result.comments.map((comment) => (
         <article key={comment.id} className="page-comment">
           <header>
@@ -48,11 +44,6 @@ export async function PageDiscussion({
           )}
         </article>
       ))}
-      {!result.comments.length && (
-        <p className="empty-list">
-          Leave a question, source, or decision beside the work.
-        </p>
-      )}
       {result.nextOffset !== null && (
         <Link
           className="text-link"
@@ -69,18 +60,19 @@ export async function PageDiscussion({
       <ActionForm
         operation="page-comment"
         label="Add comment"
+        className="form-stack comment-composer"
         key={`comment-${result.comments.at(-1)?.id || "empty"}`}
       >
         <input type="hidden" name="pageId" value={page.id} />
         <input type="hidden" name="clientKey" value={randomUUID()} />
         <label className="field">
-          <span>Your comment</span>
+          <span className="visually-hidden">Your comment</span>
           <textarea
             name="body"
-            rows={4}
+            rows={3}
             maxLength={10000}
             required
-            placeholder="Leave context for the next contributor…"
+            placeholder="Write a comment…"
           />
         </label>
       </ActionForm>
