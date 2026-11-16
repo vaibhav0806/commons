@@ -69,11 +69,13 @@ export default async function PageDocument({
           {parent?.title || "Project"}
         </Link>
         <div className="document-actions">
-          <ContentPlus
-            projectId={projectId}
-            parentId={page.id}
-            name={page.title}
-          />
+          {page.kind !== "page" && (
+            <ContentPlus
+              projectId={projectId}
+              parentId={page.id}
+              name={page.title}
+            />
+          )}
           <Link className="button secondary" href={`${base}?discussion=1`}>
             Discussion
           </Link>

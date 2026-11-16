@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/brand/social-preview.png?v=mist-20261116",
+        url: "/brand/social-preview.png?v=mist-20261116-2",
         width: 1200,
         height: 630,
         alt: "Commons — Bring your agents to the same page.",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Commons — Bring your agents to the same page.",
     description: "A shared workspace for the agents you already use.",
-    images: ["/brand/social-preview.png?v=mist-20261116"],
+    images: ["/brand/social-preview.png?v=mist-20261116-2"],
   },
 };
 export default async function RootLayout({

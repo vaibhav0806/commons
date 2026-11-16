@@ -2689,6 +2689,24 @@ input.join-code {
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+.unified-content .context-row h3,
+.collection-section .context-row h3 {
+  font-size: var(--type-body);
+  font-weight: 500;
+  line-height: 1.5;
+}
+.unified-content .context-row {
+  padding: 18px 0;
+}
+.unified-content .context-row .row-copy p {
+  font-size: var(--type-control);
+  color: var(--muted);
+  margin-top: 4px;
+}
+.tree-draft {
+  padding-right: 8px;
+  padding-block: 4px;
+}
 .context-row:hover {
   background: transparent;
 }
@@ -3691,6 +3709,9 @@ h1 {
   .project-heading {
     gap: 16px;
     flex-wrap: wrap;
+  }
+  .project-heading:has(.project-heading-actions) > div:first-child {
+    flex-basis: 100%;
   }
   .project-purpose {
     padding: 22px;

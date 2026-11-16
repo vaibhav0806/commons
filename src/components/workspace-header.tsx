@@ -8,6 +8,7 @@ import type { PageTreeItem, Project } from "@/lib/store";
 import { WorkspaceNav, WorkspaceActions } from "./workspace-nav";
 import { DialogSurface } from "./ui/dialog-surface";
 import { Icon } from "./brand";
+import type { FolderDraft } from "./content-tree";
 import { SidebarToggle } from "./workspace-shell";
 
 export function WorkspaceHeader({
@@ -26,15 +27,28 @@ export function WorkspaceHeader({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [folder, setFolder] = useState<FolderDraft>();
   useEffect(() => {
     const create = () => {
       if (owner && window.matchMedia("(max-width: 900px)").matches) {
+        setFolder(undefined);
         setCreating(true);
         setOpen(true);
       }
     };
+    const createFolder = (event: Event) => {
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        setCreating(false);
+        setFolder((event as CustomEvent<FolderDraft>).detail);
+        setOpen(true);
+      }
+    };
     window.addEventListener("commons:create-project", create);
-    return () => window.removeEventListener("commons:create-project", create);
+    window.addEventListener("commons:create-folder", createFolder);
+    return () => {
+      window.removeEventListener("commons:create-project", create);
+      window.removeEventListener("commons:create-folder", createFolder);
+    };
   }, [owner]);
   const project = projects.find((p) => pathname.includes(p.id));
   const currentPage = items.find((item) =>
@@ -56,6 +70,7 @@ export function WorkspaceHeader({
           className="icon-button mobile-menu-button"
           aria-label="Open workspace navigation"
           onClick={() => {
+            setFolder(undefined);
             setCreating(false);
             setOpen(true);
           }}
@@ -83,11 +98,16 @@ export function WorkspaceHeader({
         <div
           className="mobile-workspace-links"
           onClick={(event) => {
-            if ((event.target as HTMLElement).closest("a")) setOpen(false);
+            if (
+              !event.defaultPrevented &&
+              (event.target as HTMLElement).closest("a")
+            )
+              setOpen(false);
           }}
         >
           <WorkspaceNav
             initialCreating={creating}
+            initialFolder={folder}
             projects={projects}
             items={items}
             actorId={actorId}

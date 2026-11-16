@@ -846,10 +846,9 @@ test("nested folders, list board table views and discussions work on desktop and
     await page
       .getByRole("menuitem", { name: "New folder", exact: true })
       .click();
-    await page.getByLabel("Name", { exact: true }).fill("First issue");
-    await page
-      .getByRole("button", { name: "Create folder", exact: true })
-      .click();
+    await expect(page.getByLabel("Folder name", { exact: true })).toBeFocused();
+    await page.getByLabel("Folder name", { exact: true }).fill("First issue");
+    await page.getByLabel("Folder name", { exact: true }).press("Enter");
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const folderId = new URL(page.url()).pathname.split("/").at(-1)!;
     await page
@@ -857,12 +856,11 @@ test("nested folders, list board table views and discussions work on desktop and
       .getByRole("button", { name: "Add inside First issue" })
       .click();
     await page
-      .getByRole("menuitem", { name: "New folder", exact: true })
+      .getByRole("menuitem", { name: "New subfolder", exact: true })
       .click();
-    await page.getByLabel("Name", { exact: true }).fill("Stories");
-    await page
-      .getByRole("button", { name: "Create folder", exact: true })
-      .click();
+    await page.getByLabel("Folder name", { exact: true }).fill("Stories");
+    await page.getByLabel("Folder name", { exact: true }).press("Enter");
+    await expect(page.getByRole("heading", { name: "Stories", exact: true })).toBeVisible();
     await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
     const collectionUrl = page.url(),
       collectionId = new URL(collectionUrl).pathname.split("/").at(-1)!;
@@ -1743,5 +1741,151 @@ test("workspace omits Explorer and redirects old graph links", async ({ page }) 
     await page.goto("/workspace/graph?project=retired");
     await expect(page).toHaveURL(/\/workspace$/);
     await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+  }
+});
+
+test("folders create inline with contextual menus, cancellation and retry", async ({
+  page,
+}) => {
+  const { Pool } = await import("pg"),
+    { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(owner, `Folders ${Date.now()}`, "");
+  const document = await store.createPage(owner, project.id, {
+    title: "A page",
+    body: "",
+    parentId: null,
+  });
+  const base = `/workspace/projects/${project.id}`;
+  try {
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    for (const width of [1440, 390]) {
+      const mobile = width < 901;
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(base);
+      if (!mobile)
+        await page.getByRole("button", { name: "Hide sidebar" }).click();
+      const start = async () => {
+        await page
+          .locator(".main-work")
+          .getByRole("button", { name: `Add inside ${project.name}` })
+          .click();
+        await page
+          .getByRole("menuitem", { name: "New folder", exact: true })
+          .click();
+        await expect(
+          page.getByRole("textbox", { name: "Folder name", exact: true }),
+        ).toBeFocused();
+        await expect(page).toHaveURL(new RegExp(`${base}$`));
+      };
+      await start();
+      const surface = mobile
+        ? page.getByRole("dialog")
+        : page.locator(".sidebar");
+      const input = page.getByRole("textbox", {
+        name: "Folder name",
+        exact: true,
+      });
+      await input.fill("Discard");
+      await input.press("Escape");
+      await expect(input).toHaveCount(0);
+      await expect(
+        surface.getByRole("button", {
+          name: `Actions for ${project.name}`,
+          exact: true,
+        }),
+      ).toBeFocused();
+      if (mobile)
+        await page.getByRole("button", { name: "Close dialog" }).click();
+      await start();
+      await input.fill("Outside");
+      await surface.getByRole("link", { name: "Home", exact: true }).click();
+      await expect(input).toHaveCount(0);
+      await page.goto(base);
+      await start();
+      await input.fill(`Folder ${width}`);
+      await input.dispatchEvent("keydown", { key: "Enter", isComposing: true });
+      await expect(input).toBeVisible();
+      // A failed request preserves the name, and a retry uses the same save key.
+      await page.route(
+        `**${base}`,
+        async (route) => {
+          if (
+            route.request().method() === "POST" &&
+            route.request().headers()["next-action"]
+          ) {
+            await route.fetch();
+            await route.abort();
+          } else await route.continue();
+        },
+        { times: 1 },
+      );
+      await input.press("Enter");
+      await expect(surface.getByRole("alert")).toBeVisible();
+      await expect(input).toHaveValue(`Folder ${width}`);
+      await input.press("Enter");
+      await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+      if (mobile) await expect(page.getByRole("dialog")).toHaveCount(0);
+      const folders = (await store.pageTree(owner, project.id)).filter(
+        (item) => item.title === `Folder ${width}`,
+      );
+      expect(folders).toHaveLength(1);
+      expect(folders[0].kind).toBe("folder");
+      expect(folders[0].parentId).toBeNull();
+      await page
+        .getByRole("button", { name: `Add inside Folder ${width}` })
+        .click();
+      await page
+        .getByRole("menuitem", { name: "New subfolder", exact: true })
+        .click();
+      await input.fill("Nested");
+      await input.press("Enter");
+      await expect(
+        page.getByRole("heading", { name: "Nested", exact: true }),
+      ).toBeVisible();
+      const nestedId = new URL(page.url()).pathname.split("/").at(-1)!;
+      expect((await store.getPage(owner, nestedId)).parentId).toBe(
+        folders[0].id,
+      );
+      await page.goto(`${base}/pages/${document.id}`);
+      await expect(
+        page.getByRole("button", { name: "Add inside A page" }),
+      ).toHaveCount(0);
+      if (mobile)
+        await page
+          .getByRole("button", { name: "Open workspace navigation" })
+          .click();
+      await surface
+        .getByRole("button", { name: "Actions for A page", exact: true })
+        .click();
+      const menu = page.getByRole("menu");
+      await expect(
+        menu.getByRole("menuitem", { name: "Rename or move", exact: true }),
+      ).toBeVisible();
+      await expect(
+        menu.getByRole("menuitem", { name: "Discussion", exact: true }),
+      ).toBeVisible();
+      await expect(
+        menu.getByRole("menuitem", { name: /New |Upload/ }),
+      ).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      if (mobile)
+        await page.getByRole("button", { name: "Close dialog" }).click();
+      await page.goto(`${base}/pages/new?kind=folder&parent=${folders[0].id}`);
+      await expect(page).toHaveURL(new RegExp(`/pages/${folders[0].id}$`));
+      expect(
+        (await store.pageTree(owner, project.id)).some((item) =>
+          ["Discard", "Outside"].includes(item.title),
+        ),
+      ).toBe(false);
+    }
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
   }
 });

@@ -6,7 +6,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { getStore } from "@/lib/db";
-import { CommonsError, type PageKind, type PageStatus } from "@/lib/store";
+import {
+  CommonsError,
+  type PageKind,
+  type PageStatus,
+  type PageTreeItem,
+} from "@/lib/store";
 import {
   allowMockSignIn,
   currentParticipant,
@@ -151,6 +156,32 @@ export async function createSidebarProject(name: string): Promise<{
     const project = await getStore().createProject(actor, name, "");
     revalidatePath("/workspace", "layout");
     return { projectId: project.id };
+  } catch (error) {
+    return errorState(error);
+  }
+}
+
+export async function createSidebarFolder(
+  projectId: string,
+  parentId: string | undefined,
+  title: string,
+  clientKey: string,
+): Promise<{ page?: PageTreeItem; error?: string }> {
+  const actor = await requireParticipant();
+  try {
+    const page = await getStore().createPage(
+      actor,
+      projectId,
+      {
+        title,
+        body: "",
+        parentId: parentId || null,
+        kind: "folder",
+      },
+      clientKey,
+    );
+    revalidatePath("/workspace", "layout");
+    return { page };
   } catch (error) {
     return errorState(error);
   }

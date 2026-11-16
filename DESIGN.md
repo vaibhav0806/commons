@@ -71,3 +71,9 @@ The owner removed the Explorer section from the workspace. Its sidebar destinati
 Social sharing uses a static 1200 × 630 Mist card with the existing Commons mark, Sora wordmark, Instrument Serif headline and the original landing meadow. SVG, ICO, Apple and installable app icons share slate ink on a lilac tile; maskable exports keep the mark inside the safe circle. The downloadable kit follows the current palette and typography.
 
 Project names in the Home index use body-sized Sora Medium (15px), with 36px icon tiles and compact rows. On mobile, the disclosure remains aligned beside the title; nonempty counts sit below the title and empty counts occupy no space.
+
+## Contextual creation — November 16
+
+Folders use the same inline name field as projects, placed inside the selected project/folder tree. Enter creates; Escape or an outside pointer dismisses. Mobile opens the navigation drawer, and a collapsed desktop sidebar opens automatically. Creation retains the parent and a stable save key across retries. Old folder-creation URLs return to their parent instead of opening a form page.
+
+Page row menus contain page-specific actions (Discussion, Rename or move, Delete where permitted), without creation options. Projects offer New folder; folders offer New subfolder. Document pages have no add-child toolbar. Existing nested content remains accessible. Contents list titles use the same 15px medium typography as the Home project list, with smaller author metadata. Social artwork omits the printed URL.

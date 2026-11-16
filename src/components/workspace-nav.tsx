@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { SelectField } from "./ui/select-field";
 import { Icon } from "./brand";
 import { createSidebarProject } from "@/app/actions";
-import { ContentTree } from "./content-tree";
+import { InlineName } from "./inline-name";
+import { ContentTree, type FolderDraft } from "./content-tree";
 import type { PageTreeItem, Project } from "@/lib/store";
 
 export function WorkspaceNav({
@@ -16,6 +17,7 @@ export function WorkspaceNav({
   actorId,
   onNavigate,
   initialCreating = false,
+  initialFolder,
 }: {
   projects: Project[];
   owner: boolean;
@@ -23,7 +25,9 @@ export function WorkspaceNav({
   actorId: string;
   onNavigate?: () => void;
   initialCreating?: boolean;
+  initialFolder?: FolderDraft;
 }) {
+  const router = useRouter();
   const [creating, setCreating] = useState(initialCreating);
   const createButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -72,18 +76,26 @@ export function WorkspaceNav({
         </div>
         <nav className="nav-group" aria-label="Projects">
           {creating && (
-            <InlineProject
+            <InlineName
+              kind="project"
               onCancel={(restoreFocus) => {
                 if (restoreFocus) createButton.current?.focus();
                 setCreating(false);
               }}
-              onCreated={() => {
-                setCreating(false);
-                onNavigate?.();
+              onCreate={async (name) => {
+                const result = await createSidebarProject(name);
+                if (result.projectId) {
+                  setCreating(false);
+                  onNavigate?.();
+                  router.push(`/workspace/projects/${result.projectId}`);
+                }
+                return result.error;
               }}
             />
           )}
           <ContentTree
+            initialFolder={initialFolder}
+            onNavigate={onNavigate}
             projects={projects}
             items={items}
             owner={owner}
@@ -92,113 +104,6 @@ export function WorkspaceNav({
         </nav>
       </div>
     </>
-  );
-}
-
-function InlineProject({
-  onCancel,
-  onCreated,
-}: {
-  onCancel: (restoreFocus: boolean) => void;
-  onCreated: () => void;
-}) {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string>();
-  const [pending, startTransition] = useTransition();
-  const submitting = useRef(false);
-  const input = useRef<HTMLInputElement>(null);
-  const errorId = useId();
-  const form = useRef<HTMLFormElement>(null);
-  useEffect(() => input.current?.focus(), []);
-  useEffect(() => {
-    const dismiss = (event: PointerEvent) => {
-      if (!submitting.current && !form.current?.contains(event.target as Node))
-        onCancel(false);
-    };
-    document.addEventListener("pointerdown", dismiss, true);
-    return () => document.removeEventListener("pointerdown", dismiss, true);
-  }, [onCancel]);
-  return (
-    <form
-      ref={form}
-      className="inline-project"
-      aria-label="Create project"
-      aria-busy={pending}
-      onKeyDown={(event) => {
-        if (event.nativeEvent.isComposing) {
-          if (event.key === "Enter") event.preventDefault();
-          return;
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
-          if (!submitting.current) onCancel(true);
-        }
-      }}
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (submitting.current) return;
-        if (!name.trim()) {
-          onCancel(true);
-          return;
-        }
-        if (name.trim().length < 2) {
-          setError("Use at least 2 characters.");
-          input.current?.focus();
-          return;
-        }
-        submitting.current = true;
-        setError(undefined);
-        startTransition(async () => {
-          try {
-            const result = await createSidebarProject(name.trim());
-            if (result.projectId) {
-              onCreated();
-              router.push(`/workspace/projects/${result.projectId}`);
-            } else {
-              setError(result.error);
-              input.current?.focus();
-            }
-          } catch {
-            setError("Couldn’t create this project. Try again.");
-            input.current?.focus();
-          } finally {
-            submitting.current = false;
-          }
-        });
-      }}
-    >
-      <div className="inline-project-field">
-        <Icon name="Folder" />
-        <input
-          ref={input}
-          aria-label="Project name"
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={!!error}
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setError(undefined);
-          }}
-          placeholder="Project name"
-          maxLength={60}
-          readOnly={pending}
-          autoComplete="off"
-          enterKeyHint="done"
-        />
-      </div>
-      {error && (
-        <p id={errorId} role="alert" className="inline-project-error">
-          {error}
-        </p>
-      )}
-      {pending && (
-        <span className="visually-hidden" role="status">
-          Creating project
-        </span>
-      )}
-    </form>
   );
 }
 
