@@ -156,3 +156,11 @@ Application revision `ebb8615` is deployed on app and both workers with image `s
 Plain line-break HTML tags render safely in the reader and editor, without enabling arbitrary HTML or changing code examples. Project Activity is an on-demand panel in the action menu, including mobile. The duplicate signed-in header Workspace link and destructive-action ellipses are removed.
 
 Lint/typecheck, production build and four targeted production-browser scenarios passed. Final regression checks include mobile Activity access/close, literal code, inactive attribute-bearing HTML, original-source preservation and private image editing. Isolated local and hosted walkthroughs verified the same reader/editor line breaks, light/dark mobile Activity, single hero CTA and retained anonymous sign-in. Public health is OK; test workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-refine-2026-11-16`. Muse consultation was unavailable because its configured provider is disabled.
+
+## Compact discussion and page actions — 2026-11-16
+
+Application revision `7706cdf` is deployed on app, graph-sync and file-cleanup with image `sha256:db3596113b5994031a0aaa90dfb8f28914b9a6a6b74ac414c1c4347d635a161f`. Backup `backups/pre-discussion-20261116.dump` was verified before replacement; rollback image `commons:pre-discussion-ebb8615` is retained. No migration.
+
+The shared reader/editor toolbar no longer includes Copy page link. Discussion has one heading, smaller page context, no repeated instructional copy, and a compact comment composer with a right-aligned submit button. Home project icons use a flat background in light mode; the dark appearance is preserved.
+
+Lint/typecheck, production build and the existing desktop/mobile discussion browser scenario passed. Isolated local and hosted walkthroughs verified reader/editor control removal, comment submission and persistence after reload, desktop light/dark appearance, 390px and 320px layouts without horizontal overflow, keyboard dismissal and no browser errors. All application services are running and public health is OK. The temporary acceptance workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-discussion-2026-11-16`. Follow-up is tracked in PR #5 because PR #4 was already merged.
