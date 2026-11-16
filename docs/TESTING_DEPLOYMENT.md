@@ -148,3 +148,11 @@ Application revision `e1e7ad794762cda0896591e50b2c14bdc6513dab` is deployed on a
 Home has one main creation action. Settings/Explorer spacing is consistent, project contents occupy the full width, and Activity is a collapsed disclosure with compact rows. Landing section navigation and the setup-prompt helper sentence are removed.
 
 Validation passed: lint/typecheck, production build, three existing production-browser scenarios covering navigation/settings/landing, and isolated local plus hosted acceptance for empty states, 32px Settings spacing at desktop/mobile widths, keyboard Activity disclosure, full-width contents, landing removals and mobile overflow. Hosted health is OK. The disposable acceptance workspace was removed. Screenshots: `/Users/vaibhav/Downloads/commons-polish-2026-11-16`.
+
+## Activity panel and safe Markdown breaks — 2026-11-16
+
+Application revision `ebb8615` is deployed on app and both workers with image `sha256:48b92068c08f95d21734ba955a292f89813d0877ebb0042fae88a775e2969e95`. Backup `backups/pre-refine-20261116.dump` was verified; rollback image `commons:pre-refine-e1e7ad7` is retained. No migration.
+
+Plain line-break HTML tags render safely in the reader and editor, without enabling arbitrary HTML or changing code examples. Project Activity is an on-demand panel in the action menu, including mobile. The duplicate signed-in header Workspace link and destructive-action ellipses are removed.
+
+Lint/typecheck, production build and four targeted production-browser scenarios passed. Final regression checks include mobile Activity access/close, literal code, inactive attribute-bearing HTML, original-source preservation and private image editing. Isolated local and hosted walkthroughs verified the same reader/editor line breaks, light/dark mobile Activity, single hero CTA and retained anonymous sign-in. Public health is OK; test workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-refine-2026-11-16`. Muse consultation was unavailable because its configured provider is disabled.
