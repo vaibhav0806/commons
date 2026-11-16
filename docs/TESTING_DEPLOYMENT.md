@@ -172,3 +172,11 @@ Application revision `5a5e68f` is deployed on app and both workers with image `s
 Project overview renders and paginates pages/folders only. Stored attachments and notes remain available; the overview no longer queries them. Signed-in landing CTAs prefetch the workspace, and the global Opening Commons interstitial is removed.
 
 Lint/typecheck, production build and three production-browser scenarios passed (landing, nested folders/discussion, inline media). The media scenario checks the pages-only list while uploaded files remain stored. Isolated local and hosted walkthroughs verified navigation without the loading-text flash with delayed workspace requests, file-only project empty state, pages-only contents after creation and retained file access. Hosted health is OK, all three services are running, and acceptance workspaces were removed.
+
+## Landscape footer and public-route audit — 2026-11-16
+
+Application revision `b5299f3` is deployed on app and both workers with image `sha256:dd26182b287b7aab9502e22dd3e6575ead30020b220b1dbc3906a17f59937531`. Verified backup `backups/pre-footer-20261116.dump` and rollback image `commons:pre-footer-5a5e68f` are retained. No migration.
+
+The landing footer uses an original locally hosted meadow illustration (81KB WebP), a theme-aware fade, concise navigation and operator links. The image is decorative and lazy-loaded; mobile uses two small navigation columns. Source attribution is in public/landing/CREDITS.md.
+
+Route auditing confirmed no remaining global loading interstitial. The first hosted walkthrough caught scroll/resize callbacks accessing detached landing refs during navigation; guards now stop those callbacks. The final production build, lint/typecheck and landing browser regression pass, including desktop/mobile Privacy round trips. Hosted acceptance verified artwork decoding, both themes at 1440/390/320px without overflow, Privacy/home/join/return transitions, public entry routes and authenticated Home/Agents/Explorer/Settings routes without the Opening Commons splash or browser errors. Health is OK and disposable review workspaces were removed. Screenshots: `/Users/vaibhav/Downloads/commons-footer-2026-11-16`.
