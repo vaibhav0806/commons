@@ -31,6 +31,22 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await expect(
     page.getByRole("link", { name: "New request", exact: true }),
   ).toHaveCount(0);
+  await expect(page.locator(".project-contributions")).toHaveCount(0);
+  await page.getByLabel("Project actions", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Activity" })).toBeVisible();
+  await expect(page.locator(".project-activity")).toContainText(
+    "created the project",
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Project actions", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Activity" })).toBeVisible();
+  await page.getByRole("button", { name: "Close details" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByLabel("Project actions", { exact: true }).click();
   await page
     .getByRole("menuitem", { name: "Edit project", exact: true })
@@ -470,7 +486,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
       .click();
     await expect(page.getByRole("status")).toContainText("Saved");
     await page
-      .getByRole("link", { name: "Delete workspace…", exact: true })
+      .getByRole("link", { name: "Delete workspace", exact: true })
       .click();
     await page
       .getByLabel("Type Disposable workspace to confirm", { exact: true })
@@ -484,7 +500,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     expect(await store.listProjects(actor)).toHaveLength(0);
     await page.goto("/workspace/settings");
     await page
-      .getByRole("link", { name: "Delete account…", exact: true })
+      .getByRole("link", { name: "Delete account", exact: true })
       .click();
     await page
       .getByLabel("Type DELETE to confirm", { exact: true })
@@ -1170,7 +1186,7 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     .actor;
   const project = await store.createProject(owner, `Editor ${Date.now()}`, "");
   const original =
-    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n";
+    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n\nFirst<br>Second<br/>Third<br />Fourth\n\n<br />\n\n`<br />`\n\n```html\n<br />\n```\n\n<br onclick=alert(1)>\n";
   const existingPage = await store.createPage(owner, project.id, {
     title: "Existing document",
     parentId: null,
@@ -1198,11 +1214,19 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     await expect(
       content.getByRole("heading", { name: "Existing Markdown" }),
     ).toBeVisible();
-    await expect(content.locator('span[data-type="html"]')).toContainText(
+    await expect(content.locator('span[data-type="html"]').first()).toContainText(
       "Keep this HTML",
     );
+    await expect(content.locator('br[data-type="hardbreak"]')).toHaveCount(4);
+    await expect(content.locator('[onclick]')).toHaveCount(0);
     await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(docUrl);
+    await expect(page.locator(".markdown-content br")).toHaveCount(4);
+    await expect(page.locator(".markdown-content code")).toContainText([
+      "<br />",
+      "<br />",
+    ]);
+    await expect(page.locator(".markdown-content [onclick]")).toHaveCount(0);
     expect((await store.getPage(owner, existingPage.id)).body).toBe(original);
     expect(externalRequests).toEqual([]);
     await page.goto(`${docUrl}?edit=1`);

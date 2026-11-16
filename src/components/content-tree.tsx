@@ -80,7 +80,7 @@ function TreeRow({
             href: `${href}?edit=${item ? "1" : "project"}`,
           },
           {
-            label: "Delete…",
+            label: "Delete",
             href: `${href}?delete=${item ? "1" : "project"}`,
             danger: true,
           },

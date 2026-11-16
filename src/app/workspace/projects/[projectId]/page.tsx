@@ -52,7 +52,7 @@ export default async function ProjectPage({
       offset,
     }),
     store.listFiles(actor, projectId, { query: search, offset }),
-    store.recentActivity(actor, projectId),
+    query.activity === "1" ? store.recentActivity(actor, projectId) : [],
   ]);
   let note: Note | undefined,
     detailError = false;
@@ -82,27 +82,30 @@ export default async function ProjectPage({
           <div className="project-heading-actions">
             <ContentPlus projectId={projectId} name={project.name} />
             {actor.kind === "owner" && (
-              <>
-                <ConnectAgentButton
-                  className="button secondary"
-                  projectId={projectId}
-                  label="Connect an agent to this project"
-                >
-                  <Icon name="UsersThree" /> Invite agent
-                </ConnectAgentButton>
-                <ActionMenu
-                  label="Project actions"
-                  items={[
-                    { label: "Edit project", href: `${base}?edit=project` },
-                    {
-                      label: "Delete project",
-                      href: `${base}?delete=project`,
-                      danger: true,
-                    },
-                  ]}
-                />
-              </>
+              <ConnectAgentButton
+                className="button secondary"
+                projectId={projectId}
+                label="Connect an agent to this project"
+              >
+                <Icon name="UsersThree" /> Invite agent
+              </ConnectAgentButton>
             )}
+            <ActionMenu
+              label="Project actions"
+              items={[
+                { label: "Activity", href: `${base}?activity=1` },
+                ...(actor.kind === "owner"
+                  ? [
+                      { label: "Edit project", href: `${base}?edit=project` },
+                      {
+                        label: "Delete project",
+                        href: `${base}?delete=project`,
+                        danger: true,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
         </header>
         {project.brief ? (
@@ -190,29 +193,6 @@ export default async function ProjectPage({
                 </Link>
               )}
             </section>
-            <details className="project-contributions">
-              <summary>
-                <Icon name="CaretRight" /> Activity
-              </summary>
-              {activity.map((entry) => (
-                <div className="contribution-entry" key={entry.id}>
-                  <span className="contributor">
-                    <AgentMark name={entry.authorName} small />
-                    <strong>{entry.authorName}</strong>
-                  </span>
-                  <p>{entry.description}</p>
-                  <time dateTime={new Date(entry.createdAt).toISOString()}>
-                    {new Date(entry.createdAt).toLocaleDateString("en-GB", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </time>
-                </div>
-              ))}
-              {!activity.length && (
-                <p className="meta">No contributions yet.</p>
-              )}
-            </details>
           </div>
         )}
         {query.view === "notes" && (
@@ -314,6 +294,30 @@ export default async function ProjectPage({
           </>
         )}
       </div>
+      {query.activity === "1" && (
+        <DetailSheet title="Activity" closeHref={base}>
+          <ul className="project-activity">
+            {activity.map((entry) => (
+              <li key={entry.id}>
+                <p>
+                  <strong>{entry.authorName}</strong>{" "}
+                  {entry.description.charAt(0).toLowerCase() +
+                    entry.description.slice(1)}
+                </p>
+                <time dateTime={new Date(entry.createdAt).toISOString()}>
+                  {new Date(entry.createdAt).toLocaleString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+              </li>
+            ))}
+          </ul>
+          {!activity.length && <p className="meta">No activity yet.</p>}
+        </DetailSheet>
+      )}
       {query.create === "note" && (
         <DetailSheet title="New note" closeHref={closeHref}>
           <p className="detail-intro">
@@ -371,7 +375,7 @@ export default async function ProjectPage({
             operation="delete-project"
             projectId={projectId}
             label="Delete project"
-            pendingLabel="Deleting…"
+            pendingLabel="Deleting"
             danger
           >
             <label className="field">
@@ -413,7 +417,7 @@ export default async function ProjectPage({
               <ActionForm
                 operation="delete-note"
                 label="Delete note"
-                pendingLabel="Deleting…"
+                pendingLabel="Deleting"
                 danger
               >
                 <input type="hidden" name="noteId" value={note.id} />

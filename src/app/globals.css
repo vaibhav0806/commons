@@ -2056,9 +2056,6 @@ input.join-code {
   visibility: hidden;
 }
 @media (max-width: 700px) {
-  .project-heading-actions > .icon-button {
-    display: none;
-  }
   .project-heading-actions .command-shortcut {
     border: 0;
     background: transparent;
@@ -3290,43 +3287,22 @@ h1 {
 .page-discussion h2 {
   font: 500 16px/1.6 var(--font-body);
 }
-.project-contributions {
-  border-top: 1px solid var(--line);
-}
-.project-contributions > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  width: fit-content;
-  cursor: pointer;
+.project-activity {
   list-style: none;
-  color: var(--muted);
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+.project-activity li {
+  display: grid;
+  gap: 4px;
   font-size: 13px;
 }
-.project-contributions > summary::-webkit-details-marker {
-  display: none;
+.project-activity strong {
+  font-weight: 500;
 }
-.project-contributions[open] > summary .icon {
-  transform: rotate(90deg);
-}
-.contribution-entry {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  padding: 12px 0;
-  font-size: 13px;
-  border-bottom: 1px solid var(--line);
-}
-.contribution-entry p {
-  font-size: 13px;
-  margin: 0;
-  flex: 1 1 180px;
-  color: var(--body-ink);
-}
-.contribution-entry time {
-  margin-left: auto;
+.project-activity time {
   font-size: 11px;
   color: var(--muted);
 }

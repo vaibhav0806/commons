@@ -55,3 +55,9 @@ Explorer starts from an artifact and separates References, People and Structure.
 ## Reduced workspace chrome — November 16
 
 Home keeps one main New project action and omits the duplicate empty-state button. Recently shared appears only when there are contributions. Settings separates its heading and tabs by 32px; the empty Explorer uses the shared heading/subtitle rhythm. Project contents use the full available width, with Activity collapsed below them and compact rows when expanded. The landing header retains branding, theme and sign-in/workspace actions; section jump links and the setup-prompt helper sentence are removed.
+
+## On-demand activity and document breaks — November 16
+
+Project Activity is available from the project action menu in a contextual panel, with compact author/action sentences and timestamps. It has no permanent section in the project contents area. Signed-in landing navigation omits the duplicate Workspace link; the hero remains the primary entry. Destructive action labels omit ellipses while retaining confirmations.
+
+Plain HTML line-break tags are converted into Markdown hard breaks in the reader and editor. Code spans/fences remain literal, tags with attributes remain text, and arbitrary HTML is not enabled. Opening and closing an unchanged document preserves the original source.

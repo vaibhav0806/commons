@@ -19,9 +19,7 @@ export default async function Home() {
         <Brand />
         <div>
           <ThemeToggle />
-          <Link href={destination}>
-            {participant ? "Workspace" : "Sign in"}
-          </Link>
+          {!participant && <Link href={destination}>Sign in</Link>}
         </div>
       </nav>
       <header className={styles.hero}>

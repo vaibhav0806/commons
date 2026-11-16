@@ -192,7 +192,7 @@ export default async function PageDocument({
           {canEdit && (
             <div className="document-end-actions">
               <Link className="text-link danger-text" href={`${base}?delete=1`}>
-                Delete page…
+                Delete page
               </Link>
             </div>
           )}
