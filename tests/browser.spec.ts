@@ -31,6 +31,22 @@ test("owner and independent agent share, edit and delete context with real CRUD 
   await expect(
     page.getByRole("link", { name: "New request", exact: true }),
   ).toHaveCount(0);
+  await expect(page.locator(".project-contributions")).toHaveCount(0);
+  await page.getByLabel("Project actions", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Activity" })).toBeVisible();
+  await expect(page.locator(".project-activity")).toContainText(
+    "created the project",
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Project actions", { exact: true }).click();
+  await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Activity" })).toBeVisible();
+  await page.getByRole("button", { name: "Close details" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByLabel("Project actions", { exact: true }).click();
   await page
     .getByRole("menuitem", { name: "Edit project", exact: true })
@@ -228,7 +244,7 @@ test("navigation and controls keep their surfaces, spacing and mobile hit areas"
     exact: true,
   });
   const agents = navigation.getByRole("link", {
-    name: "Agents & access",
+    name: "Agents",
     exact: true,
   });
   await expect(
@@ -470,7 +486,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
       .click();
     await expect(page.getByRole("status")).toContainText("Saved");
     await page
-      .getByRole("link", { name: "Delete workspace…", exact: true })
+      .getByRole("link", { name: "Delete workspace", exact: true })
       .click();
     await page
       .getByLabel("Type Disposable workspace to confirm", { exact: true })
@@ -484,7 +500,7 @@ test("settings cancel invitations, revoke sessions and delete workspace/account"
     expect(await store.listProjects(actor)).toHaveLength(0);
     await page.goto("/workspace/settings");
     await page
-      .getByRole("link", { name: "Delete account…", exact: true })
+      .getByRole("link", { name: "Delete account", exact: true })
       .click();
     await page
       .getByLabel("Type DELETE to confirm", { exact: true })
@@ -1170,7 +1186,7 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     .actor;
   const project = await store.createProject(owner, `Editor ${Date.now()}`, "");
   const original =
-    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n";
+    "# Existing Markdown\n\n* A source item\n\n![External reference](https://example.com/private-tracker.png)\n\n<div>Keep this HTML as text</div>\n\nFirst<br>Second<br/>Third<br />Fourth\n\n<br />\n\n`<br />`\n\n```html\n<br />\n```\n\n<br onclick=alert(1)>\n";
   const existingPage = await store.createPage(owner, project.id, {
     title: "Existing document",
     parentId: null,
@@ -1198,11 +1214,19 @@ test("document editing preserves Markdown and supports contextual keyboard editi
     await expect(
       content.getByRole("heading", { name: "Existing Markdown" }),
     ).toBeVisible();
-    await expect(content.locator('span[data-type="html"]')).toContainText(
+    await expect(content.locator('span[data-type="html"]').first()).toContainText(
       "Keep this HTML",
     );
+    await expect(content.locator('br[data-type="hardbreak"]')).toHaveCount(4);
+    await expect(content.locator('[onclick]')).toHaveCount(0);
     await page.getByRole("link", { name: "Done", exact: true }).click();
     await page.waitForURL(docUrl);
+    await expect(page.locator(".markdown-content br")).toHaveCount(4);
+    await expect(page.locator(".markdown-content code")).toContainText([
+      "<br />",
+      "<br />",
+    ]);
+    await expect(page.locator(".markdown-content [onclick]")).toHaveCount(0);
     expect((await store.getPage(owner, existingPage.id)).body).toBe(original);
     expect(externalRequests).toEqual([]);
     await page.goto(`${docUrl}?edit=1`);
@@ -1505,6 +1529,284 @@ test("page autosave queues edits, survives reload and preserves conflicts", asyn
     await agentContext.close();
   } finally {
     await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("sidebar collapse and contextual uploads preserve the document and private images", async ({
+  page,
+  context,
+}) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Inline media ${Date.now()}`,
+    "",
+  );
+  const png =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=";
+  const base = `/workspace/projects/${project.id}`;
+  try {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`${base}/pages/new`);
+    await page
+      .getByRole("button", { name: "Hide sidebar", exact: true })
+      .click();
+    await expect(page.locator("#workspace-sidebar")).toBeHidden();
+    await page.reload();
+    await expect(page.locator("#workspace-sidebar")).toBeHidden();
+    await page
+      .getByRole("button", { name: "Show sidebar", exact: true })
+      .click();
+    await expect(page.locator("#workspace-sidebar")).toBeVisible();
+    await expect(
+      page
+        .locator(".sidebar")
+        .getByRole("link", { name: "Agents", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".sidebar")
+        .getByRole("link", { name: "Explorer", exact: true }),
+    ).toBeVisible();
+    const content = page.getByRole("textbox", {
+      name: "Page content",
+      exact: true,
+    });
+    await expect(content).toBeVisible();
+    await page
+      .getByLabel("Page title", { exact: true })
+      .fill("Pasted research");
+    await content.click();
+    await page.keyboard.type("Keep this paragraph.");
+    await page.keyboard.press("Enter");
+    await content.evaluate((element, png) => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File(
+          [Uint8Array.from(atob(png), (c) => c.charCodeAt(0))],
+          "clipboard.png",
+          { type: "image/png" },
+        ),
+      );
+      data.setData(
+        "text/html",
+        '<img src="https://example.com/copied-image.png">',
+      );
+      element.dispatchEvent(
+        new ClipboardEvent("paste", {
+          bubbles: true,
+          cancelable: true,
+          clipboardData: data,
+        }),
+      );
+    }, png);
+    const images = content.locator('img[src^="/api/files/"]');
+    await expect(images).toHaveCount(1);
+    await expect
+      .poll(() =>
+        images
+          .first()
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    const docUrl = page.url();
+    await page.reload();
+    await expect(images).toHaveCount(1);
+    await expect(content).toContainText("Keep this paragraph.");
+    await content.evaluate((element) => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File(["Research evidence"], "research.txt", { type: "text/plain" }),
+      );
+      const rect = element.getBoundingClientRect();
+      element.dispatchEvent(
+        new DragEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: data,
+          clientX: rect.x + 30,
+          clientY: rect.bottom - 5,
+        }),
+      );
+    });
+    await expect(
+      content.getByRole("link", { name: "research.txt" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Page options" }).click();
+    await page
+      .getByRole("menuitem", { name: "Attach a file", exact: true })
+      .click();
+    await page
+      .locator('.editor-file-picker input[type="file"]')
+      .setInputFiles({
+        name: "attached.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(png, "base64"),
+      });
+    await expect(images).toHaveCount(2);
+    await expect(page).toHaveURL(docUrl);
+    expect(context.pages()).toHaveLength(1);
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(page.locator("[data-autosave-status]")).toHaveText("Saved");
+    await page
+      .locator(".sidebar")
+      .getByRole("button", { name: `Actions for ${project.name}`, exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Upload or import", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Upload files" });
+    await expect(dialog).toBeVisible();
+    await dialog
+      .locator('input[type="file"]')
+      .setInputFiles({
+        name: "project.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(png, "base64"),
+      });
+    await expect(dialog.getByRole("status")).toContainText("project.png added");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(docUrl);
+    await expect(images).toHaveCount(2);
+    await page.screenshot({ path: "test-results/inline-media-desktop.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page
+      .getByRole("button", { name: "Open workspace navigation" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({ path: "test-results/inline-media-mobile.png" });
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
+    await pool.end();
+  }
+});
+
+test("Explorer follows real Hydra references, filters gaps and works on mobile", async ({
+  page,
+}) => {
+  const { Pool } = await import("pg");
+  const { Store } = await import("../src/lib/store");
+  const { syncGraphProject } = await import("../src/lib/graph-projection");
+  const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const store = new Store(pool, process.env.COMMONS_SECRET!);
+  const owner = (await store.createLocalOwner("e2e@commons.local", "Owner"))
+    .actor;
+  const project = await store.createProject(
+    owner,
+    `Explorer ${Date.now()}`,
+    "",
+  );
+  const evidence = await store.createPage(owner, project.id, {
+    title: "Interview findings",
+    body: "Three teams need shared context.",
+    parentId: null,
+  });
+  const brief = await store.createPage(owner, project.id, {
+    title: "Launch brief",
+    body: `[Interviews](/workspace/projects/${project.id}/pages/${evidence.id})`,
+    parentId: null,
+  });
+  const decision = await store.createPage(owner, project.id, {
+    title: "Positioning decision",
+    body: `[Brief](/workspace/projects/${project.id}/pages/${brief.id})`,
+    parentId: null,
+  });
+  try {
+    await syncGraphProject(pool, project.id);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/start");
+    await page.getByRole("button", { name: "Continue with Google" }).click();
+    await page.waitForURL(/\/workspace/);
+    await page.goto(`/workspace/graph?project=${project.id}`);
+    await expect(page.getByRole("status")).toHaveText("Synced with HydraDB");
+    const records = page.getByRole("complementary", {
+      name: "Explorer records",
+    });
+    await records.getByRole("button", { name: /Positioning decision/ }).click();
+    const connections = page.getByRole("region", { name: "Connections" });
+    await expect(
+      connections.getByRole("heading", { name: "Positioning decision" }),
+    ).toBeVisible();
+    await expect(
+      connections.getByRole("button", {
+        name: "Interview findings via Launch brief →",
+      }),
+    ).toBeVisible();
+    await connections
+      .getByRole("button", { name: /Interview findings via/ })
+      .click();
+    await expect(
+      connections.getByRole("heading", {
+        name: "Interview findings",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      connections.getByRole("button", { name: /Launch brief/ }),
+    ).toBeVisible();
+    await connections
+      .getByRole("button", { name: "← Back", exact: true })
+      .click();
+    await expect(
+      connections.getByRole("heading", { name: "Positioning decision" }),
+    ).toBeVisible();
+    await connections
+      .getByRole("button", { name: "People", exact: true })
+      .click();
+    await expect(
+      connections.getByRole("button", { name: /Owner/ }),
+    ).toBeVisible();
+    await connections
+      .getByRole("button", { name: "References", exact: true })
+      .click();
+    await page.getByText("Context health", { exact: false }).first().click();
+    await expect(
+      page.getByText("Pages linking to source material"),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: /Review items without references/ })
+      .click();
+    await expect(
+      records.getByRole("button", { name: /Interview findings/ }),
+    ).toBeVisible();
+    await expect(
+      records.getByRole("button", { name: /Positioning decision/ }),
+    ).toHaveCount(0);
+    await page.screenshot({ path: "test-results/explorer-light.png" });
+    await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await page.screenshot({ path: "test-results/explorer-dark.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: "test-results/explorer-mobile.png",
+      fullPage: true,
+    });
+    await connections.getByRole("link", { name: "Open ↗" }).click();
+    await expect(page).toHaveURL(new RegExp(`/pages/${decision.id}$`));
+  } finally {
+    await store.deleteProject(owner, project.id, project.name);
+    await syncGraphProject(pool, project.id);
     await pool.end();
   }
 });

@@ -212,7 +212,7 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
         aria-current={pathname === "/workspace/agents" ? "page" : undefined}
       >
         <Icon name="UsersThree" />
-        Agents & access
+        Agents
       </Link>
       {owner && (
         <Link
@@ -221,7 +221,7 @@ export function WorkspaceActions({ owner }: { owner: boolean }) {
           aria-current={pathname === "/workspace/graph" ? "page" : undefined}
         >
           <Icon name="LinkSimple" />
-          Graph explorer
+          Explorer
         </Link>
       )}
       <Link

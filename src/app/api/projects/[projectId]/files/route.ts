@@ -47,6 +47,7 @@ export async function POST(
       {
         id: saved.id,
         name: saved.name,
+        mimeType: saved.mimeType,
         projectId,
         url: `/api/files/${saved.id}`,
       },

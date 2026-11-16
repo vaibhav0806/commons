@@ -1,12 +1,33 @@
 "use client";
 
-import { useId, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "./brand";
 
 const subscribeToHydration = () => () => {};
 
-export function FileUpload({ projectId }: { projectId: string }) {
+export type UploadedFile = {
+  id: string;
+  name: string;
+  mimeType: string;
+  url: string;
+};
+
+export function FileUpload({
+  projectId,
+  onUploaded,
+  onUploading,
+}: {
+  projectId: string;
+  onUploaded?: (file: UploadedFile) => void;
+  onUploading?: (busy: boolean) => void;
+}) {
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
     () => true,
@@ -24,8 +45,10 @@ export function FileUpload({ projectId }: { projectId: string }) {
     [error, setError] = useState(""),
     [retry, setRetry] = useState<File | null>(null),
     [drag, setDrag] = useState(false);
+  useEffect(() => () => request.current?.abort(), []);
   async function upload(files: FileList | File[]) {
     if (request.current) return;
+    onUploading?.(true);
     for (const file of Array.from(files)) {
       setName(file.name);
       setRetry(file);
@@ -38,7 +61,7 @@ export function FileUpload({ projectId }: { projectId: string }) {
       }
       setStatus("uploading");
       try {
-        await new Promise<void>((resolve, reject) => {
+        const saved = await new Promise<UploadedFile>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           request.current = xhr;
           xhr.open("POST", `/api/projects/${projectId}/files`);
@@ -48,7 +71,8 @@ export function FileUpload({ projectId }: { projectId: string }) {
           };
           xhr.onload = () => {
             request.current = null;
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            if (xhr.status >= 200 && xhr.status < 300)
+              resolve(JSON.parse(xhr.responseText));
             else {
               let message = "The upload failed. Try again.";
               try {
@@ -79,7 +103,8 @@ export function FileUpload({ projectId }: { projectId: string }) {
         });
         setStatus("saved");
         setRetry(null);
-        router.refresh();
+        if (onUploaded) onUploaded(saved);
+        else router.refresh();
       } catch (e) {
         setStatus("error");
         setError(e instanceof Error ? e.message : "The upload failed.");
@@ -87,6 +112,7 @@ export function FileUpload({ projectId }: { projectId: string }) {
       }
     }
     if (input.current) input.current.value = "";
+    onUploading?.(false);
   }
   return (
     <>

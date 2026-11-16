@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Menu } from "@base-ui/react/menu";
 import type { ProjectFile } from "@/lib/store";
 import type {
@@ -13,6 +12,7 @@ import type {
 import { DocumentEditor, type DocumentEditorHandle } from "./document-editor";
 import { usePageAutosave } from "./use-page-autosave";
 import { SelectField } from "./ui/select-field";
+import { FileUpload } from "./file-upload";
 
 export function PageEditor({
   page,
@@ -40,6 +40,7 @@ export function PageEditor({
   const [location, setLocation] = useState(false);
   const [ready, setReady] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
   const editor = useRef<DocumentEditorHandle | null>(null);
   const hidden = useRef<HTMLInputElement>(null);
   const importer = useRef<HTMLInputElement>(null);
@@ -48,7 +49,7 @@ export function PageEditor({
   const autosave = usePageAutosave({
     enabled: !!actorId && (page?.kind || kind) === "page",
     ready,
-    uploading,
+    uploading: uploading || attachmentUploading,
     actorId: actorId || "",
     projectId,
     page,
@@ -73,7 +74,7 @@ export function PageEditor({
   const { changed } = autosave;
   useEffect(() => {
     changed();
-  }, [body, parent, uploading, ready, changed]);
+  }, [body, parent, uploading, attachmentUploading, ready, changed]);
   useEffect(() => {
     const node = title.current;
     if (!node) return;
@@ -305,13 +306,16 @@ export function PageEditor({
               {file.name}
             </button>
           ))}
-          <Link
-            className="text-link"
-            target="_blank"
-            href={`/workspace/projects/${projectId}/files`}
-          >
-            Upload or browse more files
-          </Link>
+          <FileUpload
+            projectId={projectId}
+            onUploading={setAttachmentUploading}
+            onUploaded={(file) => {
+              const image = file.mimeType.startsWith("image/");
+              insert(
+                `\n${image ? "!" : ""}[${file.name.replace(/[\[\]\\]/g, "")}](${file.url}${image ? "?preview=1" : ""})\n`,
+              );
+            }}
+          />
         </section>
       )}
       <input

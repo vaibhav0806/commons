@@ -119,6 +119,10 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
   const id = z.uuid(),
     project = { projectId: id },
     annotations = { readOnlyHint: true, openWorldHint: false };
+  server.registerTool("related_context", {
+    description: "Follow explicit page references up to two links through the project's HydraDB graph. Returns source paths and a ready/pending/unavailable status, not semantic similarity. Fetch source content with read_page or read_file. Limited to the loaded graph subset; always check truncated.",
+    inputSchema: { ...project, resourceId: id }, annotations,
+  }, async ({ projectId, resourceId }) => result(() => store.relatedContext(actor, projectId, resourceId)));
   server.registerTool(
     "who_am_i",
     {

@@ -220,7 +220,7 @@ export default async function Agents({
                     href={`/workspace/agents?agent=${selected.id}&action=revoke`}
                     scroll={false}
                   >
-                    Revoke access…
+                    Revoke access
                   </Link>
                 )}
                 <Link
@@ -228,7 +228,7 @@ export default async function Agents({
                   href={`/workspace/agents?agent=${selected.id}&action=remove`}
                   scroll={false}
                 >
-                  Remove agent…
+                  Remove agent
                 </Link>
               </div>
             </>

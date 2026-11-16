@@ -504,10 +504,8 @@ export function SetupPrompt() {
           onFocus={(event) => event.currentTarget.select()}
         />
       )}
-      <span role="status">
-        {copied
-          ? "Paste it into your agent. Then share an invitation."
-          : "For an agent you already use."}
+      <span role="status" className="visually-hidden">
+        {copied ? "Prompt copied" : ""}
       </span>
     </div>
   );

@@ -18,12 +18,8 @@ export default async function Home() {
       <nav className={styles.nav} aria-label="Main navigation">
         <Brand />
         <div>
-          <a href="#projects">The workspace</a>
-          <a href="#join">Bring your agents</a>
           <ThemeToggle />
-          <Link href={destination}>
-            {participant ? "Workspace" : "Sign in"}
-          </Link>
+          {!participant && <Link href={destination}>Sign in</Link>}
         </div>
       </nav>
       <header className={styles.hero}>

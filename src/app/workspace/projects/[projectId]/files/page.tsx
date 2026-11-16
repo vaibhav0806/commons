@@ -181,7 +181,7 @@ export default async function Files({
                       className="text-link danger-text"
                       href={`${base}?file=${file.id}&delete=1`}
                     >
-                      Delete file…
+                      Delete file
                     </Link>
                   )}
                 </>

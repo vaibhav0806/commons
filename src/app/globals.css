@@ -2056,9 +2056,6 @@ input.join-code {
   visibility: hidden;
 }
 @media (max-width: 700px) {
-  .project-heading-actions > .icon-button {
-    display: none;
-  }
   .project-heading-actions .command-shortcut {
     border: 0;
     background: transparent;
@@ -2530,6 +2527,7 @@ input.join-code {
   border-bottom: 1px solid var(--line);
   padding-bottom: 16px;
   margin-bottom: 32px;
+  margin-top: 32px;
 }
 .settings-tabs a {
   padding: 10px 16px;
@@ -2682,7 +2680,7 @@ input.join-code {
   min-width: 0;
 }
 .context-row:hover {
-  background: var(--hover);
+  background: transparent;
 }
 .project-index-row h2,
 .context-row h3 {
@@ -3274,31 +3272,37 @@ h1 {
 }
 .project-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr);
-  gap: 50px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+.project-add-brief {
+  display: inline-flex;
+  margin-top: 16px;
 }
 .project-overview-grid .project-section {
   margin: 0;
 }
-.project-contributions h2,
 .unified-content h2,
 .page-discussion h2 {
   font: 500 16px/1.6 var(--font-body);
 }
-.project-contributions h2 {
-  margin-bottom: 18px;
+.project-activity {
+  list-style: none;
+  margin: 24px 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
 }
-.contribution-entry {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
-}
-.contribution-entry p {
+.project-activity li {
+  display: grid;
+  gap: 4px;
   font-size: 13px;
-  margin: 10px 0 5px 34px;
-  color: var(--body-ink);
 }
-.contribution-entry time {
-  margin-left: 34px;
+.project-activity strong {
+  font-weight: 500;
+}
+.project-activity time {
   font-size: 11px;
   color: var(--muted);
 }
@@ -3368,9 +3372,9 @@ h1 {
 .tree-chevron {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 23px;
+  margin: auto;
+  width: 16px;
+  height: 16px;
   opacity: 0;
   transition: transform 160ms;
 }
@@ -3606,13 +3610,6 @@ h1 {
 @media (max-width: 1100px) {
   .project-page {
     padding: 32px;
-  }
-  .project-overview-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 40px;
-  }
-  .project-contributions {
-    max-width: 600px;
   }
   .collection-board {
     gap: 12px;
@@ -4001,3 +3998,15 @@ textarea.document-title-input:focus {
 .document-save-error p { margin-bottom: 12px; }
 .document-save-error a, .document-save-error button { margin-right: 20px; min-height: 36px; text-decoration: underline; text-underline-offset: 4px; }
 .entity-menu-items [data-disabled] { opacity: .45; }
+
+@media (min-width: 901px) {
+  .workspace[data-sidebar-collapsed] { grid-template-columns: minmax(0, 1fr); }
+  .workspace[data-sidebar-collapsed] > .sidebar { display: none; }
+}
+@media (max-width: 900px) {
+  .desktop-sidebar-toggle { display: none; }
+}
+.command-dialog:has(.file-drop-zone) { padding-bottom: 24px; }
+.command-dialog > .file-drop-zone, .command-dialog > .upload-state,
+.command-dialog > .success-feedback { margin: 20px; }
+.editor-file-picker .file-drop-zone { margin-top: 16px; }

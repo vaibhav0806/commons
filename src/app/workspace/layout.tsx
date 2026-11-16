@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import { WorkspaceHeader } from "@/components/workspace-header";
 import { redirect } from "next/navigation";
 import { CommonsError } from "@/lib/store";
@@ -29,8 +31,16 @@ export default async function WorkspaceLayout({
     )
   ).flat();
   return (
-    <div className="workspace">
-      <aside className="sidebar" data-workspace-background>
+    <WorkspaceShell
+      initialCollapsed={
+        (await cookies()).get("commons-sidebar")?.value === "closed"
+      }
+    >
+      <aside
+        id="workspace-sidebar"
+        className="sidebar"
+        data-workspace-background
+      >
         <Brand />
         <div className="workspace-name">{workspace.name}</div>
         <WorkspaceNav
@@ -68,6 +78,6 @@ export default async function WorkspaceLayout({
         />
         {children}
       </main>
-    </div>
+    </WorkspaceShell>
   );
 }

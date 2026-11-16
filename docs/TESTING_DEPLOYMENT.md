@@ -130,3 +130,21 @@ Pages autosave through the existing Store permissions/version model. Requests ar
 Lint/typecheck and production build passed. The full browser run passed ten scenarios and exposed a story-height feedback loop in the landing scenario; measured tab height fixed it, and landing/autosave focused reruns passed. All eleven scenarios are covered, including slow/failing requests, reload and lost-ack recovery, optimistic conflicts, origin/session/author denial, Markdown preservation, private images, shared browser/MCP records, keyboard, reduced motion and responsive themes. No GitHub CI checks are configured.
 
 Hosted acceptance verified a newly autosaved document surviving reload and readable through MCP, board status and comments shared across browser/MCP, private R2 bytes and anonymous/revoked denial, settings/privacy changes and desktop/mobile themes. All three project photographs were decoded from the hosted assets. Graph projection passed. The isolated acceptance workspace was removed and existing project IDs were preserved. Screenshots: `/Users/vaibhav/Downloads/commons-refresh-2026-11-16`.
+
+## Inline media and focused Explorer — 2026-11-16
+
+Application revision `4ca6433d5eb82aca4344d7622447b09cb5d66b06` is deployed on app, graph-sync and file-cleanup using image `sha256:4a859dac6e00eb59f1f92ee6aa3b6a539e371af6a37ec69e8b0682b38f04274e` (OCI revision label `4ca6433`). The private Postgres backup `backups/pre-explorer-20261116.dump` was verified before replacement; rollback image `commons:pre-explorer-0c5642a` is retained. No schema migration. Implementation is pushed in three milestones on PR #4.
+
+All 13 production-mode browser tests pass, as do lint/typecheck, production build, five MCP tests and real Hydra reconciliation/source-path checks. Clipboard images with accompanying HTML now upload privately instead of keeping the external URL. Browser coverage includes paste/reload, file drag/drop, slash-menu image upload, in-context attachments/project upload, persistent sidebar collapse, concise navigation, neutral contents hover, SVG disclosure arrows and light/dark/mobile Explorer. No GitHub CI checks are configured.
+
+Hosted acceptance verified a real photograph pasted into the editor, retained after reload and read through MCP; anonymous private-image denial; inline attachment without navigation; contextual project upload dialog; desktop sidebar preference; neutral contents hover; two-hop source paths through the hosted Hydra engine; and responsive light/dark Explorer. Agent revocation was checked through actual MCP HTTP. The isolated workspace was removed and pre-existing project IDs were preserved. Screenshots: `/Users/vaibhav/Downloads/commons-explorer-2026-11-16`.
+
+Track 2 is the intended submission direction. The curated two-source retrieval fixture demonstrates explicit provenance; a vector-baseline comparison and measured token savings remain outstanding. Muse consultation could not run because its configured T3 provider was disabled.
+
+## Workspace spacing and reduced chrome — 2026-11-16
+
+Application revision `e1e7ad794762cda0896591e50b2c14bdc6513dab` is deployed on app, graph-sync and file-cleanup with image `sha256:d802f8247d879f463ba7586e43da4085849962d465d2878d25136c531d1751f3`. The database backup `backups/pre-polish-20261116.dump` was verified; rollback image `commons:pre-polish-4ca6433` is retained. No schema changes.
+
+Home has one main creation action. Settings/Explorer spacing is consistent, project contents occupy the full width, and Activity is a collapsed disclosure with compact rows. Landing section navigation and the setup-prompt helper sentence are removed.
+
+Validation passed: lint/typecheck, production build, three existing production-browser scenarios covering navigation/settings/landing, and isolated local plus hosted acceptance for empty states, 32px Settings spacing at desktop/mobile widths, keyboard Activity disclosure, full-width contents, landing removals and mobile overflow. Hosted health is OK. The disposable acceptance workspace was removed. Screenshots: `/Users/vaibhav/Downloads/commons-polish-2026-11-16`.

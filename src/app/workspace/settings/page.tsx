@@ -118,7 +118,7 @@ export default async function Settings({
                   className="text-link danger-text"
                   scroll={false}
                 >
-                  Delete account…
+                  Delete account
                 </Link>
               </section>
             )}
@@ -170,7 +170,7 @@ export default async function Settings({
                 className="text-link danger-text"
                 scroll={false}
               >
-                Delete workspace…
+                Delete workspace
               </Link>
             </section>
           </>
@@ -294,7 +294,7 @@ export default async function Settings({
                   ? "Delete account"
                   : "Delete workspace"
               }
-              pendingLabel="Deleting…"
+              pendingLabel="Deleting"
               danger
             >
               <label className="field">

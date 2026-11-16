@@ -14,7 +14,14 @@ export function contentActions(projectId: string, parentId?: string) {
   return [
     { label: "New page", href: `${base}/pages/new?kind=page${inside}` },
     { label: "New folder", href: `${base}/pages/new?kind=folder${inside}` },
-    { label: "Upload or import", href: `${base}/files#upload-files` },
+    {
+      label: "Upload or import",
+      href: "#upload-files",
+      onClick: () =>
+        window.dispatchEvent(
+          new CustomEvent("commons:upload", { detail: projectId }),
+        ),
+    },
   ];
 }
 export function ContentPlus({
@@ -73,7 +80,7 @@ function TreeRow({
             href: `${href}?edit=${item ? "1" : "project"}`,
           },
           {
-            label: "Delete…",
+            label: "Delete",
             href: `${href}?delete=${item ? "1" : "project"}`,
             danger: true,
           },
@@ -98,9 +105,21 @@ function TreeRow({
           >
             <Icon name={item?.kind === "page" ? "FileText" : "Folder"} />
             {!!children.length && (
-              <span className="tree-chevron" data-expanded={expanded}>
-                ›
-              </span>
+              <svg
+                className="tree-chevron"
+                data-expanded={expanded}
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                <path
+                  d="m6 3 5 5-5 5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             )}
           </button>
           <Link
@@ -124,6 +143,14 @@ function TreeRow({
                   )}
                   <ContextMenu.Item
                     render={<Link href={action.href} />}
+                    onClick={
+                      "onClick" in action && action.onClick
+                        ? (event) => {
+                            event.preventDefault();
+                            action.onClick?.();
+                          }
+                        : undefined
+                    }
                     className={"danger" in action ? "danger-text" : undefined}
                   >
                     {action.label}

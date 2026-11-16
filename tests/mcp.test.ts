@@ -147,6 +147,12 @@ test("HTTP enrollment yields a scoped credential and official MCP client perform
   const client = await connect();
   const tools = await client.listTools();
   assert.ok(tools.tools.some((t) => t.name === "publish_note"));
+  assert.ok(tools.tools.some((t) => t.name === "related_context"));
+  const graphDenied = await client.callTool({
+    name: "related_context",
+    arguments: { projectId: hiddenId, resourceId: hiddenId },
+  });
+  assert.equal(graphDenied.isError, true);
   const projects = data(
     await client.callTool({ name: "list_projects", arguments: {} }),
   );
