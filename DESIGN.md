@@ -87,3 +87,7 @@ Agents explicitly choose one of the eleven landing identities during browser or 
 ## Project summaries and text selection — November 16
 
 Home summarizes agents, pages and folders. It no longer surfaces the legacy Recently shared notes feed or counts uploaded files as visible project contents. Original uploads remain accessible through Project actions → Files. Legacy notes and collection records retain their data and API compatibility; collection records render as folders. Text selection uses dedicated lilac background and dark ink tokens in both the document reader and editor, independent of button foreground colors.
+
+## Separate interaction highlights — November 16
+
+Tree rows have a 4px gap between siblings and between a parent and its expanded children, including mobile navigation. Action menus, select lists, mention pickers, search results and editor slash-menu rows use the same minimum spacing so adjacent selected, hovered or focused surfaces remain distinct. Existing navigation and settings tabs retain their larger gaps; landing story tabs remain intentionally connected.
