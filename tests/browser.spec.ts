@@ -793,6 +793,18 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   ).toBeVisible();
   await page.getByRole("tab", { name: "Sunday Coffee" }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
+  const navigationErrors: string[] = [];
+  page.on("pageerror", (error) => navigationErrors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Privacy at Commons" })).toBeVisible();
+    await page.getByRole("link", { name: "Commons", exact: true }).click();
+    await expect(page.locator("#projects")).toBeVisible();
+  }
+  expect(navigationErrors).toEqual([]);
+
 });
 
 test("nested folders, list board table views and discussions work on desktop and mobile", async ({
@@ -1692,6 +1704,19 @@ test("sidebar collapse and contextual uploads preserve the document and private 
       ),
     ).toBe(true);
     await page.screenshot({ path: "test-results/inline-media-mobile.png" });
+    await page.goto(`/workspace/projects/${project.id}`);
+    const contents = page.locator(".unified-content");
+    await expect(contents.locator(".context-row")).toHaveCount(1);
+    await expect(contents.getByRole("link")).toHaveAttribute(
+      "href",
+      new URL(docUrl).pathname,
+    );
+    await expect(contents).not.toContainText("project.png");
+    await expect(contents).not.toContainText("attached.png");
+    expect(
+      (await store.listFiles(owner, project.id)).files.length,
+    ).toBeGreaterThan(0);
+
   } finally {
     await store.deleteProject(owner, project.id, project.name);
     await pool.end();

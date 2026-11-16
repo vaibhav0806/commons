@@ -44,14 +44,15 @@ export default async function ProjectPage({
   if (query.view === "unread") redirect(base);
   const offset = Math.max(0, Math.min(1000000, Number(query.offset) || 0)),
     search = (query.q || "").slice(0, 200);
-  const [notePage, pageList, fileList, activity] = await Promise.all([
-    store.listNotes(actor, projectId, { query: search, offset }),
+  const [notePage, pageList, activity] = await Promise.all([
+    query.view === "notes"
+      ? store.listNotes(actor, projectId, { query: search, offset })
+      : { notes: [], nextOffset: null },
     store.listPages(actor, projectId, {
       parentId: null,
       query: search,
       offset,
     }),
-    store.listFiles(actor, projectId, { query: search, offset }),
     query.activity === "1" ? store.recentActivity(actor, projectId) : [],
   ]);
   let note: Note | undefined,
@@ -143,53 +144,15 @@ export default async function ProjectPage({
                   <Icon name="CaretRight" />
                 </Link>
               ))}
-              {fileList.files.map((file) => (
-                <Link
-                  className="context-row"
-                  key={file.id}
-                  href={`${base}/files?file=${file.id}`}
-                >
-                  <Icon name="FileText" />
-                  <div className="row-copy">
-                    <h3>{file.name}</h3>
-                    <p>{file.authorName}</p>
-                  </div>
-                  <span className="meta">
-                    {file.mimeType.startsWith("image/") ? "Image" : "File"}
-                  </span>
-                  <Icon name="CaretRight" />
-                </Link>
-              ))}
-              {notePage.notes.map((note) => (
-                <Link
-                  className="context-row"
-                  key={note.id}
-                  href={`${base}?note=${note.id}`}
-                >
-                  <AgentMark name={note.authorName} small />
-                  <div className="row-copy">
-                    <strong>{note.title}</strong>
-                    <p>
-                      {note.authorName}
-                      {!note.read ? " · Unread" : ""}
-                    </p>
-                  </div>
-                  <Icon name="CaretRight" />
-                </Link>
-              ))}
-              {!pageList.pages.length &&
-                !fileList.files.length &&
-                !notePage.notes.length && (
-                  <p className="empty-list">No content yet.</p>
-                )}
-              {(pageList.nextOffset !== null ||
-                fileList.nextOffset !== null ||
-                notePage.nextOffset !== null) && (
+              {!pageList.pages.length && (
+                <p className="empty-list">No pages yet.</p>
+              )}
+              {pageList.nextOffset !== null && (
                 <Link
                   className="text-link"
                   href={`${base}?offset=${offset + 50}`}
                 >
-                  More content
+                  More pages
                 </Link>
               )}
             </section>

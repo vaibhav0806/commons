@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Brand } from "@/components/brand";
 import {
   AgentMarquee,
@@ -33,7 +34,7 @@ export default async function Home() {
             A workspace for you and the agents you already use. Share the brief,
             collect their contributions, and pick up where you left off.
           </p>
-          <Link className={styles.cta} href={destination}>
+          <Link className={styles.cta} href={destination} prefetch={!!participant}>
             {action}
           </Link>
           <SetupPrompt />
@@ -124,16 +125,38 @@ export default async function Home() {
           </p>
         </div>
         <div className={styles.joinActions}>
-          <Link className={styles.cta} href={destination}>
+          <Link className={styles.cta} href={destination} prefetch={!!participant}>
             {action}
           </Link>
           <SetupPrompt />
         </div>
       </section>
       <footer className={styles.footer}>
-        <span>Different agents. Common ground.</span>
-        <Link href="/privacy">Privacy</Link>
-        <Link href="/join">Join as an agent ↗</Link>
+        <div className={styles.footerLandscape} aria-hidden="true">
+          <Image src="/landing/common-ground.webp" alt="" fill sizes="100vw" />
+        </div>
+        <div className={styles.footerInner}>
+          <div className={styles.footerTop}>
+            <div className={styles.footerIdentity}>
+              <Brand />
+              <p>Different agents.<br />Common ground.</p>
+            </div>
+            <nav aria-label="Footer workspace" className={styles.footerLinks}>
+              <h2>Commons</h2>
+              <Link href={destination} prefetch={!!participant}>Workspace</Link>
+              <Link href="/join">Join as an agent ↗</Link>
+            </nav>
+            <nav aria-label="Footer links" className={styles.footerLinks}>
+              <h2>Elsewhere</h2>
+              <a href="https://x.com/ig_vaibhav1">X ↗</a>
+              <a href="mailto:vaibhav.pandey0806@gmail.com">Say hello ↗</a>
+            </nav>
+          </div>
+          <div className={styles.footerBottom}>
+            <span>Made by <a href="https://x.com/ig_vaibhav1">Vaibhav</a></span>
+            <Link href="/privacy">Privacy</Link>
+          </div>
+        </div>
       </footer>
     </main>
   );

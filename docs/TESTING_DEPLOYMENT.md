@@ -148,3 +148,35 @@ Application revision `e1e7ad794762cda0896591e50b2c14bdc6513dab` is deployed on a
 Home has one main creation action. Settings/Explorer spacing is consistent, project contents occupy the full width, and Activity is a collapsed disclosure with compact rows. Landing section navigation and the setup-prompt helper sentence are removed.
 
 Validation passed: lint/typecheck, production build, three existing production-browser scenarios covering navigation/settings/landing, and isolated local plus hosted acceptance for empty states, 32px Settings spacing at desktop/mobile widths, keyboard Activity disclosure, full-width contents, landing removals and mobile overflow. Hosted health is OK. The disposable acceptance workspace was removed. Screenshots: `/Users/vaibhav/Downloads/commons-polish-2026-11-16`.
+
+## Activity panel and safe Markdown breaks — 2026-11-16
+
+Application revision `ebb8615` is deployed on app and both workers with image `sha256:48b92068c08f95d21734ba955a292f89813d0877ebb0042fae88a775e2969e95`. Backup `backups/pre-refine-20261116.dump` was verified; rollback image `commons:pre-refine-e1e7ad7` is retained. No migration.
+
+Plain line-break HTML tags render safely in the reader and editor, without enabling arbitrary HTML or changing code examples. Project Activity is an on-demand panel in the action menu, including mobile. The duplicate signed-in header Workspace link and destructive-action ellipses are removed.
+
+Lint/typecheck, production build and four targeted production-browser scenarios passed. Final regression checks include mobile Activity access/close, literal code, inactive attribute-bearing HTML, original-source preservation and private image editing. Isolated local and hosted walkthroughs verified the same reader/editor line breaks, light/dark mobile Activity, single hero CTA and retained anonymous sign-in. Public health is OK; test workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-refine-2026-11-16`. Muse consultation was unavailable because its configured provider is disabled.
+
+## Compact discussion and page actions — 2026-11-16
+
+Application revision `7706cdf` is deployed on app, graph-sync and file-cleanup with image `sha256:db3596113b5994031a0aaa90dfb8f28914b9a6a6b74ac414c1c4347d635a161f`. Backup `backups/pre-discussion-20261116.dump` was verified before replacement; rollback image `commons:pre-discussion-ebb8615` is retained. No migration.
+
+The shared reader/editor toolbar no longer includes Copy page link. Discussion has one heading, smaller page context, no repeated instructional copy, and a compact comment composer with a right-aligned submit button. Home project icons use a flat background in light mode; the dark appearance is preserved.
+
+Lint/typecheck, production build and the existing desktop/mobile discussion browser scenario passed. Isolated local and hosted walkthroughs verified reader/editor control removal, comment submission and persistence after reload, desktop light/dark appearance, 390px and 320px layouts without horizontal overflow, keyboard dismissal and no browser errors. All application services are running and public health is OK. The temporary acceptance workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-discussion-2026-11-16`. Follow-up is tracked in PR #5 because PR #4 was already merged.
+
+## Focused project contents and landing transition — 2026-11-16
+
+Application revision `5a5e68f` is deployed on app and both workers with image `sha256:58382cc484404d21f3626544ca7248850ee04cd2cce681bd4424f08176086592`. Backup `backups/pre-contents-20261116.dump` was verified; rollback image `commons:pre-contents-7706cdf` is retained. No migration. The removed `src/app/loading.tsx` was explicitly removed from the archive-based server checkout before building.
+
+Project overview renders and paginates pages/folders only. Stored attachments and notes remain available; the overview no longer queries them. Signed-in landing CTAs prefetch the workspace, and the global Opening Commons interstitial is removed.
+
+Lint/typecheck, production build and three production-browser scenarios passed (landing, nested folders/discussion, inline media). The media scenario checks the pages-only list while uploaded files remain stored. Isolated local and hosted walkthroughs verified navigation without the loading-text flash with delayed workspace requests, file-only project empty state, pages-only contents after creation and retained file access. Hosted health is OK, all three services are running, and acceptance workspaces were removed.
+
+## Landscape footer and public-route audit — 2026-11-16
+
+Application revision `b5299f3` is deployed on app and both workers with image `sha256:dd26182b287b7aab9502e22dd3e6575ead30020b220b1dbc3906a17f59937531`. Verified backup `backups/pre-footer-20261116.dump` and rollback image `commons:pre-footer-5a5e68f` are retained. No migration.
+
+The landing footer uses an original locally hosted meadow illustration (81KB WebP), a theme-aware fade, concise navigation and operator links. The image is decorative and lazy-loaded; mobile uses two small navigation columns. Source attribution is in public/landing/CREDITS.md.
+
+Route auditing confirmed no remaining global loading interstitial. The first hosted walkthrough caught scroll/resize callbacks accessing detached landing refs during navigation; guards now stop those callbacks. The final production build, lint/typecheck and landing browser regression pass, including desktop/mobile Privacy round trips. Hosted acceptance verified artwork decoding, both themes at 1440/390/320px without overflow, Privacy/home/join/return transitions, public entry routes and authenticated Home/Agents/Explorer/Settings routes without the Opening Commons splash or browser errors. Health is OK and disposable review workspaces were removed. Screenshots: `/Users/vaibhav/Downloads/commons-footer-2026-11-16`.
