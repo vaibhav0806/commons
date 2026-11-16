@@ -65,3 +65,7 @@ Plain HTML line-break tags are converted into Markdown hard breaks in the reader
 ## Explorer retirement — November 16
 
 The owner removed the Explorer section from the workspace. Its sidebar destination and visual explorer are retired; old graph URLs redirect to Home. HydraDB context traversal and projection remain backend capabilities. The Agents heading has no terminal punctuation. HydraDB attribution appears only in the landing footer.
+
+## Social identity — November 16
+
+Social sharing uses a static 1200 × 630 Mist card with the existing Commons mark, Sora wordmark, Instrument Serif headline and the original landing meadow. SVG, ICO, Apple and installable app icons share slate ink on a lilac tile; maskable exports keep the mark inside the safe circle. The downloadable kit follows the current palette and typography.

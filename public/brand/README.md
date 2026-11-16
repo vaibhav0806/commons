@@ -1,27 +1,27 @@
 # Commons brand kit
 
-The approved Commons identity: four connected forms, graphite surfaces and reflective silver. This kit packages the existing mark; it does not introduce a new identity.
+The Commons identity in the approved Mist & Lilac palette: four connected forms, slate ink and a lilac app tile. The geometry remains the same as the application mark.
 
 ## Assets
 
 - `mark-light.svg` / `mark-dark.svg`: transparent symbols for dark / light backgrounds, with 1024px PNG exports.
-- `wordmark-light.svg` / `wordmark-dark.svg`: horizontal lockups, with 1360px PNG exports. Lettering is outlined Space Grotesk Medium, so no installed font is needed to display these SVGs.
-- `app-icon.svg`: original graphite tile, with 192px, 512px and 1024px PNG exports.
+- `wordmark-light.svg` / `wordmark-dark.svg`: horizontal lockups with outlined Sora Medium lettering and 1360px PNG exports.
+- `app-icon.svg`: slate mark on a lilac tile, with 192px, 512px and 1024px PNG exports.
 - `app-icon-maskable-512.png`: opaque square with the mark inside the central mask-safe area.
 - `apple-touch-icon.png`: opaque 180px home-screen icon.
 - `favicon.ico`: 16px, 32px and 48px images. The site also serves the scalable tile as `/icon.svg`.
-- `social-preview.svg` / `.png`: 1200 × 630 sharing graphic. SVG lettering is outlined.
+- `social-preview.svg` / `.png`: 1200 × 630 sharing graphic with outlined Sora and Instrument Serif lettering and the original Commons meadow artwork embedded in the SVG.
 
-Prefer SVG for crisp presentation at any size. PNG exports are for services requiring raster uploads. Use the app tile when an external service supplies an unpredictable background.
+Prefer SVG for crisp presentation. PNG exports are for services requiring raster uploads. Use the app tile when an external service supplies an unpredictable background.
 
 ## Usage
 
-Keep at least one small tile's width of clear space around the visible mark. Use the standalone mark at 16px minimum; use a wordmark at 140px or wider. At small sizes, prefer the symbol over a compressed wordmark. Preserve the geometry, five-degree rotation, aspect ratio and lowercase lettering. Do not stretch, add glow, outline the mark, or substitute colors. The dark exports exist for external light backgrounds; Commons itself remains dark-only.
+Keep clear space around the mark. At small sizes, prefer the symbol over a compressed wordmark. Preserve the geometry, five-degree rotation, aspect ratio and lowercase lettering. Do not stretch, add glow or outline the mark.
 
 ## Palette and typography
 
-Canvas `#0B0C0E`, graphite `#101114`, surface `#17191D`, borders `#30353E`, silver `#EEF0F3`, secondary text `#A7AEBA`.
+Light canvas `#F5F6F8`, slate ink `#3D4955`, secondary text `#66717F`, lilac tile `#D9D5E8`. Dark-background marks use `#E1E5ED`.
 
-Space Grotesk Medium: headings and wordmark. Geist: body and controls. Geist Mono: identifiers. Sora is the approved backup, not a second simultaneous brand font. The application's `DESIGN.md` and `design/commons.system.css` remain the authority for UI tokens, spacing, states and motion.
+Sora for the wordmark and interface; Instrument Serif for editorial titles. The application's `DESIGN.md` and `design/commons.system.css` remain the authority. Font licenses are included in the archive. The meadow is original AI-generated Commons artwork, also used in the landing footer; see `public/landing/CREDITS.md`.
 
-The outlined lettering uses Space Grotesk under the included SIL Open Font License. Other font files and their license references live in the repository's `public/fonts/` directory. Third-party agent marks, Google marks and personal profile photos are not included and are not Commons brand assets. This kit does not grant permission to impersonate Commons or imply endorsement.
+Third-party agent marks, Google marks and personal photos are not included. This kit does not grant permission to impersonate Commons or imply endorsement.
