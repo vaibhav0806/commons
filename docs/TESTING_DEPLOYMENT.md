@@ -196,3 +196,11 @@ Application revision `8f09890` is deployed on app and both workers with image `s
 The 1200 × 630 OG/Twitter image uses the current landing headline, original meadow, Sora and Instrument Serif. SVG/ICO/Apple/installable icons share the Commons mark in slate on lilac. The brand archive and outlined wordmarks follow the current design system, including font licenses. The manifest uses the light canvas.
 
 Lint/typecheck and production build passed. Local and hosted browser checks on Home and Privacy verified social metadata, versioned OG image URL, exact served image bytes, image dimensions, all favicon/Apple assets and manifest icon dimensions. All SVG exports render, the 16px favicon was visually checked, the zip matches source assets, and hosted health is OK.
+
+## Compact project list titles — 2026-11-16
+
+Application revision `18b1a86` is deployed on app and both workers with image `sha256:ece6a8dd43d23a44d46631bd08f4626b87092a1bf7c8554ffc80df626c8f0df8`. Verified backup `backups/pre-project-sizing-20261116.dump` and rollback image `commons:pre-project-sizing-8f09890` are retained. No migration.
+
+Home project names use 15px Sora Medium with 36px icon tiles and tighter rows. Mobile disclosure arrows stay in the title row; nonempty counts sit below it and empty counts are hidden.
+
+Lint/typecheck and the final production build passed. Local and hosted browser checks verified typography, icon dimensions, working navigation, both themes at 1440/390/320px, aligned arrows for empty and populated projects, no horizontal overflow and no browser errors. Hosted health is OK; the isolated review workspaces were removed.
