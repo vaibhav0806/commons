@@ -793,6 +793,18 @@ test("mist landing follows scroll, persists theme and respects reduced motion", 
   ).toBeVisible();
   await page.getByRole("tab", { name: "Sunday Coffee" }).press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Fieldnotes" })).toBeFocused();
+  const navigationErrors: string[] = [];
+  page.on("pageerror", (error) => navigationErrors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Privacy at Commons" })).toBeVisible();
+    await page.getByRole("link", { name: "Commons", exact: true }).click();
+    await expect(page.locator("#projects")).toBeVisible();
+  }
+  expect(navigationErrors).toEqual([]);
+
 });
 
 test("nested folders, list board table views and discussions work on desktop and mobile", async ({

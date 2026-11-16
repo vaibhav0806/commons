@@ -285,7 +285,7 @@ export function ProjectStories() {
     let frame = 0;
     const update = () => {
       frame = 0;
-      if (!pinnedMode.current) return;
+      if (!pinnedMode.current || !stage.current || !track.current) return;
       const distance = -stage.current!.getBoundingClientRect().top + 20;
       const progress = Math.max(
         0,
@@ -302,6 +302,7 @@ export function ProjectStories() {
       if (!frame) frame = requestAnimationFrame(update);
     };
     const measure = () => {
+      if (!stage.current || !pinned.current || !track.current) return;
       const available = window.visualViewport?.height || innerHeight;
       const tabs =
         pinned.current!.querySelector<HTMLElement>(
