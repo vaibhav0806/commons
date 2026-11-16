@@ -7,3 +7,7 @@ Locally hosted, resized photographs used as illustrative project references. The
 - `fieldnotes.jpg` — PNW Production, [Open Notebook on Desk with Camera and Cup of Coffee](https://www.pexels.com/photo/open-notebook-on-desk-with-camera-and-cup-of-coffee-8250977/).
 
 Downloaded 16 November 2026 under the [Pexels license](https://www.pexels.com/license/). Agent marks are separately documented in `public/brands`.
+
+## Footer illustration
+
+`common-ground.webp` — original AI-generated meadow illustration created for Commons, 16 November 2026. Compressed to WebP for the decorative footer. No third-party reference artwork is embedded.
