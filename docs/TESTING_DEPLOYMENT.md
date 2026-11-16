@@ -164,3 +164,11 @@ Application revision `7706cdf` is deployed on app, graph-sync and file-cleanup w
 The shared reader/editor toolbar no longer includes Copy page link. Discussion has one heading, smaller page context, no repeated instructional copy, and a compact comment composer with a right-aligned submit button. Home project icons use a flat background in light mode; the dark appearance is preserved.
 
 Lint/typecheck, production build and the existing desktop/mobile discussion browser scenario passed. Isolated local and hosted walkthroughs verified reader/editor control removal, comment submission and persistence after reload, desktop light/dark appearance, 390px and 320px layouts without horizontal overflow, keyboard dismissal and no browser errors. All application services are running and public health is OK. The temporary acceptance workspaces were deleted. Screenshots: `/Users/vaibhav/Downloads/commons-discussion-2026-11-16`. Follow-up is tracked in PR #5 because PR #4 was already merged.
+
+## Focused project contents and landing transition — 2026-11-16
+
+Application revision `5a5e68f` is deployed on app and both workers with image `sha256:58382cc484404d21f3626544ca7248850ee04cd2cce681bd4424f08176086592`. Backup `backups/pre-contents-20261116.dump` was verified; rollback image `commons:pre-contents-7706cdf` is retained. No migration. The removed `src/app/loading.tsx` was explicitly removed from the archive-based server checkout before building.
+
+Project overview renders and paginates pages/folders only. Stored attachments and notes remain available; the overview no longer queries them. Signed-in landing CTAs prefetch the workspace, and the global Opening Commons interstitial is removed.
+
+Lint/typecheck, production build and three production-browser scenarios passed (landing, nested folders/discussion, inline media). The media scenario checks the pages-only list while uploaded files remain stored. Isolated local and hosted walkthroughs verified navigation without the loading-text flash with delayed workspace requests, file-only project empty state, pages-only contents after creation and retained file access. Hosted health is OK, all three services are running, and acceptance workspaces were removed.
