@@ -1,0 +1,41 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities) important source(none);
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+@source "../../../../node_modules/fumadocs-ui/dist/**/*.js";
+@source "./**/*.tsx";
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root:has(.commons-docs) {
+  --color-fd-background: var(--canvas);
+  --color-fd-foreground: var(--text);
+  --color-fd-muted: var(--raised);
+  --color-fd-muted-foreground: var(--muted);
+  --color-fd-popover: var(--surface);
+  --color-fd-popover-foreground: var(--text);
+  --color-fd-card: var(--surface);
+  --color-fd-card-foreground: var(--text);
+  --color-fd-border: var(--line);
+  --color-fd-primary: var(--accent);
+  --color-fd-primary-foreground: var(--on-accent);
+  --color-fd-secondary: var(--nav);
+  --color-fd-secondary-foreground: var(--text);
+  --color-fd-accent: var(--accent-bg);
+  --color-fd-accent-foreground: var(--text);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
+}
+.commons-docs { min-height: 100dvh; line-height: 1.6; }
+.commons-docs *, :root:has(.commons-docs) [data-base-ui-portal] * { border-color: var(--line); }
+.commons-docs h1 { font-family: var(--font-body); letter-spacing: -0.035em; }
+.commons-docs .prose { color: var(--text); font-size: 15px; }
+.commons-docs .prose p { margin-block: 1.2em; }
+.commons-docs .prose h2 { margin-block: 2em 0.8em; font-size: 21px; line-height: 1.4; }
+.commons-docs .prose li { margin-block: 0.6em; }
+.commons-docs .prose a { color: var(--accent); text-decoration: underline; }
+.commons-docs .prose pre { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.commons-docs .prose code { font-family: var(--font-code); }
+.commons-docs .theme-toggle { padding: 8px 12px; font-size: 13px; }
+
+/* Scoped documentation theme. */
