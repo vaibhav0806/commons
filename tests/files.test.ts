@@ -66,3 +66,40 @@ test("file metadata is scoped, hidden until uploaded, author-managed and queued 
     await pool.end();
   }
 });
+
+test("workspace storage is enforced before reserving another upload", async () => {
+  const limitedPool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const limitedStore = Store.withWorkspaceLimitsForTesting(
+    limitedPool,
+    "limited-files-test-secret-at-least-32-characters",
+    { activeProjects: 1, storageBytes: 8 },
+  );
+  const owner = (
+    await limitedStore.createLocalOwner(
+      `limited-files-${crypto.randomUUID()}@example.test`,
+      "Limited files",
+    )
+  ).actor;
+  try {
+    const project = await limitedStore.createProject(owner, "Files", "");
+    await limitedStore.reserveFile(owner, project.id, {
+      name: "full.md",
+      size: 8,
+      mimeType: "text/markdown",
+      checksum: "c".repeat(64),
+    });
+    await assert.rejects(
+      limitedStore.reserveFile(owner, project.id, {
+        name: "extra.md",
+        size: 1,
+        mimeType: "text/markdown",
+        checksum: "d".repeat(64),
+      }),
+      (error: unknown) =>
+        error instanceof CommonsError && error.status === 413,
+    );
+  } finally {
+    await limitedStore.deleteWorkspace(owner, "DELETE", true);
+    await limitedPool.end();
+  }
+});

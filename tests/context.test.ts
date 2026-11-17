@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Pool } from "pg";
-import { Store, CommonsError } from "../src/lib/store";
+import { Store, CommonsError, type WorkspaceLimits } from "../src/lib/store";
 import { syncGraphProject } from "../src/lib/graph-projection";
 import { graphQuery } from "../src/lib/graph";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-const store = new Store(pool, "context-test-secret-over-thirty-two-characters");
+const unrestrictedWorkspace: WorkspaceLimits = {
+  activeProjects: Number.MAX_SAFE_INTEGER,
+  storageBytes: Number.MAX_SAFE_INTEGER,
+};
+const store = Store.withWorkspaceLimitsForTesting(
+  pool,
+  "context-test-secret-over-thirty-two-characters",
+  unrestrictedWorkspace,
+);
 process.env.HYDRA_URL = "http://127.0.0.1:18443";
 process.env.HYDRA_TOKEN_FILE = "data/hydradb/auth-token";
 

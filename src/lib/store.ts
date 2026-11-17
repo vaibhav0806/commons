@@ -63,6 +63,14 @@ export type Note = {
   read: boolean;
 };
 export type ProjectFile = { id: string; workspaceId: string; projectId: string; authorId: string; authorName: string; authorAgentIdentity?: AgentIdentity | null; name: string; size: number; mimeType: string; checksum: string; objectKey: string; ready: boolean; createdAt: number };
+export type WorkspaceLimits = {
+  activeProjects: number;
+  storageBytes: number;
+};
+export const freeWorkspaceLimits: WorkspaceLimits = {
+  activeProjects: 1,
+  storageBytes: 250 * 1024 * 1024,
+};
 const fileSelect = "SELECT f.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM project_files f JOIN participants p ON p.id=f.author_id";
 export type PageKind = "page" | "folder" | "collection";
 export type PageStatus = "Idea" | "Drafting" | "Ready";
@@ -151,6 +159,16 @@ const camel = (row: Record<string, unknown>) =>
 const noteSelect =
   "SELECT n.*,p.name AS author_name,p.agent_identity AS author_agent_identity,EXISTS(SELECT 1 FROM reads r WHERE r.note_id=n.id AND r.participant_id=$1 AND r.read_at>=coalesce(n.edited_at,n.created_at)) AS read FROM notes n JOIN participants p ON p.id=n.author_id";
 export class Store {
+  private workspaceLimits = freeWorkspaceLimits;
+  static withWorkspaceLimitsForTesting(
+    pool: Pool,
+    secret: string,
+    workspaceLimits: WorkspaceLimits,
+  ) {
+    const store = new Store(pool, secret);
+    store.workspaceLimits = workspaceLimits;
+    return store;
+  }
   constructor(
     private pool: Pool,
     private secret: string,
@@ -167,9 +185,9 @@ export class Store {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      const result = await operation(
-        new Store(this.pool, this.secret, this.clock, client),
-      );
+      const tx = new Store(this.pool, this.secret, this.clock, client);
+      tx.workspaceLimits = this.workspaceLimits;
+      const result = await operation(tx);
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -443,20 +461,31 @@ export class Store {
     return project;
   }
   async createProject(actor: Principal, name: string, brief: string) {
-    const current = await this.owner(actor),
-      id = randomUUID();
-    const project = await this.one<Project>(
-      "INSERT INTO projects(id,workspace_id,name,brief,created_at) VALUES($1,$2,$3,$4,$5) RETURNING *",
-      [
-        id,
+    return this.transaction(async (tx) => {
+      const current = await tx.owner(actor);
+      await tx.connection.query("SELECT id FROM workspaces WHERE id=$1 FOR UPDATE", [
         current.workspaceId,
-        nameSchema.parse(name),
-        z.string().trim().max(12000).parse(brief),
-        this.clock(),
-      ],
-    );
-    await this.record(current, id, "Created the project", id);
-    return project;
+      ]);
+      const usage = await tx.one<{ count: number }>(
+        "SELECT count(*)::int count FROM projects WHERE workspace_id=$1",
+        [current.workspaceId],
+      );
+      if (usage.count >= tx.workspaceLimits.activeProjects)
+        throw new CommonsError("This workspace can have one active project.", 409);
+      const id = randomUUID();
+      const project = await tx.one<Project>(
+        "INSERT INTO projects(id,workspace_id,name,brief,created_at) VALUES($1,$2,$3,$4,$5) RETURNING *",
+        [
+          id,
+          current.workspaceId,
+          nameSchema.parse(name),
+          z.string().trim().max(12000).parse(brief),
+          tx.clock(),
+        ],
+      );
+      await tx.record(current, id, "Created the project", id);
+      return project;
+    });
   }
   async listParticipants(
     actor: Principal,
@@ -1075,7 +1104,7 @@ export class Store {
       const data = z.object({ name: z.string().trim().min(1).max(240).refine((v) => !/[\x00-\x1f\x7f/\\]/.test(v), "Use a file name without control characters or path separators."), size: z.number().int().min(0).max(16777216, "Each file can be up to 16 MB."), mimeType: z.string().min(1).max(120), checksum: z.string().regex(/^[a-f0-9]{64}$/) }).parse(input);
       await tx.connection.query("SELECT id FROM workspaces WHERE id=$1 FOR UPDATE", [current.workspaceId]);
       const usage = await tx.one<{ bytes: number }>("SELECT coalesce(sum(size),0)::bigint bytes FROM project_files WHERE workspace_id=$1", [current.workspaceId]);
-      if (usage.bytes + data.size > 1073741824) throw new CommonsError("This workspace has reached its 1 GB storage limit. Remove unused files before uploading more.", 413);
+      if (usage.bytes + data.size > tx.workspaceLimits.storageBytes) throw new CommonsError("This workspace has reached its 250 MB storage limit. Remove unused files before uploading more.", 413);
       const prefix = process.env.R2_PREFIX || "commons-files/";
       if (!/^[a-zA-Z0-9/-]+\/$/.test(prefix)) throw new Error("Configure a valid private R2 prefix.");
       const id = randomUUID(), key = `${prefix}${current.workspaceId}/${id}`;
