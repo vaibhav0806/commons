@@ -1,5 +1,7 @@
 # Commons design system · Study 02
 
+> **Archived study.** This file records the November 2026 Graphite + Reflective direction. It is not implementation authority. Use [`../DESIGN.md`](../DESIGN.md) and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) for the live Mist & Lilac system.
+
 Status: **Consolidated foundations approved**. [Research](DESIGN_RESEARCH.md) · [Run the prototype](../design/README.md) · [Study 01](DESIGN_SYSTEM.md)
 
 The approved consolidated system is now at [`DESIGN.md`](../DESIGN.md), with an [executable reference](http://localhost:4177/typography/?study=system). The owner approved the type scale, spacing, corners and hover/press responses, with text fields' outer focus outline removed. This document retains the earlier study and animation history; the root system governs new work.

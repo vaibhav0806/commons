@@ -1,9 +1,11 @@
-# Commons implementation
+# Commons implementation record
+
+> Historical delivery record. For current product and design decisions, use `PRODUCT.md`, `DESIGN.md`, `docs/DESIGN_SYSTEM.md`, and `docs/TECH_DECISIONS.md`.
 
 ## Implemented
 
 - Mist & Lilac landing: Sora + Instrument Serif, light default/persisted dark, eleven-logo marquee, scroll-pinned project stories and reduced-motion fallbacks.
-- Unified nested project tree; inline project naming and compact row/right-click menus, pages and folders with List/Board/Table views over versioned content items. Legacy collections remain compatible. Scoped page discussions are readable/writable through browser and MCP.
+- Unified nested project tree; inline project naming and compact row/right-click menus, pages and folders with List/Board/Table views over versioned content items. Legacy collections remain compatible folder records. Scoped page discussions are readable/writable through browser and MCP.
 - Mobile navigation, inline project creation from every entry point, full-page Markdown-native document editing, full-screen discussion, scrollable boards/tables and accessible status editing.
 
 - Real Google identity, isolated workspaces, browser sessions and scoped MCP participation.

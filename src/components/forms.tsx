@@ -17,6 +17,7 @@ import {
   type ActionState,
 } from "@/app/actions";
 import { Icon } from "./brand";
+import { useFeedback } from "./feedback";
 import { SelectField } from "./ui/select-field";
 import { AgentIdentityField } from "./agent-identity-field";
 import { agentIdentityInstruction } from "@/lib/agent-identities";
@@ -50,10 +51,21 @@ export function Submit({
     </button>
   );
 }
-export function Notice({ state }: { state: ActionState }) {
+export function Notice({
+  placement = "toast",
+  state,
+}: {
+  placement?: "inline" | "toast";
+  state: ActionState;
+}) {
+  const feedback = useFeedback();
+  useEffect(() => {
+    if (placement === "toast" && state.error) feedback.error(state.error);
+  }, [feedback, placement, state]);
+
   return (
     <>
-      {state.error && (
+      {placement === "inline" && state.error && (
         <p className="error" role="alert">
           {state.error}
         </p>
@@ -75,6 +87,7 @@ export function ActionForm({
   className = "form-stack",
   pendingLabel,
   danger = false,
+  errorPlacement = "toast",
   id,
 }: {
   children?: ReactNode;
@@ -84,18 +97,19 @@ export function ActionForm({
   className?: string;
   pendingLabel?: string;
   danger?: boolean;
+  errorPlacement?: "inline" | "toast";
   id?: string;
 }) {
   const [state, action] = useActionState(workspaceAction, {});
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (!state.error) return;
+    if (errorPlacement !== "inline" || !state.error) return;
     const first = form.current?.querySelector<
       HTMLInputElement | HTMLTextAreaElement
     >('input:not([type="hidden"]),textarea,select');
     first?.setAttribute("aria-invalid", "true");
     first?.focus();
-  }, [state]);
+  }, [errorPlacement, state]);
   return (
     <form
       ref={form}
@@ -110,7 +124,7 @@ export function ActionForm({
       <input type="hidden" name="operation" value={operation} />
       {projectId && <input type="hidden" name="projectId" value={projectId} />}
       {children}
-      <Notice state={state} />
+      <Notice placement={errorPlacement} state={state} />
       <ActionGroup layout="stack">
         <Submit
           className={danger ? "button danger" : "button"}
@@ -136,7 +150,7 @@ export function TestOwnerSignIn() {
           maxLength={200}
         />
       </label>
-      <Notice state={state} />
+      <Notice placement="inline" state={state} />
       <Submit pendingLabel="Signing in…">Open your workspace</Submit>
     </form>
   );
@@ -155,7 +169,7 @@ export function ReturnAgentForm() {
           maxLength={200}
         />
       </label>
-      <Notice state={state} />
+      <Notice placement="inline" state={state} />
       <Submit pendingLabel="Returning…">Return to workspace</Submit>
     </form>
   );
@@ -175,7 +189,7 @@ export function GoogleSignIn({ configured = false }: { configured?: boolean }) {
         <img src="/brands/google.svg" alt="" width="18" height="18" />
         Continue with Google
       </Submit>
-      <Notice state={state} />
+      <Notice placement="inline" state={state} />
     </form>
   );
 }
@@ -223,7 +237,7 @@ export function JoinForm({ invitationId }: { invitationId: string }) {
           required
         />
       </label>
-      <Notice state={state} />
+      <Notice placement="inline" state={state} />
       <AgentIdentityField />
       <Submit pendingLabel="Joining workspace…">
         Join workspace <Icon name="ArrowRight" />
@@ -323,7 +337,7 @@ Then read the project brief and shared notes, and contribute useful context. The
             })),
           ]}
         />
-        <Notice state={state} />
+        <Notice placement="inline" state={state} />
         {!ready && (
           <ActionGroup layout="stack">
             <Submit pendingLabel="Preparing code…">
@@ -380,7 +394,7 @@ export function CredentialForm({ endpoint }: { endpoint: string }) {
       </p>
       <form action={action} className="form-stack">
         <input type="hidden" name="operation" value="credential" />
-        <Notice state={state} />
+        <Notice placement="inline" state={state} />
         <ActionGroup layout="stack">
           <Submit>Create return credential</Submit>
         </ActionGroup>

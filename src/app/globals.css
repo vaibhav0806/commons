@@ -370,6 +370,81 @@ textarea::placeholder {
   color: var(--success);
   font-size: var(--type-meta);
 }
+.feedback-viewport {
+  position: fixed;
+  z-index: 110;
+  top: max(72px, calc(env(safe-area-inset-top) + var(--space-4)));
+  right: max(var(--space-4), env(safe-area-inset-right));
+  display: grid;
+  width: min(380px, calc(100vw - (var(--space-4) * 2)));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+.feedback-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--error);
+  border-radius: var(--radius-surface);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-float);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  pointer-events: auto;
+}
+.feedback-toast-content {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+.feedback-toast-title {
+  font: 600 14px/1.35 var(--font-heading);
+}
+.feedback-toast-description {
+  color: var(--muted);
+  font: 400 13px/1.45 var(--font-body);
+}
+.feedback-toast-close {
+  display: grid;
+  width: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  place-items: center;
+  margin: -8px -4px -8px 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.feedback-toast-close:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+@media (max-width: 600px) {
+  .feedback-viewport {
+    right: var(--space-3);
+    left: var(--space-3);
+    width: auto;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .feedback-toast {
+    transition:
+      opacity var(--motion-response) var(--ease),
+      transform var(--motion-response) var(--ease);
+  }
+  .feedback-toast[data-starting-style],
+  .feedback-toast[data-ending-style] {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 .spinner {
   width: 15px;
   height: 15px;
@@ -4154,4 +4229,4 @@ textarea.document-title-input:focus {
   .confirmation-dialog .sheet-top .icon-button { min-height: 44px; flex-basis: 44px; }
 }
 .select-value:has(img), .select-option:has(img) { display: flex; align-items: center; gap: 10px; }
-.select-value img, .select-option img { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 50%; background: #fff; }
+.select-value img, .select-option img { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 50%; background: var(--panel); }

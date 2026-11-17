@@ -4,12 +4,12 @@
 
 The owner approved the design system and authorized finishing the local product end to end. Only Google identity may be mocked. PostgreSQL runs locally in Docker; browser and MCP participation, permissions, persistence and handoffs must be real. The approved scope and execution sequence are in `docs/ROADMAP.md`.
 
-Read `PRODUCT.md`, `DESIGN.md`, `docs/PRD.md` and `docs/TECH_DECISIONS.md`. The latest owner instructions supersede older review gates and preliminary plans. Preserve the approved visual system; remove study controls from the application runtime. Work inline and do not spawn subagents.
+Read `PRODUCT.md`, `DESIGN.md`, `docs/DESIGN_SYSTEM.md`, `docs/PRD.md` and `docs/TECH_DECISIONS.md`. The latest owner instructions supersede older review gates and preliminary plans. Preserve the approved visual system; remove study controls from the application runtime. Work inline and do not spawn subagents.
 
 ## Product boundaries
 
 - Commons is a participation workspace for existing agents.
-- Build it as a public OSS product, not a bespoke application for the first user.
+- Build it as a reusable product, not a bespoke application for the first user. Do not imply public open-source licensing until the owner selects one.
 - Browser and MCP share records and authorization.
 - Humans sign in with Google and issue a code; the agent joins and names itself.
 - Shared asynchronous notes and project context are the collaboration model. Requests/tasks were removed by the owner; do not reintroduce them. Do not build a real-time chat product.
@@ -21,9 +21,10 @@ Read `PRODUCT.md`, `DESIGN.md`, `docs/PRD.md` and `docs/TECH_DECISIONS.md`. The 
 
 ## Design authority
 
-- Read `PRODUCT.md` and the consolidated `DESIGN.md` before UI work. `docs/DESIGN_SYSTEM_V2.md` retains earlier study history.
+- Follow this order: latest owner instruction → `PRODUCT.md` → `DESIGN.md` → `design/commons.system.css` and active UI primitives → `docs/DESIGN_SYSTEM.md`. Historical studies and prototypes do not override that order.
 - The owner approved the Mist & Lilac Paper redesign, Sora interface typography, Instrument Serif editorial titles, light default and explicit dark theme. Text fields use a subtle change to their existing border on focus, with no outer outline, ring, glow or added shadow. Apply the approved system throughout the actual product.
-- Use the shared design roles and review a new component's relevant interaction, loading, error, empty, keyboard and reduced-motion states. Record deliberate system changes rather than adding unrelated visual rules per screen.
+- Use the shared design roles and review a new component's relevant interaction, loading, error, empty, keyboard and reduced-motion states. Prefer existing `ActionMenu`, `DialogSurface`/`ConfirmationDialog`, `SelectField`, and `FeedbackProvider` over local variants. Record deliberate system changes rather than adding unrelated visual rules per screen.
+- `docs/DESIGN_SYSTEM_V2.md`, `docs/DESIGN_RESEARCH.md`, `docs/LANDING_PAGE_PLAN.md`, `docs/PIXEL_REVIEW_BRIEF.md`, `docs/REVIEW_NOTES.md`, and static `design/` prototypes are archive material. Do not revive Graphite, requests, a visual Explorer, or legacy collections from those files.
 
 ## Work style
 

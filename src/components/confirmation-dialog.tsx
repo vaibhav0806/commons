@@ -86,7 +86,7 @@ export function ConfirmationDialog({
             <input type="hidden" name="projectId" value={projectId} />
           )}
           <fieldset disabled={pending}>{children}</fieldset>
-          <Notice state={state} />
+          <Notice placement="inline" state={state} />
           <div className="confirmation-actions">
             <button
               ref={cancel}

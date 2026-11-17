@@ -83,6 +83,7 @@
   --shadow-rest: none;
   --shadow-hover: none;
   --shadow-press: none;
+  --shadow-float: 0 12px 28px #0000001a;
 }
 @media (max-width: 700px) {
   :root {
@@ -128,6 +129,7 @@
   --success: #afcaaa;
   --warning: #dbbc9f;
   --error: #f0a5b5;
+  --shadow-float: 0 12px 28px #00000066;
   --mist: #171b23;
   --lilac: #363241;
   --blue: #30394a;

@@ -1,5 +1,7 @@
 # Documentation review record
 
+> **Archived review record.** This records prior review rounds and may describe retired product/design directions. Use the current documentation index for active authority.
+
 ## Round 1 · 2026-11-13
 
 Submitted through Plannotator across the PRD, technical decisions, README, architecture, onboarding and roadmap. Decision: **annotated**, not approved.

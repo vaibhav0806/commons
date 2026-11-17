@@ -1,5 +1,7 @@
 # Commons: onboarding animation review for Pixel
 
+> **Archived review brief.** This is a dated prototype review, not a source of product or design-system rules. Use [`../DESIGN.md`](../DESIGN.md) and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) for current work.
+
 Date: 13 November 2026
 Requested by: Vaibhav
 Prepared by: Codex, on Vaibhav’s behalf

@@ -1836,7 +1836,14 @@ test("folders create inline with contextual menus, cancellation and retry", asyn
         { times: 1 },
       );
       await input.press("Enter");
-      await expect(surface.getByRole("alert")).toBeVisible();
+      const notifications = page.getByRole("region", {
+        name: "Notifications",
+      });
+      await expect(notifications).toContainText("Couldn’t create folder");
+      await expect(notifications).toContainText(
+        "Couldn’t create this folder. Try again.",
+      );
+      await expect(surface.getByRole("alert")).toHaveCount(0);
       await expect(input).toHaveValue(`Folder ${width}`);
       await input.press("Enter");
       await page.waitForURL(/\/pages\/[a-f0-9-]+$/);

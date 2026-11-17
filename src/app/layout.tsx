@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppInteractions } from "@/components/app-interactions";
+import { FeedbackProvider } from "@/components/feedback";
 import { currentParticipant, appUrl } from "@/lib/session";
 import { getStore } from "@/lib/db";
 
@@ -50,13 +51,15 @@ export default async function RootLayout({
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <AppInteractions
-          projects={projects}
-          owner={actor?.kind === "owner"}
-          origin={appUrl().origin}
-        >
-          {children}
-        </AppInteractions>
+        <FeedbackProvider>
+          <AppInteractions
+            projects={projects}
+            owner={actor?.kind === "owner"}
+            origin={appUrl().origin}
+          >
+            {children}
+          </AppInteractions>
+        </FeedbackProvider>
       </body>
     </html>
   );

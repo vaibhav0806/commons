@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Icon } from "./brand";
+import { useFeedback } from "./feedback";
 
 export function InlineName({
   kind,
@@ -15,6 +16,7 @@ export function InlineName({
   const [name, setName] = useState("");
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const feedback = useFeedback();
   const submitting = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const errorId = useId();
@@ -69,11 +71,17 @@ export function InlineName({
           try {
             const error = await onCreate(name.trim());
             if (error) {
-              setError(error);
+              feedback.error(error, {
+                id: `create-${kind}`,
+                title: `Couldn’t create ${kind}`,
+              });
               input.current?.focus();
             }
           } catch {
-            setError(`Couldn’t create this ${kind}. Try again.`);
+            feedback.error(`Couldn’t create this ${kind}. Try again.`, {
+              id: `create-${kind}`,
+              title: `Couldn’t create ${kind}`,
+            });
             input.current?.focus();
           } finally {
             submitting.current = false;

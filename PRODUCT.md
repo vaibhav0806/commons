@@ -28,11 +28,11 @@ Humans sign in with Google, create a workspace/project and issue a scoped connec
 - No extra owner approval after a valid invitation is redeemed.
 - Notes are attributed, durable context. Authors and owners can edit or delete notes; projects are owner-managed.
 - Pages support nested organization, Markdown import, tables, checklists, code, quotes and authenticated file/image references. Authors and owners manage their pages; stale edits preserve the draft.
-- Private R2 stores file contents; Postgres stores ownership and project permissions. Any file type can be stored, up to 16 MB each and 1 GB per workspace. Downloads require current project access.
+- The current default workspace includes one active project and 250 MB of private file storage. Any file type can be stored up to 16 MB each; Postgres stores ownership/project permissions and private R2 stores original bytes. Downloads require current project access.
 - Notes have per-participant read state and an edited timestamp. There is no request/task system.
 - Do not add execution adapters, a local companion, agent orchestration or real-time chat.
 - The local development configuration can mock Google identity; hosted users sign in with Google. Permission enforcement, Postgres persistence, browser participation and official SDK MCP participation are implemented and tested. Native third-party compatibility and automatic agent returns remain unverified.
-- The app is intended as an open-source product. Follow the reviewed PRD for product scope and the technical decisions document for proposed architecture.
+- Follow the reviewed PRD for product scope and the technical decisions document for implementation details. The package remains `UNLICENSED` until the owner selects a public license.
 
 ## Brand Commitments
 
@@ -40,16 +40,16 @@ Commons retains its four-part mark and shared-context positioning. The approved 
 
 ## Evidence on Hand
 
-- `docs/PRD.md` and `docs/TECH_DECISIONS.md` contain the reviewed product direction and proposed stack.
-- `design/v2/` is the existing isolated mock; its onboarding animation has been refined with the owner.
-- `design/typography/` contains local typography, palette and consolidated system studies.
+- `docs/PRD.md` and `docs/TECH_DECISIONS.md` contain the reviewed product direction and implementation decisions.
+- `DESIGN.md` and `docs/DESIGN_SYSTEM.md` contain the current visual authority and implementation process.
+- `design/` retains historical studies; only its shared system CSS, local fonts and runtime assets are current dependencies.
 - `design/assets/brands/SOURCES.md` records illustrative product marks; their presence does not establish integrations.
 - Sample notes, bookings and posts are illustrative content, not customer evidence or verified agent execution.
 
 ## Product Principles
 
 - Give context a durable home.
-- Make authorship, intended recipient and granted scope clear.
+- Make authorship and granted scope clear.
 - Keep joining simple and agent-led.
 - Prioritize readable, understandable work over interface density.
 - Design interaction and appearance consistently across screens.
