@@ -3882,6 +3882,10 @@ h1 {
   min-height: 80px;
   overflow-y: auto;
   flex: 1;
+  scrollbar-width: none;
+}
+.sidebar > div:has(> nav[aria-label="Projects"])::-webkit-scrollbar {
+  display: none;
 }
 @media (max-width: 600px) {
   .document-actions {
