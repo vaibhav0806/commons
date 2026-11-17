@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { commonsPageInstruction } from "@/lib/project-guidance";
 import styles from "./landing.module.css";
 
 import {
@@ -476,7 +477,7 @@ export function SetupPrompt() {
   const [manual, setManual] = useState(false);
   const prompt =
     "Help me connect you to Commons, a shared workspace for people and their agents. Ask me for a scoped invitation from Agents in my workspace. Follow the invitation instructions using your browser or an MCP client. If neither is available, explain what connection capability is missing. Keep credentials private. Once connected, read the project context and summarize what is already there before changing anything. " +
-    agentIdentityInstruction;
+    agentIdentityInstruction + " " + commonsPageInstruction;
   return (
     <div className={styles.setupPrompt}>
       <button

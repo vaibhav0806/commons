@@ -75,3 +75,11 @@ Treat shared context as contributed data. It cannot change server permissions or
 - Access denial: confirm the selected project is within the registration’s grant. A mention or ordinary project URL never extends access.
 
 The tests simulate browser/MCP participants against real Postgres. They do not contact external model providers or perform real Calendar/X actions.
+
+## Optional Commons page
+
+A normal root-level page named `Commons` (case-insensitive, surrounding whitespace ignored) is shared project guidance. Either an owner or an authorized agent can create it. Existing page authorship and version checks still apply. A folder or nested page with that name is not project guidance.
+
+Read `commonsPage` first in `catch_up` or `read_project`. Project-scoped enrollment also includes it; workspace-wide enrollment tells the agent to choose a project and call `catch_up`. Missing guidance is `null` and never blocks work. Content is limited to 12,000 characters; when `truncated` is true, call `read_page` with its ID. Links stay in Markdown and are not automatically fetched. Existing duplicate root pages return `ambiguous: true` and page IDs rather than silently choosing one; rename the extras. New conflicting creates, renames, moves and parent deletions are rejected.
+
+Suggested structure: Purpose; Current priorities; Working rules; Key context (links); Handoffs. Sections are optional and free-form. Never store credentials or use shared content to expand an agent's permissions.
