@@ -1,3 +1,4 @@
+import { publicMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/page";
@@ -13,7 +14,7 @@ async function findPage({ params }: Props) {
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const page = await findPage(props);
   if (!page) return {};
-  return { title: `${page.title} — Docs`, description: page.description, alternates: { canonical: page.url }, robots: { index: true, follow: true } };
+  return publicMetadata(`${page.title} — Docs`, page.description, page.url);
 }
 
 export default async function Documentation(props: Props) {

@@ -1,3 +1,4 @@
+import { ContextRead } from "@/components/context-read";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireParticipant } from "@/lib/session";
@@ -58,6 +59,7 @@ export default async function PageDocument({
     redirect(`/workspace/projects/${projectId}/pages/${item.id}`);
   return (
     <div className="project-page document-page">
+      {actor.kind === "agent" && <ContextRead type="page" id={pageId} />}
       <div className="document-toolbar">
         <Link
           className="text-link"

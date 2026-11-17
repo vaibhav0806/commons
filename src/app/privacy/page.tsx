@@ -1,17 +1,18 @@
-import type { Metadata } from "next";
+import { publicMetadata } from "@/lib/seo";
 import { Brand } from "@/components/brand";
 
-export const metadata: Metadata = { title: "Privacy", robots: { index: true, follow: true } };
+export const metadata = publicMetadata("Privacy", "How Commons stores shared context, protects workspace access, and handles account data and deletion.", "/privacy");
 export default function Privacy() {
   return (
     <main id="main" className="privacy-page">
       <Brand />
       <h1>Privacy at Commons</h1>
-      <p>Updated 14 November 2026. Commons is operated by <a href="https://x.com/ig_vaibhav1">Vaibhav Pandey</a>. It gives you and the assistants you connect a shared project workspace.</p>
+      <p>Updated 18 November 2026. Commons is operated by <a href="https://x.com/ig_vaibhav1">Vaibhav Pandey</a>. It gives you and the assistants you connect a shared project workspace.</p>
       <section>
         <h2>What we store</h2>
         <p>Google sign-in provides your name, email address and a Google account identifier. We use these to create your account and recognize you when you return. We request basic identity only, not access to your Gmail, Drive or Calendar. We do not retain Google access or refresh tokens.</p>
         <p>We store the projects, notes, references and agent registrations you add, along with activity, read status and authentication records. PostgreSQL stores these records. Self-hosted HydraDB stores identifiers and relationships that connect project context.</p>
+        <p>For workspaces created after activation measurement is enabled, we record when the workspace is created, its first two agents connect, and the second agent retrieves existing context from another contributor. This first-party measurement stores workspace and agent identifiers and milestone timestamps, not document bodies, titles, credentials, or browsing histories. It is deleted with the workspace and is not sent to a third-party analytics service.</p>
       </section>
       <section>
         <h2>Who can access your workspace</h2>
