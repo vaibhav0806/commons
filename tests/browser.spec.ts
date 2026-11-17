@@ -1083,7 +1083,7 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
           else await route.continue();
         });
         await input.press("Enter");
-        await expect(surface.getByRole("alert")).toContainText(
+        await expect(page.locator(".feedback-toast")).toContainText(
           "Couldn’t create",
         );
         await expect(input).toHaveValue(name);
@@ -1167,6 +1167,10 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
         ).toBeVisible();
         await page.keyboard.press("Escape");
       }
+      if (!mobile) {
+        await store.deleteProject(owner, project[0].id, project[0].name);
+        created.pop();
+      }
     }
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page
@@ -1176,11 +1180,11 @@ test("sidebar creates projects inline and keeps compact actions accessible", asy
       .getByRole("combobox", { name: "Agent access", exact: true })
       .click();
     await expect(
-      page.getByRole("option", { name: created[1].name, exact: true }),
+      page.getByRole("option", { name: created[0].name, exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("option", {
-        name: `${created[1].name} only`,
+        name: `${created[0].name} only`,
         exact: true,
       }),
     ).toHaveCount(0);
@@ -1741,7 +1745,7 @@ test("sidebar collapse and contextual uploads preserve the document and private 
 test("workspace omits Explorer and redirects old graph links", async ({ page }) => {
   await page.goto("/start");
   await page.getByRole("button", { name: "Continue with Google" }).click();
-  await page.waitForURL(/\/workspace/);
+  await page.waitForURL(/\/(workspace|setup)/);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace/agents");
@@ -1847,6 +1851,7 @@ test("folders create inline with contextual menus, cancellation and retry", asyn
       await expect(input).toHaveValue(`Folder ${width}`);
       await input.press("Enter");
       await page.waitForURL(/\/pages\/[a-f0-9-]+$/);
+      await expect(page.locator(".feedback-toast")).toHaveCount(0);
       if (mobile) await expect(page.getByRole("dialog")).toHaveCount(0);
       const folders = (await store.pageTree(owner, project.id)).filter(
         (item) => item.title === `Folder ${width}`,

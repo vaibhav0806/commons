@@ -1,6 +1,6 @@
-# Private testing deployment
+# Deployment and verification history
 
-Target: `https://commons.0xvaibhav.com` on the existing Hetzner server. This is a testing environment, not the public release.
+Live target: `https://commons.0xvaibhav.com` on the existing Hetzner server. Entries below distinguish local validation from hosted deployment; older testing labels describe the original rollout.
 
 ## Services
 
@@ -230,3 +230,11 @@ Application revision `1807814` is deployed on app and both workers with image `s
 Home counts the complete metadata tree, splits pages from folders and omits hidden-upload/legacy-note counts and the Recently shared feed. Project actions expose Files. Legacy notes, collection records and uploaded originals are preserved. Selected text uses independent background/ink tokens; both reader and editor retain at least 7:1 contrast in light/dark themes.
 
 Lint/typecheck and optimized build passed. Production browser regressions verify more than 50 records, folder/legacy-collection counts, file discovery, legacy data retention and reader/editor selection contrast, including links and table cells. The existing nested folder/list/board/table/discussion regression also passed. Hosted checks verified the page/folder counts, Files menu, absent legacy feed, linked Markdown tracker tables, dark selection colors and no horizontal overflow at 1440/390/320px in both themes. Live MCP context traversal returned ready, untruncated paths for three scenarios. The temporary project-scoped verification participant was removed afterward.
+
+## Feedback recovery and product QA — local verification, 2026-11-17
+
+Merged feedback/design-system PR #9 before the sweep. A real retry defect left a persistent error toast covering the next folder action after successful creation. Shared feedback now supports targeted dismissal; successful inline creation and editor recovery dismiss matching errors, and form notifications clear when resolved or unmounted. CONTRIBUTING now points to the current light/dark design authorities.
+
+Validation: lint/typecheck and production build passed; 19 Store tests, 5 MCP tests, 4 workspace/file/R2 tests, 1 Hydra context test and all 17 production-build browser scenarios passed. The final browser suite used a fresh dedicated database, real PostgreSQL/R2/Hydra integrations and mocked Google identity only. It covers desktop/mobile, themes, keyboard controls, spacing, selection contrast, CRUD, uploads, folders and views, discussions, retry/idempotency, autosave conflicts, permission denial, revocation and destructive confirmation cancellation. Representative landing, settings, document, board and discussion screenshots were visually reviewed. This is bounded regression coverage, not an exhaustive accessibility, load or penetration audit.
+
+Dependency audit reports four low-severity transitive findings in the editor math dependency chain; no high-severity production findings. No forced dependency downgrade was applied. The public landing was inspected separately; authenticated acceptance above ran locally. No VPS deployment was performed in this sweep.

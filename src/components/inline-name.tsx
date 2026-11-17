@@ -76,6 +76,8 @@ export function InlineName({
                 title: `Couldn’t create ${kind}`,
               });
               input.current?.focus();
+            } else {
+              feedback.dismiss(`create-${kind}`);
             }
           } catch {
             feedback.error(`Couldn’t create this ${kind}. Try again.`, {

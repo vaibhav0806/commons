@@ -63,7 +63,7 @@ These tests establish the local application and protocol path. They do not estab
 
 ## Contribution scope
 
-Work inline unless the owner explicitly asks for delegation. Keep the approved dark-only visual system and accessible interaction states. No execution runtime, real-time chat, billing or orchestration is part of this implementation. The OSS license remains a separate owner decision before public distribution.
+Work inline unless the owner explicitly asks for delegation. Follow the Mist & Lilac system in DESIGN.md and docs/DESIGN_SYSTEM.md, including light/dark themes and accessible interaction states. No execution runtime, real-time chat, billing or orchestration is part of this implementation. The OSS license remains a separate owner decision before public distribution.
 
 
 ## Historical local delivery verification · 2026-11-14

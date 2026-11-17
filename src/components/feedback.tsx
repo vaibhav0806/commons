@@ -17,6 +17,7 @@ type FeedbackOptions = {
 
 type FeedbackContextValue = {
   error: (description: string, options?: FeedbackOptions) => void;
+  dismiss: (id: string) => void;
 };
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null);
@@ -30,7 +31,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 }
 
 function FeedbackContent({ children }: { children: ReactNode }) {
-  const { add, toasts } = Toast.useToastManager();
+  const { add, close, toasts } = Toast.useToastManager();
   const error = useCallback(
     (description: string, options: FeedbackOptions = {}) => {
       add({
@@ -43,7 +44,7 @@ function FeedbackContent({ children }: { children: ReactNode }) {
     },
     [add],
   );
-  const value = useMemo(() => ({ error }), [error]);
+  const value = useMemo(() => ({ error, dismiss: close }), [error, close]);
 
   return (
     <FeedbackContext.Provider value={value}>

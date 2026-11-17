@@ -42,7 +42,7 @@ Use existing primitives before inventing a new pattern:
 | Menus | `ActionMenu` | Semantic menu, keyboard navigation, 32px desktop / 44px touch rows, clear grouping of destructive actions. |
 | Confirmations | `DialogSurface` / `ConfirmationDialog` | Centered blurred backdrop, trapped focus, Cancel initially focused, Escape/backdrop before submission, real error stays in the dialog. |
 | Selects | `SelectField` | Native-label semantics, shared surface, restrained elevation, explicit disabled state. |
-| Transient failures | `FeedbackProvider` / `useFeedback` | Persistent, dismissible notification with a human explanation. Never use `alert()` or browser `confirm()`. |
+| Transient failures | `FeedbackProvider` / `useFeedback` | Persistent, dismissible notification with a human explanation. Dismiss the matching error after successful recovery or when its form leaves the screen. Never use `alert()` or browser `confirm()`. |
 | Forms and long-lived recovery | Local component state | Field errors stay beside the field; autosave/upload/conflict errors stay where recovery happens and retain user work. |
 
 Every data-driven surface must cover loading, empty, error, and success states. Use skeletons for layout-affecting loads, honest empty copy plus a relevant next action, and recovery actions where failure leaves work unfinished. Do not use a toast as the only recovery path after a rollback or a failed upload/autosave.

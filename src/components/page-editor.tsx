@@ -113,6 +113,8 @@ export function PageEditor({
           id: "page-editor-submit",
           title: "Page is too long",
         });
+      } else {
+        feedback.dismiss("page-editor-submit");
       }
       if (hidden.current) hidden.current.value = JSON.stringify(value);
     };
@@ -346,6 +348,7 @@ export function PageEditor({
               throw new Error("Pages support up to 100,000 characters.");
             setBody(text);
             editor.current?.replace(text);
+            feedback.dismiss("page-import");
           } catch (e) {
             feedback.error(
               e instanceof Error ? e.message : "The file could not be read.",
