@@ -1137,6 +1137,28 @@ export class Store {
     await this.getProject(actor, projectId);
     return this.rows<PageTreeItem>("SELECT id,project_id,parent_id,title,kind,status,author_id FROM pages WHERE project_id=$1 ORDER BY created_at,id", [projectId]);
   }
+  async commonsPage(actor: Principal, projectId: string) {
+    await this.getProject(actor, projectId);
+    const matches = await this.rows<{ id: string }>(
+      "SELECT id FROM pages WHERE project_id=$1 AND parent_id IS NULL AND kind='page' AND lower(btrim(title))='commons' ORDER BY created_at,id",
+      [projectId],
+    );
+    if (!matches.length) return null;
+    if (matches.length > 1)
+      return { ambiguous: true, pageIds: matches.map((page) => page.id) };
+    const page = await this.getPage(actor, matches[0].id);
+    return { id: page.id, title: page.title, version: page.version,
+      body: page.body.slice(0, 12000), truncated: page.body.length > 12000,
+      url: `/workspace/projects/${projectId}/pages/${page.id}` };
+  }
+  private async checkCommonsPage(projectId: string, input: PageInput, kind: PageKind, excludeId?: string) {
+    if (input.parentId || kind !== "page" || input.title.trim().toLowerCase() !== "commons") return;
+    const existing = await this.one<{ id: string }>(
+      "SELECT id FROM pages WHERE project_id=$1 AND parent_id IS NULL AND kind='page' AND lower(btrim(title))='commons' AND ($2::uuid IS NULL OR id<>$2) LIMIT 1",
+      [projectId, excludeId ?? null],
+    );
+    if (existing) throw new CommonsError('This project already has a root Commons page. Edit it instead, or choose another name.', 409);
+  }
   async listComments(actor: Principal, pageId: string, offset = 0) {
     await this.getPage(actor, pageId);
     const comments = await this.rows<PageComment>("SELECT c.*,p.name AS author_name,p.agent_identity AS author_agent_identity FROM page_comments c JOIN participants p ON p.id=c.author_id WHERE c.page_id=$1 ORDER BY c.created_at,c.id LIMIT 51 OFFSET $2", [pageId, z.number().int().min(0).max(1000000).parse(offset)]);
@@ -1257,6 +1279,7 @@ export class Store {
         return page;
       }
       await tx.pageParent(current, projectId, data.parentId);
+      await tx.checkCommonsPage(projectId, data, data.kind ?? "page");
       const id = randomUUID();
       await tx.connection.query(
         "INSERT INTO pages(id,workspace_id,project_id,author_id,parent_id,title,body,client_key,created_at,kind,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
@@ -1298,6 +1321,7 @@ export class Store {
         [page.projectId],
       );
       await tx.pageParent(current, page.projectId, data.parentId, pageId);
+      await tx.checkCommonsPage(page.projectId, data, data.kind ?? page.kind, pageId);
       const changed = await tx.connection.query(
         "UPDATE pages SET title=$1,body=$2,parent_id=$3,edited_at=$4,version=version+1,kind=$7,status=$8 WHERE id=$5 AND version=$6",
         [
@@ -1333,6 +1357,12 @@ export class Store {
         "SELECT id FROM projects WHERE id=$1 FOR UPDATE",
         [page.projectId],
       );
+      const promoted = await tx.rows<{ id: string; parentId: string | null }>(
+        "SELECT id,parent_id FROM pages WHERE project_id=$1 AND kind='page' AND lower(btrim(title))='commons' AND (parent_id=$2 OR parent_id IS NULL) AND id<>$2",
+        [page.projectId, pageId],
+      );
+      if (promoted.length > 1 && promoted.some((child) => child.parentId === pageId))
+        throw new CommonsError('Deleting this page would create multiple root Commons pages. Rename or move a child Commons page first.', 409);
       const changed = await tx.connection.query(
         "DELETE FROM pages WHERE id=$1 AND version=$2",
         [pageId, z.number().int().positive().parse(version)],

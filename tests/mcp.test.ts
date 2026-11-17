@@ -135,6 +135,7 @@ test("anonymous clients cannot discover protected tools; hostile origins are rej
   );
 });
 test("HTTP enrollment yields a scoped credential and official MCP client performs real reads and writes", async () => {
+  const guidance = await store.createPage(owner, projectId, { title: "Commons", body: "Read the linked priorities before editing.", parentId: null });
   const invite = await store.issueInvite(owner, projectId);
   const response = await fetch(base + "/api/agent/join", {
     method: "POST",
@@ -149,10 +150,15 @@ test("HTTP enrollment yields a scoped credential and official MCP client perform
   assert.equal(response.status, 201);
   const joined = await response.json();
   assert.equal(joined.participant.agentIdentity, "codex");
+  assert.equal(joined.commonsPage.id, guidance.id);
+  assert.equal(joined.commonsPage.body, guidance.body);
+  assert.match(joined.projectInstructions, /root-level/);
   token = joined.token;
   agentId = joined.participant.id;
   const client = await connect();
   assert.equal(data(await client.callTool({ name: "who_am_i", arguments: {} })).agentIdentity, "codex");
+  assert.equal(data(await client.callTool({ name: "catch_up", arguments: { projectId } })).commonsPage.id, guidance.id);
+  assert.equal(data(await client.callTool({ name: "read_project", arguments: { projectId } })).commonsPage.id, guidance.id);
   const tools = await client.listTools();
   assert.ok(tools.tools.some((t) => t.name === "publish_note"));
   assert.ok(tools.tools.some((t) => t.name === "related_context"));

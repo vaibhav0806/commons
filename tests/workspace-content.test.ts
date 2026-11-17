@@ -151,3 +151,39 @@ test("rich pages enforce project scope, authorship, version checks, hierarchy an
     await pool.end();
   }
 });
+
+test("Commons guidance is optional, scoped, bounded and unique across concurrent writes", async () => {
+  const db = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
+  const context = new Store(db, "commons-guidance-test-secret-at-least-32-characters");
+  const owner = (await context.createLocalOwner(`guidance-${crypto.randomUUID()}@example.test`, "Owner")).actor;
+  const project = await context.createProject(owner, "Guidance", "");
+  const invite = await context.issueInvite(owner, project.id);
+  const agent = (await context.join(invite.id, invite.code, "Writer")).actor;
+  try {
+    assert.equal(await context.commonsPage(agent, project.id), null);
+    const folder = await context.createPage(owner, project.id, { title: "Commons", body: "", kind: "folder", parentId: null });
+    const nested = await context.createPage(agent, project.id, { title: "Commons", body: "Nested", parentId: folder.id });
+    assert.equal(await context.commonsPage(agent, project.id), null);
+    const attempts = await Promise.allSettled(["Commons", "COMMONS"].map(title => context.createPage(agent, project.id, { title, body: "x".repeat(13000), parentId: null })));
+    assert.equal(attempts.filter(result => result.status === "fulfilled").length, 1);
+    const guidance = await context.commonsPage(agent, project.id);
+    assert.ok(guidance && typeof guidance.body === "string");
+    assert.equal(guidance.body.length, 12000);
+    assert.equal(guidance.truncated, true);
+    await assert.rejects(context.updatePage(agent, nested.id, { title: "commons", body: "Nested", parentId: null }, nested.version), CommonsError);
+    await assert.rejects(context.deletePage(owner, folder.id, folder.version), CommonsError);
+    const page = await context.getPage(agent, guidance.id);
+    await context.updatePage(agent, page.id, { title: "Commons", body: "[Priorities](/priorities)", parentId: null }, page.version);
+    const updated = await context.commonsPage(agent, project.id);
+    assert.ok(updated && typeof updated.body === "string");
+    assert.equal(updated.body, "[Priorities](/priorities)");
+    assert.equal(updated.version, page.version + 1);
+    await context.updatePage(agent, page.id, { title: "Old instructions", body: "", parentId: null }, updated.version);
+    assert.equal(await context.commonsPage(agent, project.id), null);
+    await context.revoke(owner, agent.id);
+    await assert.rejects(context.commonsPage(agent, project.id), CommonsError);
+  } finally {
+    await context.deleteWorkspace(owner, "DELETE", true);
+    await db.end();
+  }
+});
