@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Pool } from "pg";
-import { Store, CommonsError } from "../src/lib/store";
+import { Store, CommonsError, type WorkspaceLimits } from "../src/lib/store";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-const store = new Store(
+const unrestrictedWorkspace: WorkspaceLimits = {
+  activeProjects: Number.MAX_SAFE_INTEGER,
+  storageBytes: Number.MAX_SAFE_INTEGER,
+};
+const store = Store.withWorkspaceLimitsForTesting(
   pool,
   "workspace-content-test-secret-at-least-32-characters",
+  unrestrictedWorkspace,
 );
 test("rich pages enforce project scope, authorship, version checks, hierarchy and deletion", async () => {
   const owner = (

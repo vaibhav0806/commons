@@ -2,12 +2,22 @@ import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { before, after, test } from "node:test";
 import { Pool } from "pg";
-import { Store, CommonsError } from "../src/lib/store";
+import {
+  Store,
+  CommonsError,
+  freeWorkspaceLimits,
+  type WorkspaceLimits,
+} from "../src/lib/store";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-const store = new Store(
+const unrestrictedWorkspace: WorkspaceLimits = {
+  activeProjects: Number.MAX_SAFE_INTEGER,
+  storageBytes: Number.MAX_SAFE_INTEGER,
+};
+const store = Store.withWorkspaceLimitsForTesting(
   pool,
   "commons-test-secret-with-more-than-32-characters",
+  unrestrictedWorkspace,
 );
 let owner: Awaited<ReturnType<Store["authenticate"]>>;
 let other: typeof owner;
@@ -41,6 +51,42 @@ test("real sessions reject arbitrary credentials and retain owner identity", asy
   await assert.rejects(store.authenticate("invalid"), CommonsError);
   const again = await store.createLocalOwner(owner.email!, "Owner");
   assert.equal(again.actor.id, owner.id);
+});
+test("default workspaces allow one active project", async () => {
+  assert.deepEqual(freeWorkspaceLimits, {
+    activeProjects: 1,
+    storageBytes: 250 * 1024 * 1024,
+  });
+  const freeStore = new Store(
+    pool,
+    "free-plan-test-secret-with-more-than-32-characters",
+  );
+  const freeOwner = (
+    await freeStore.createLocalOwner(
+      `free-${crypto.randomUUID()}@example.test`,
+      "Free owner",
+    )
+  ).actor;
+  try {
+    const attempts = await Promise.allSettled([
+      freeStore.createProject(freeOwner, "Only project", ""),
+      freeStore.createProject(freeOwner, "Second project", ""),
+    ]);
+    assert.equal(
+      attempts.filter((attempt) => attempt.status === "fulfilled").length,
+      1,
+    );
+    assert.equal((await freeStore.listProjects(freeOwner)).length, 1);
+    await assert.rejects(
+      freeStore.createProject(freeOwner, "Another project", ""),
+      (error: unknown) =>
+        error instanceof CommonsError &&
+        error.status === 409 &&
+        error.message === "This workspace can have one active project.",
+    );
+  } finally {
+    await freeStore.deleteWorkspace(freeOwner, "DELETE", true);
+  }
 });
 test("single-project invitation redeems exactly once under concurrent attempts", async () => {
   const invite = await store.issueInvite(owner, project.id);

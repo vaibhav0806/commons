@@ -4,14 +4,19 @@ import { createServer } from "node:http";
 import { Pool } from "pg";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { Store } from "../src/lib/store";
+import { Store, type WorkspaceLimits } from "../src/lib/store";
 import { validOrigin } from "../src/lib/config";
 import { handleMcp, handleEnrollment } from "../src/lib/mcp";
 
 const pool = new Pool({ connectionString: process.env.TEST_DATABASE_URL });
-const store = new Store(
+const unrestrictedWorkspace: WorkspaceLimits = {
+  activeProjects: Number.MAX_SAFE_INTEGER,
+  storageBytes: Number.MAX_SAFE_INTEGER,
+};
+const store = Store.withWorkspaceLimitsForTesting(
   pool,
   "mcp-test-secret-more-than-thirty-two-characters",
+  unrestrictedWorkspace,
 );
 let base: string,
   token: string,
