@@ -14,6 +14,23 @@ export function Icon({
     </svg>
   );
 }
+export function PageIcon({
+  page,
+}: {
+  page: { kind: string; title: string; parentId?: string | null };
+}) {
+  const isCommons =
+    page.kind === "page" &&
+    !page.parentId &&
+    page.title.trim().toLowerCase() === "commons";
+  return (
+    <Icon
+      name={
+        isCommons ? "Commons" : page.kind === "page" ? "FileText" : "Folder"
+      }
+    />
+  );
+}
 export function Brand() {
   return (
     <Link className="brand" href="/" aria-label="Commons">

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { ContextMenu } from "@base-ui/react/context-menu";
 import type { PageTreeItem, Project } from "@/lib/store";
-import { Icon } from "./brand";
+import { Icon, PageIcon } from "./brand";
 import { ActionMenu } from "./ui/action-menu";
 import { InlineName } from "./inline-name";
 import { createSidebarFolder } from "@/app/actions";
@@ -152,7 +152,7 @@ function TreeRow({
             onClick={() => onToggle(id, !expanded)}
             disabled={!children.length && !creating}
           >
-            <Icon name={item?.kind === "page" ? "FileText" : "Folder"} />
+            {item ? <PageIcon page={item} /> : <Icon name="Folder" />}
             {(!!children.length || creating) && (
               <svg
                 className="tree-chevron"
