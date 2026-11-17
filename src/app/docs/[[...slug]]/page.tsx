@@ -22,8 +22,8 @@ export default async function Documentation(props: Props) {
   return (
     <DocsPage toc={page.toc}>
       <DocsTitle>{page.title}</DocsTitle>
-      <DocsDescription>{page.description}</DocsDescription>
-      <DocsBody>{page.body}</DocsBody>
+      <DocsDescription className="mb-2">{page.description}</DocsDescription>
+      <DocsBody className="flex-none">{page.body}</DocsBody>
     </DocsPage>
   );
 }
