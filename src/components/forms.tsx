@@ -3,6 +3,7 @@
 import {
   useActionState,
   useEffect,
+  useId,
   useRef,
   useState,
   type ReactNode,
@@ -59,9 +60,13 @@ export function Notice({
   state: ActionState;
 }) {
   const feedback = useFeedback();
+  const feedbackId = useId();
   useEffect(() => {
-    if (placement === "toast" && state.error) feedback.error(state.error);
-  }, [feedback, placement, state]);
+    if (placement === "toast" && state.error)
+      feedback.error(state.error, { id: feedbackId });
+    else feedback.dismiss(feedbackId);
+    return () => feedback.dismiss(feedbackId);
+  }, [feedback, feedbackId, placement, state]);
 
   return (
     <>
