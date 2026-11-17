@@ -38,5 +38,3 @@
 .commons-docs .prose code { font-family: var(--font-code); }
 .commons-docs .theme-toggle { padding: 8px 12px; font-size: 13px; }
 
-/* Scoped documentation theme. */
-.commons-docs [data-layout-main] { justify-items: start !important; }
