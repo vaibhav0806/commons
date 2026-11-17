@@ -2534,26 +2534,6 @@ input.join-code {
   height: auto;
   min-height: 320px;
 }
-.docs-header,
-.docs-nav {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-}
-.docs-header { justify-content: space-between; }
-.docs-nav { margin-block: var(--space-5); }
-.docs-page section { scroll-margin-top: var(--space-5); }
-.docs-page li { margin-block: var(--space-2); }
-.docs-page pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-surface);
-  background: var(--surface);
-  font: 400 14px/1.6 var(--font-code);
-}
 .privacy-page {
   max-width: 760px;
   margin: 0 auto;
