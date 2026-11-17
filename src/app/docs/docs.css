@@ -26,7 +26,7 @@
   --font-sans: var(--font-body);
   --font-mono: var(--font-code);
 }
-.commons-docs { min-height: 100dvh; line-height: 1.6; }
+.commons-docs { --fd-layout-width: 100vw; min-height: 100dvh; line-height: 1.6; }
 .commons-docs *, :root:has(.commons-docs) [data-base-ui-portal] * { border-color: var(--line); }
 .commons-docs h1 { font-family: var(--font-body); letter-spacing: -0.035em; }
 .commons-docs .prose { color: var(--text); font-size: 15px; }
@@ -39,3 +39,4 @@
 .commons-docs .theme-toggle { padding: 8px 12px; font-size: 13px; }
 
 /* Scoped documentation theme. */
+.commons-docs [data-layout-main] { justify-items: start !important; }

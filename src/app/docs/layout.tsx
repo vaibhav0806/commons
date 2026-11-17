@@ -9,12 +9,12 @@ export default function DocumentationLayout({ children }: { children: React.Reac
     <div className="commons-docs" id="main">
       <RootProvider theme={{ enabled: false }} search={{ enabled: false }}>
         <DocsLayout
-          nav={{ title: "commons / docs", url: "/docs" }}
+          nav={{ title: "commons / docs", url: "/" }}
           tree={{ name: "Documentation", children: docsPages.map((page) => ({ type: "page", name: page.title, url: page.url })) }}
           themeSwitch={{ enabled: false }}
           searchToggle={{ enabled: false }}
           sidebar={{ footer: <ThemeToggle /> }}
-          links={[{ text: "Open Commons", url: "/start" }]}
+          links={[{ text: "Back to home", url: "/" }, { text: "Workspace", url: "/start" }]}
         >
           {children}
         </DocsLayout>
