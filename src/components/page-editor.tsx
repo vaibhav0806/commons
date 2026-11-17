@@ -13,6 +13,7 @@ import { DocumentEditor, type DocumentEditorHandle } from "./document-editor";
 import { usePageAutosave } from "./use-page-autosave";
 import { SelectField } from "./ui/select-field";
 import { FileUpload } from "./file-upload";
+import { useFeedback } from "./feedback";
 
 export function PageEditor({
   page,
@@ -35,7 +36,7 @@ export function PageEditor({
 }) {
   const [body, setBody] = useState(page?.body || "");
   const [source, setSource] = useState(false);
-  const [error, setError] = useState("");
+  const feedback = useFeedback();
   const [filePicker, setFilePicker] = useState(false);
   const [location, setLocation] = useState(false);
   const [ready, setReady] = useState(false);
@@ -99,19 +100,25 @@ export function PageEditor({
     const flush = (event: Event) => {
       if (uploading) {
         event.preventDefault();
-        setError("Wait for the image to finish uploading.");
+        feedback.error("Wait for the image to finish uploading.", {
+          id: "page-editor-submit",
+          title: "Finish uploading first",
+        });
         return;
       }
       const value = source ? body : (editor.current?.markdown() ?? body);
       if (value.length > 100000) {
         event.preventDefault();
-        setError("Pages support up to 100,000 characters.");
+        feedback.error("Pages support up to 100,000 characters.", {
+          id: "page-editor-submit",
+          title: "Page is too long",
+        });
       }
       if (hidden.current) hidden.current.value = JSON.stringify(value);
     };
     form?.addEventListener("submit", flush, true);
     return () => form?.removeEventListener("submit", flush, true);
-  }, [body, source, uploading]);
+  }, [body, feedback, source, uploading]);
   function insert(value: string) {
     if (source) setBody(body + value);
     else editor.current?.insert(value);
@@ -327,7 +334,10 @@ export function PageEditor({
           const file = event.target.files?.[0];
           if (!file) return;
           if (file.size > 400000) {
-            setError("Import a Markdown file smaller than 400 KB.");
+            feedback.error("Import a Markdown file smaller than 400 KB.", {
+              id: "page-import",
+              title: "Couldn’t import Markdown",
+            });
             return;
           }
           try {
@@ -336,10 +346,10 @@ export function PageEditor({
               throw new Error("Pages support up to 100,000 characters.");
             setBody(text);
             editor.current?.replace(text);
-            setError("");
           } catch (e) {
-            setError(
+            feedback.error(
               e instanceof Error ? e.message : "The file could not be read.",
+              { id: "page-import", title: "Couldn’t import Markdown" },
             );
           }
           event.target.value = "";
@@ -351,7 +361,14 @@ export function PageEditor({
           projectId={projectId}
           ref={editor}
           onChange={setBody}
-          onError={setError}
+          onError={(message) => {
+            if (message) {
+              feedback.error(message, {
+                id: "page-image",
+                title: "Couldn’t add image",
+              });
+            }
+          }}
           onReady={setReady}
           onUploading={setUploading}
         />
@@ -404,11 +421,6 @@ export function PageEditor({
       {uploading && (
         <p className="meta" role="status">
           Uploading image…
-        </p>
-      )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
         </p>
       )}
     </div>

@@ -20,6 +20,13 @@ Earlier study details remain in `docs/DESIGN_SYSTEM_V2.md` for history, not impl
 
 Sidebar creation asks only for a project name. Enter commits; Escape returns focus to the heading plus; an outside pointer click/tap cancels without stealing the clicked control’s focus. There are no persistent hints or save/cancel buttons. Pending input is read-only; real errors preserve the draft. IME composition must not submit or cancel the draft. Mobile uses the keyboard’s Done action.
 
+### Feedback hierarchy
+
+- Keep field-level validation beside the affected control, tied with `aria-describedby`, and preserve focus and entered input.
+- Surface transient server or operation failures in the shared notification viewport: concise title, useful reason, keyboard-dismissible, and never as a browser alert.
+- Keep persistent failures with a recovery action in context until resolved: autosave retry/conflict/download, upload retry, and similar work-in-progress states. Errors from destructive confirmations stay inside their dialog.
+- Keep route-level failures as a page state with a clear recovery action.
+
 Each tree row has one ellipsis and a matching right-click menu. Selected and hovered rows use neutral mist, with no separate button fill inside the row. Project/content titles retain ink color on hover. Menus use 32px desktop/44px touch rows; selects share the flat surface and restrained shadow. Only actual nonzero counts and existing brief snippets appear on home. Workspace name lives in the sidebar; header breadcrumbs show project/page context. Unread navigation is retired; old URLs redirect, while stored read state and scoped API/MCP retrieval remain intact.
 
 Create choices are Page, Folder and Upload/import. Page creation/editing and folder items open in the main workspace area, not a side sheet. New pages start with a title and body, with parent/status supplied from context. Folders expose List/Board/Table views. Existing collection records remain compatible and retain their data, but are presented as folders; there is no separate collection or note creation choice in the tree. Discussion uses contextual panels. Consequential actions use compact centered confirmation dialogs with a blurred backdrop.

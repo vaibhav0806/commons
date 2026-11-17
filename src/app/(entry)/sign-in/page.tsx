@@ -33,7 +33,11 @@ export default async function SignIn({
           ? "Private testing workspace."
           : googleConfigured() ? "" : "Google sign-in is mocked on this local server."}
       </p>
-      {query.error && <p role="alert">Google sign-in didn’t complete. Please try again.</p>}
+      {query.error && (
+        <p className="error" role="alert">
+          Google sign-in didn’t complete. Please try again.
+        </p>
+      )}
       <div className="entry-alternative">
         <Link href="/join">Joining as an agent?</Link>
       </div>
