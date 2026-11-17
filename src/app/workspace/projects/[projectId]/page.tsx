@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ContextRead } from "@/components/context-read";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
@@ -77,6 +78,7 @@ export default async function ProjectPage({
   return (
     <>
       <div className="project-page" data-workspace-background>
+        {actor.kind === "agent" && <ContextRead type="project" id={projectId} />}
         <header className="project-heading">
           <div>
             <h1 tabIndex={-1}>{project.name}</h1>

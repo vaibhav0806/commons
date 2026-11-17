@@ -8,6 +8,23 @@ const config: NextConfig = {
   turbopack: { root: process.cwd() },
   async headers() {
     return [
+      ...[
+        "workspace",
+        "api",
+        "mcp",
+        "auth",
+        "join",
+        "return",
+        "connect",
+        "setup",
+        "start",
+        "sign-in",
+      ].map((path) => ({
+        source: `/${path}/:path*`,
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      })),
       {
         source: "/:path*",
         headers: [

@@ -275,6 +275,10 @@ export class Store {
           "INSERT INTO participants(id,workspace_id,kind,name,email,created_at,last_seen) VALUES($1,$2,'owner',$3,$4,$5,$5)",
           [id, workspaceId, name, email, now],
         );
+        await tx.connection.query(
+          "INSERT INTO workspace_activation(workspace_id,workspace_created_at) VALUES($1,$2)",
+          [workspaceId, now],
+        );
         actor = await tx.active(id);
       }
       return { token: await tx.session(actor.id, "Browser", 30), actor };
@@ -355,6 +359,10 @@ export class Store {
         await tx.connection.query(
           "INSERT INTO participants(id,workspace_id,kind,name,email,created_at,last_seen) VALUES($1,$2,'owner',$3,$4,$5,$5)",
           [id, workspaceId, name, email, now],
+        );
+        await tx.connection.query(
+          "INSERT INTO workspace_activation(workspace_id,workspace_created_at) VALUES($1,$2)",
+          [workspaceId, now],
         );
         actor = await tx.active(id);
       }
@@ -565,6 +573,15 @@ export class Store {
       await tx.connection.query(
         "INSERT INTO participants(id,workspace_id,project_id,kind,name,created_at,last_seen,agent_identity) VALUES($1,$2,$3,'agent',$4,$5,$5,$6)",
         [agentId, invite.workspaceId, invite.projectId, agentName, now, identity],
+      );
+      await tx.connection.query(
+        `UPDATE workspace_activation SET
+          first_agent_id=CASE WHEN first_agent_connected_at IS NULL THEN $2 ELSE first_agent_id END,
+          first_agent_connected_at=COALESCE(first_agent_connected_at,$3),
+          second_agent_id=CASE WHEN first_agent_connected_at IS NOT NULL AND second_agent_connected_at IS NULL THEN $2 ELSE second_agent_id END,
+          second_agent_connected_at=CASE WHEN first_agent_connected_at IS NOT NULL THEN COALESCE(second_agent_connected_at,GREATEST($3,first_agent_connected_at)) ELSE NULL END
+        WHERE workspace_id=$1`,
+        [invite.workspaceId, agentId, now],
       );
       const actor = await tx.active(agentId);
       if (invite.projectId)
@@ -986,6 +1003,10 @@ export class Store {
           this.clock(),
         ]);
         await tx.connection.query(
+          "INSERT INTO workspace_activation(workspace_id,workspace_created_at) VALUES($1,$2)",
+          [next, this.clock()],
+        );
+        await tx.connection.query(
           "UPDATE participants SET workspace_id=$1 WHERE id=$2",
           [next, current.id],
         );
@@ -1218,6 +1239,29 @@ export class Store {
       pages: pages.slice(0, 50),
       nextOffset: pages.length > 50 ? offset + 50 : null,
     };
+  }
+  async recordContextRead(actor: Principal, resource: { type: "page" | "note" | "project" | "file"; id: string }) {
+    const current = await this.active(actor.id);
+    if (current.kind !== "agent") return;
+    let hasContext = false;
+    if (resource.type === "project") {
+      const project = await this.getProject(current, resource.id);
+      hasContext = !!project.brief.trim();
+    } else if (resource.type === "file") {
+      const file = await this.getFile(current, resource.id);
+      hasContext = file.authorId !== current.id && file.size > 0;
+    } else {
+      const content = resource.type === "page"
+        ? await this.getPage(current, resource.id)
+        : await this.getNote(current, resource.id);
+      hasContext = content.authorId !== current.id && !!content.body.trim();
+    }
+    if (!hasContext) return;
+    await this.connection.query(
+      `UPDATE workspace_activation SET second_agent_context_read_at=$3
+       WHERE workspace_id=$1 AND second_agent_id=$2 AND second_agent_context_read_at IS NULL`,
+      [current.workspaceId, current.id, this.clock()],
+    );
   }
   async getPage(actor: Principal, pageId: string) {
     const page = await this.one<WorkspacePage>(`${pageSelect} WHERE d.id=$1`, [

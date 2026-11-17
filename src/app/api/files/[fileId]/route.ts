@@ -16,6 +16,7 @@ export async function GET(
       bytes = await readFileObject(file.objectKey);
     // Recheck after storage I/O so a revoked session or deleted record is not served.
     await store.getFile(actor, fileId);
+    await store.recordContextRead(actor, { type: "file", id: fileId });
     const preview =
       new URL(request.url).searchParams.get("preview") === "1" &&
       ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(

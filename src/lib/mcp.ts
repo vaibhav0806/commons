@@ -161,7 +161,13 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       inputSchema: project,
       annotations,
     },
-    async ({ projectId }) => result(async () => ({ ...(await store.getProject(actor, projectId)), commonsPage: await store.commonsPage(actor, projectId) })),
+    async ({ projectId }) => result(async () => {
+      const project = await store.getProject(actor, projectId);
+      const commonsPage = await store.commonsPage(actor, projectId);
+      await store.recordContextRead(actor, { type: "project", id: projectId });
+      if (commonsPage?.id) await store.recordContextRead(actor, { type: "page", id: commonsPage.id });
+      return { ...project, commonsPage };
+    }),
   );
   server.registerTool(
     "list_participants",
@@ -175,7 +181,7 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       result(() => store.listParticipants(actor, projectId)),
   );
   server.registerTool("list_files", { description: "List private project files and their authenticated download paths. Follow nextOffset for more.", inputSchema: { ...project, query: z.string().max(200).optional(), offset: z.number().int().nonnegative().optional() }, annotations }, async ({ projectId, ...options }) => result(async () => { const found = await store.listFiles(actor, projectId, options); return { ...found, files: found.files.map((file) => ({ id: file.id, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName, downloadPath: `/api/files/${file.id}` })) }; }));
-  server.registerTool("read_file", { description: "Read file metadata. Set includeContent for base64 content up to 1 MB; download larger files over the authenticated path using the same Bearer credential.", inputSchema: { fileId: id, includeContent: z.boolean().optional() }, annotations }, async ({ fileId, includeContent }) => result(async () => { const file = await store.getFile(actor, fileId); let content; if (includeContent) { if (file.size > 1048576) throw new CommonsError("Download files larger than 1 MB over the authenticated HTTP file path.", 413); content = Buffer.from(await readFileObject(file.objectKey)).toString("base64"); await store.getFile(actor, fileId); } const metadata = { id: file.id, projectId: file.projectId, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName, checksum: file.checksum }; return { ...metadata, downloadPath: `/api/files/${fileId}`, ...(content !== undefined ? { contentBase64: content } : {}) }; }));
+  server.registerTool("read_file", { description: "Read file metadata. Set includeContent for base64 content up to 1 MB; download larger files over the authenticated path using the same Bearer credential.", inputSchema: { fileId: id, includeContent: z.boolean().optional() }, annotations }, async ({ fileId, includeContent }) => result(async () => { const file = await store.getFile(actor, fileId); let content; if (includeContent) { if (file.size > 1048576) throw new CommonsError("Download files larger than 1 MB over the authenticated HTTP file path.", 413); content = Buffer.from(await readFileObject(file.objectKey)).toString("base64"); await store.getFile(actor, fileId); await store.recordContextRead(actor, { type: "file", id: fileId }); } const metadata = { id: file.id, projectId: file.projectId, name: file.name, size: file.size, mimeType: file.mimeType, authorName: file.authorName, checksum: file.checksum }; return { ...metadata, downloadPath: `/api/files/${fileId}`, ...(content !== undefined ? { contentBase64: content } : {}) }; }));
   server.registerTool("upload_file", { description: "Upload private bytes (base64, up to 1 MB) to a project. For files up to 16 MB use multipart POST /api/projects/:projectId/files with the same Bearer credential.", inputSchema: { ...project, name: z.string().min(1).max(240), contentBase64: z.string().max(1400000).regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/) }, annotations: { readOnlyHint: false, destructiveHint: false } }, async ({ projectId, name, contentBase64 }) => result(async () => { const bytes = Buffer.from(contentBase64, "base64"); if (bytes.length > 1048576) throw new CommonsError("MCP uploads support up to 1 MB. Use the HTTP upload path for larger files.", 413); const file = await uploadFile(store, actor, projectId, name, bytes); return { id: file.id, name: file.name, size: file.size, downloadPath: `/api/files/${file.id}` }; }));
   server.registerTool("delete_file", { description: "Delete your uploaded file (owners can delete any). Access ends immediately; R2 cleanup is retried durably.", inputSchema: { fileId: id }, annotations: { readOnlyHint: false, destructiveHint: true } }, async ({ fileId }) => result(() => store.deleteFile(actor, fileId)));
   server.registerTool(
@@ -202,7 +208,11 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       inputSchema: { pageId: id },
       annotations,
     },
-    async ({ pageId }) => result(() => store.getPage(actor, pageId)),
+    async ({ pageId }) => result(async () => {
+      const page = await store.getPage(actor, pageId);
+      await store.recordContextRead(actor, { type: "page", id: pageId });
+      return page;
+    }),
   );
   server.registerTool("list_page_comments", { description: "Read a page discussion. Follow nextOffset for more.", inputSchema: { pageId: id, offset: z.number().int().nonnegative().optional() }, annotations }, async ({ pageId, offset }) => result(() => store.listComments(actor, pageId, offset)));
   server.registerTool("create_page_comment", { description: "Add an attributed comment to a page in your scope. Reuse clientKey on retry.", inputSchema: { pageId: id, body: z.string().min(1).max(10000), clientKey: id }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true } }, async ({ pageId, body, clientKey }) => result(() => store.createComment(actor, pageId, body, clientKey)));
@@ -277,7 +287,11 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
       inputSchema: { noteId: id },
       annotations,
     },
-    async ({ noteId }) => result(() => store.getNote(actor, noteId)),
+    async ({ noteId }) => result(async () => {
+      const note = await store.getNote(actor, noteId);
+      await store.recordContextRead(actor, { type: "note", id: noteId });
+      return note;
+    }),
   );
   server.registerTool(
     "publish_note",
@@ -384,6 +398,12 @@ export async function handleMcp(request: Request, store: Store = getStore()) {
           store.listPages(actor, projectId),
           store.listFiles(actor, projectId),
         ]);
+        const sharedPage = pages.pages.find((page) => page.authorId !== actor.id && page.body.trim());
+        const sharedNote = notes.notes.find((note) => note.authorId !== actor.id && note.body.trim());
+        if (brief.brief.trim()) await store.recordContextRead(actor, { type: "project", id: projectId });
+        else if (sharedPage) await store.recordContextRead(actor, { type: "page", id: sharedPage.id });
+        else if (sharedNote) await store.recordContextRead(actor, { type: "note", id: sharedNote.id });
+        else if (commonsPage?.id) await store.recordContextRead(actor, { type: "page", id: commonsPage.id });
         return {
           commonsPage,
           project: brief,

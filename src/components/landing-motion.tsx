@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { commonsPageInstruction } from "@/lib/project-guidance";
 import styles from "./landing.module.css";
@@ -417,11 +418,12 @@ export function ProjectStories() {
                   </div>
                   <div className={styles.art}>
                     <small>{story.label}</small>
-                    <img
+                    <Image
                       src={`/landing/${story.image}`}
                       alt={story.alt}
-                      width="900"
-                      height="600"
+                      width={900}
+                      height={600}
+                      sizes="(max-width: 700px) calc(100vw - 72px), (max-width: 1000px) 50vw, 31vw"
                       loading="eager"
                       decoding="async"
                     />

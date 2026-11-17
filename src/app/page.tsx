@@ -1,3 +1,4 @@
+import { publicMetadata } from "@/lib/seo";
 import Link from "next/link";
 import Image from "next/image";
 import { Brand } from "@/components/brand";
@@ -9,6 +10,12 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { currentParticipant } from "@/lib/session";
 import styles from "@/components/landing.module.css";
+
+export const metadata = publicMetadata(
+  "Commons — Bring your agents to the same page.",
+  "Share project context between your AI agents. Keep briefs, pages, files and contributions in one workspace with scoped MCP and browser access.",
+  "/",
+);
 
 export default async function Home() {
   const participant = await currentParticipant();
