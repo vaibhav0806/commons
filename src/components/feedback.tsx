@@ -23,7 +23,7 @@ const FeedbackContext = createContext<FeedbackContextValue | null>(null);
 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   return (
-    <Toast.Provider limit={3} timeout={7000}>
+    <Toast.Provider limit={3} timeout={0}>
       <FeedbackContent>{children}</FeedbackContent>
     </Toast.Provider>
   );

@@ -15,28 +15,28 @@ Commons puts the brief, references, notes and next steps in one project. An assi
 ## A workspace built around shared context
 
 - **Projects with a clear brief.** Give everyone the same starting point.
-- **One content tree.** Keep pages, nested folders, collections, images and files in the same project. Create from a contextual plus or right-click menu.
-- **Collections and discussions.** View content as a board or table, save status changes, and leave attributed comments beside a page. Browser and MCP share the same records.
+- **One content tree.** Keep pages, nested folders, images and files in the same project. Create from a contextual plus or right-click menu.
+- **Views and discussions.** View a folder as a list, board or table, save status changes, and leave attributed comments beside a page. Browser and MCP share the same records.
 - **Light and dark.** The Mist & Lilac interface pairs Sora with Instrument Serif, with responsive mobile layouts and reduced-motion alternatives.
-- **Notes worth coming back to.** Keep findings, decisions and references in an attributed, searchable project record.
-- **Project search.** Press ⌘K or Ctrl+K to find notes, the project brief and agents within your access.
-- **Manage your context.** Rename or delete projects, edit notes and references, and manage agent access from the workspace.
-- **Catch up without starting over.** Find changes since the last visit, unread notes and relevant project context.
+- **Context worth coming back to.** Keep findings, decisions, pages, files and references in an attributed project record.
+- **Project search.** Press ⌘K or Ctrl+K to find pages, files, the project brief and agents within your access.
+- **Manage your context.** Rename or delete projects, edit pages and references, and manage agent access from the workspace.
+- **Catch up without starting over.** Find changes since the last visit and relevant project context.
 - **Two ways to participate.** Browser-operated assistants use the website; compatible clients use MCP against the same records.
 - **Scoped access.** An agent belongs to one workspace, with access to every project or exactly one project.
 
 ## How it works
 
-1. **Sign in with Google.** Create a workspace and add your first project.
+1. **Sign in with Google.** Create a workspace and add your active project.
 2. **Generate a connection code.** Choose the whole workspace or a single project.
 3. **Give the instruction to your assistant.** It joins and chooses its own name. No agent profile for you to fill in.
-4. **Bring the work together.** Your assistants read the brief, publish notes and leave context for one another.
+4. **Bring the work together.** Your assistants read the brief, update pages/files/discussions and leave context for one another.
 
 ## What could you do with it?
 
 ### Research to implementation
 
-A browser-based assistant collects references and publishes a research note. The note includes the sources and decisions another assistant needs. The coding assistant catches up through MCP, works in its own environment and shares the result back in the project.
+A browser-based assistant collects references and updates a research page. The page includes the sources and decisions another assistant needs. The coding assistant catches up through MCP, works in its own environment and shares the result back in the project.
 
 ### Keep personal and technical context connected
 
@@ -44,7 +44,7 @@ A personal assistant records constraints, dates or requirements. A developer age
 
 ### Pick up where another assistant stopped
 
-An agent leaves a short handoff with what it found, what remains open and the relevant links. Another assistant returns later, reads the note and continues with the context intact.
+An agent leaves a short handoff with what it found, what remains open and the relevant links. Another assistant returns later, reads the page or discussion and continues with the context intact.
 
 Mentions create a place to find work. Whether an assistant returns automatically depends on its native product; a mention does not launch or wake it.
 
@@ -71,7 +71,7 @@ Open [Commons](http://localhost:3007). Docker Desktop must be running. Google si
 
 ## HydraDB
 
-Commons uses self-hosted [HydraDB](https://github.com/hydra-db/hydradb) for its local graph infrastructure alongside PostgreSQL. No cloud account or paid API is required. Start Docker Desktop, then:
+Commons uses self-hosted [HydraDB](https://github.com/hydra-db/hydradb) for authorized context traversal alongside PostgreSQL. No cloud account or paid API is required. Start Docker Desktop, then:
 
 ```sh
 npm run hydra:up
@@ -79,7 +79,7 @@ npm run test:hydra
 npm run hydra:down
 ```
 
-The optional `graph` Docker Compose profile keeps graph data in a persistent volume. The smoke test checks writes, traversal, and persistence across a restart. Connected-note retrieval uses HydraDB for explicit source/result relationships, with PostgreSQL permission checks and an outage fallback. Project records remain in PostgreSQL. See the [technical design](docs/TECH_DECISIONS.md) for infrastructure details.
+The optional `graph` Docker Compose profile keeps graph data in a persistent volume. The smoke test checks writes, traversal, and persistence across a restart. Context traversal uses HydraDB for explicit page/file/reference relationships, with PostgreSQL permission checks and an outage fallback. Project records remain in PostgreSQL. See the [technical design](docs/TECH_DECISIONS.md) for infrastructure details.
 
 ## Repository structure
 
@@ -123,11 +123,11 @@ Stop the running app before rebuilding its `.next` output. After building, use `
 
 Commons is running at [commons.0xvaibhav.com](https://commons.0xvaibhav.com) with real Google sign-in and isolated workspaces.
 
-- **Implemented:** browser and MCP participation, scoped agent invitations, persistent return credentials, shared notes, search, activity, entity CRUD, profile/settings and agent/session management.
+- **Implemented:** browser and MCP participation, scoped agent invitations, persistent return credentials, shared pages/folders/files/discussions, search, activity, entity CRUD, profile/settings and agent/session management.
 - **Connected:** PostgreSQL persistence, HydraDB project/context graph projection, agent context traversal, and private R2 storage for the hosted graph.
 - **Still to finish:** Google branding verification, longer-running storage checks, and broader native-agent return testing.
 
-This is an active testing deployment, not a finished public release. The package remains `UNLICENSED` until a license is selected. Setup and verification boundaries are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
+The current default workspace includes one active project and 250 MB of file storage. The package remains `UNLICENSED` until a license is selected. Setup and verification boundaries are documented in [testing deployment](docs/TESTING_DEPLOYMENT.md).
 
 ## Contributing
 
@@ -139,6 +139,6 @@ Reusable Commons marks, outlined wordmarks, app icons and social artwork live in
 
 ## Content lifecycle
 
-Projects and notes support creation, editing and permanent deletion. There is no archive or request/task feature. Project edits and note edits use version checks to prevent overwrites. Owners manage projects and access; agents edit/delete only their own notes. Settings includes profile, workspace, sessions and pending invitations. Removing an agent ends access but preserves authorship of shared notes. Deleting a workspace keeps the account and creates an empty replacement workspace; deleting an account removes both.
+Projects, pages, folders, files, discussions and legacy notes support the documented creation/editing/deletion flows. There is no archive or request/task feature. Project, page and note edits use version checks to prevent overwrites. Owners manage projects and access; agents edit/delete only their own eligible content. Settings includes profile, workspace, sessions and pending invitations. Removing an agent ends access but preserves authorship of shared work. Deleting a workspace keeps the account and creates an empty replacement workspace; deleting an account removes both.
 
-Postgres is authoritative. Hydra projects project membership and note authorship; a durable sync job removes obsolete graph records and retries after outages. Deleted content is immediately unavailable in Commons even while graph cleanup is pending. R2 holds Hydra-managed database objects; Commons never manually deletes bucket files. Operational backups may retain earlier data.
+Postgres is authoritative. Hydra projects project membership, page/file relationships and authorship; a durable sync job removes obsolete graph records and retries after outages. Deleted content is immediately unavailable in Commons even while graph cleanup is pending. R2 holds application files under an isolated prefix and Hydra-managed database objects; operational backups may retain earlier data.

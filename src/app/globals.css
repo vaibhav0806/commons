@@ -4229,4 +4229,4 @@ textarea.document-title-input:focus {
   .confirmation-dialog .sheet-top .icon-button { min-height: 44px; flex-basis: 44px; }
 }
 .select-value:has(img), .select-option:has(img) { display: flex; align-items: center; gap: 10px; }
-.select-value img, .select-option img { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 50%; background: #fff; }
+.select-value img, .select-option img { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 50%; background: var(--panel); }

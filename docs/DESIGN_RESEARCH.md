@@ -1,5 +1,7 @@
 # Commons UI research · November 13, 2026
 
+> **Archived research.** This preserves alternatives considered before the live Mist & Lilac system. It may describe retired requests, collections, a visual Explorer, or old prototype behavior. Use [`../DESIGN.md`](../DESIGN.md) and [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) for current work.
+
 This research informs the [dark design study](../design/v2/index.html), not an approved production UI or a library migration. Public pages and their embedded product previews were inspected at desktop size. No signed-in product experience was evaluated.
 
 ## What to take from the references

@@ -6,13 +6,13 @@ Status: local and hosted product implementation · 2026-11-14. Product authority
 
 One Next.js 16 App Router application with React, strict TypeScript and npm. Node 24 LTS is recorded in `.nvmrc`. Server Components read data; Server Actions mutate it. Dynamic route parameters, search parameters, cookies and headers use the installed framework’s asynchronous APIs.
 
-The approved Graphite + Reflective system is implemented in `src/app/globals.css`, importing the shared foundation in `design/commons.system.css`. Components are ordinary semantic HTML and React. The design studies are outside the application runtime. The reviewed illustrative landing workflow keeps its own timeline; it is not a live activity display.
+The approved Mist & Lilac system is implemented in `src/app/globals.css`, importing the shared foundation in `design/commons.system.css`. Components are ordinary semantic HTML and React. `DESIGN.md` and `DESIGN_SYSTEM.md` are the current design authorities; the design studies are outside the application runtime. The reviewed illustrative landing workflow keeps its own timeline; it is not a live activity display.
 
 ## Database
 
 PostgreSQL 17 runs in Docker Compose on a loopback-bound port with a persistent named volume. node-postgres supplies a shared connection pool. Explicit, versioned SQL migrations replace the proposed ORM for this implementation, making transactions, constraints and queries visible. There is no SQLite compatibility backend.
 
-`src/lib/store.ts` is the authorization/domain boundary for both browser and MCP. It rechecks the participant’s active registration, derives workspace access from that registration and authorizes resource reads/writes. Compound foreign keys prevent cross-workspace/project references. Parameterized queries, bounded input, pagination, per-note reads and scoped durable activity support ordinary retrieval without embeddings, queues or a search service.
+`src/lib/store.ts` is the authorization/domain boundary for both browser and MCP. It rechecks the participant’s active registration, derives workspace access from that registration and authorizes resource reads/writes. Compound foreign keys prevent cross-workspace/project references. Parameterized queries, bounded input, pagination, scoped page/file/note reads and durable activity support ordinary retrieval without embeddings, queues or a search service.
 
 ## Human identity
 
@@ -32,13 +32,13 @@ The installed official SDK (`@modelcontextprotocol/sdk` 1.32.2) serves stateless
 
 Static bearer configuration is the implemented path. Clients must retain and send the credential themselves. No OAuth discovery, refresh flow, auto-configuration or universal host interoperability is claimed. The official SDK client’s enrollment, read/write, reconnect and revocation are tested over actual HTTP.
 
-MCP tools expose identity, project context, eligible participants, notes (including edits/deletes), per-note read state and cursor-based catch-up. Contributions are shared context for a later visit. Commons never wakes, schedules or executes another agent.
+MCP tools expose identity, project context, eligible participants, pages/folders, page discussions, private files, legacy notes, explicit related context, per-note read state and cursor-based catch-up. Contributions are shared context for a later visit. Commons never wakes, schedules or executes another agent.
 
 ## Contributions and state
 
-Notes are titled, attributed text with safe external references and stable links. The owner can manage all notes; agents can edit/delete only their own. Project names and briefs are owner-managed. Version checks reject stale project/note edits and note deletes rather than silently overwriting changes. Edited notes become unread again. Requests, recipients, acknowledgement and completion were removed in migration 005.
+Pages and notes are attributed content with safe external references and stable links. The owner can manage all eligible content; agents can edit/delete only their own. Project names and briefs are owner-managed. Version checks reject stale project/page/note edits and deletes rather than silently overwriting changes. Edited notes become unread again. Requests, recipients, acknowledgement and completion were removed in migration 005.
 
-Owners manage agent names/scopes, revoke access or remove registrations. Removal retains the attribution row but hides it from agent lists. Project deletion invalidates scoped agent sessions and invitations and removes its notes/activity. Settings manages display names, workspace names, pending invitations and per-connection revocation. Deleting a workspace creates an empty replacement while retaining the owner account; deleting an account also removes its Google identity and sessions. Backups have a separate operational retention lifecycle.
+Owners manage agent names/scopes, revoke access or remove registrations. Removal retains the attribution row but hides it from agent lists. Project deletion invalidates scoped agent sessions and invitations and removes contained content/activity. Settings manages display names, workspace names, pending invitations and per-connection revocation. Deleting a workspace creates an empty replacement while retaining the owner account; deleting an account also removes its Google identity and sessions. Backups have a separate operational retention lifecycle.
 
 ## Verification and boundaries
 
@@ -58,7 +58,7 @@ Runtime verification found that default HTTP query IDs can collide with persiste
 
 The owner authorized a Hetzner testing deployment at commons.0xvaibhav.com. External Google sign-in is live and replaces the temporary testing-owner key entrance. The loopback-only mock remains disabled on the server. Hydra runs on Hetzner with private Cloudflare R2 Standard object storage; Postgres remains on Hetzner. See TESTING_DEPLOYMENT.md for configuration and verification.
 
-HydraDB projects project membership and note authorship. Postgres remains authoritative for content and authorization. The durable graph_sync queue and graph_entities mappings survive project deletion until cleanup succeeds. The worker locks per project, captures a versioned snapshot, deletes the graph IDs owned by that project with batched DETACH DELETE, then rebuilds its current edges. Retry after a partial failure is safe. A concurrent change increments the revision and schedules another pass. Stale edges are withheld from the explorer while a revision is pending. Old request relationships are removed on the next sync after migration 005. R2 stores Hydra-managed database objects; application deletion must use graph mutations, never direct bucket-object deletion. Physical storage reclamation follows Hydra compaction/garbage collection, not immediate per-note object removal.
+HydraDB projects project membership, authorship, page hierarchy and explicit references. Postgres remains authoritative for content and authorization. The durable graph_sync queue and graph_entities mappings survive project deletion until cleanup succeeds. The worker locks per project, captures a versioned snapshot, deletes the graph IDs owned by that project with batched DETACH DELETE, then rebuilds its current edges. Retry after a partial failure is safe. A concurrent change increments the revision and schedules another pass. Pending graph revisions are withheld from scoped context traversal. Old request relationships are removed on the next sync after migration 005. R2 stores Hydra-managed database objects; application deletion must use graph mutations, never direct bucket-object deletion. Physical storage reclamation follows Hydra compaction/garbage collection, not immediate per-note object removal.
 
 ## Paper content workspace — 2026-11-14
 
@@ -72,7 +72,7 @@ Hydra projects pages/files, authors, page parents and explicit in-project file/p
 
 ## Unified workspace and Mist & Lilac — 2026-11-16
 
-Migration 009 adds `pages.kind` (`page`, `folder`, `collection`), `pages.status` (`Idea`, `Drafting`, `Ready`) and `page_comments`. The existing hierarchy, author/owner permissions, project locking and optimistic versions apply to all content kinds. Omitted kind/status fields preserve existing values on edits from older clients. Board and table are views of collection children, not agent execution queues. The metadata-only sidebar tree includes all project pages; content and discussion bodies remain paginated.
+Migration 009 adds `pages.kind` (`page`, `folder`, `collection`), `pages.status` (`Idea`, `Drafting`, `Ready`) and `page_comments`. The existing hierarchy, author/owner permissions, project locking and optimistic versions apply to all content kinds. Omitted kind/status fields preserve existing values on edits from older clients. Collections are legacy-compatible folder records; board and table are views of folder contents, not agent execution queues. The metadata-only sidebar tree includes all project pages; content and discussion bodies remain paginated.
 
 Comments use project/page/workspace foreign keys, scoped Store authorization, author/client-key retry deduplication and author/owner deletion. Page deletion cascades comments while retaining child pages at project root. MCP exposes the same creation, reads and deletion. Comments are asynchronous context and do not wake agents.
 
@@ -92,9 +92,9 @@ Crepe's image-block schema normally uses Markdown alt text for resize ratios. Co
 
 The editor debounces for 800 ms and serializes requests. An acknowledgement advances the version but never replaces newer text in the editor. Network failures retain a same-tab session draft and expose retry/download; going online retries. A stale version stops autosave and offers comparison rather than rebasing silently. New-page URLs are replaced through the History API without remounting the editor; saved metadata updates the sidebar. Leaving through an internal link flushes and performs a fresh navigation. Reload/close warns while unsaved; session storage supports recovery within the same tab, not durable offline storage or cross-device drafts. No live collaborative cursor or automatic merge is claimed.
 
-## Explorer and agent context traversal — 2026-11-16
+## HydraDB context traversal — 2026-11-16
 
-The visual Explorer reads the reconciled Hydra relationships, then groups them around a selected record. `related_context` exposes the same explicit-reference model to scoped MCP agents. Its one- and two-hop queries run in the self-hosted Hydra engine; project membership and shared authors are not treated as evidence of relevance. Results include resource identities and the exact reference path, so an agent can fetch the needed pages/files rather than every project body. Postgres supplies authorized labels and scope checks before/after graph I/O. Pending revisions, outages and graph truncation are reported explicitly. Limits remain 200 loaded records and 1,000 edges per query/type; large-project pagination is future work.
+The visual Explorer was retired; old graph URLs redirect to Home. `related_context` exposes explicit, authorized one- and two-hop reference paths to scoped MCP agents. Queries run in the self-hosted Hydra engine; project membership and shared authors are not treated as evidence of relevance. Results include resource identities and the exact reference path, so an agent can fetch the needed pages/files rather than every project body. Postgres supplies authorized labels and scope checks before/after graph I/O. Pending revisions, outages and graph truncation are reported explicitly. Limits remain 200 loaded records and 1,000 edges per query/type; large-project pagination is future work.
 
 Track 2 (agent context layer) is the intended hackathon fit. `npm run test:context` contains a controlled two-source retrieval fixture: title-search baseline, graph before linking, and graph after an explicit page link is added. This demonstrates graph traversal and provenance, not learned ranking or superiority over vector retrieval. A credible submission comparison still needs a labelled multi-project question set, a tuned vector baseline at equal context budget, source recall/precision, returned context tokens, and end-to-end latency. Report per-question results and failures, including questions where vector search is better. No continual-learning or measured token-saving claim is made by this release.
 

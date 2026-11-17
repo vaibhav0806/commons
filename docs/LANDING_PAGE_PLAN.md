@@ -1,4 +1,4 @@
-> Implementation update: Direction A is now available at `/` for review. The centered hero and shared project replace the rejected sculpture. Context, requests, and results can be inspected directly or followed by desktop scroll. Mobile and reduced-motion users use direct controls. The Toolcraft starter has been scaffolded separately; no generated asset is shipped yet. Earlier proposal details below describe intent, not a claim that every optional experiment was implemented.
+> **Archived planning record.** This file predates the live Mist & Lilac landing and includes retired request/execution language. Use [`../DESIGN.md`](../DESIGN.md) and the running route for current landing guidance. The details below preserve intent only.
 
 # Commons landing page — proposed redesign
 
