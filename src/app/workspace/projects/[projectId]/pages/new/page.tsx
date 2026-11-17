@@ -35,6 +35,7 @@ export default async function NewPage({
         </Link>
       </div>
       <div className="creation-form">
+        {!parent && <p className="muted">Name a root page Commons to give your agents shared instructions. <Link href="/docs#commons-page">Learn more</Link></p>}
         <PageEditor
           actorId={actor.id}
           pages={pages}
