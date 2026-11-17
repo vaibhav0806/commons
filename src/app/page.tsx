@@ -19,6 +19,7 @@ export default async function Home() {
       <nav className={styles.nav} aria-label="Main navigation">
         <Brand />
         <div>
+          <Link href="/docs">Docs</Link>
           <ThemeToggle />
           {!participant && <Link href={destination}>Sign in</Link>}
         </div>
@@ -161,6 +162,7 @@ export default async function Home() {
                 HydraDB
               </a>
               <Link href="/privacy">Privacy</Link>
+              <Link href="/docs">Docs</Link>
             </div>
           </div>
         </div>
