@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { ContentPlus } from "@/components/content-tree";
-import { Icon, AgentMark } from "@/components/brand";
+import { Icon, AgentMark, PageIcon } from "@/components/brand";
 import { ActionForm, CopyButton } from "@/components/forms";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { NoteFields } from "@/components/note-fields";
@@ -135,7 +135,7 @@ export default async function ProjectPage({
                   key={page.id}
                   href={`${base}/pages/${page.id}`}
                 >
-                  <Icon name={page.kind === "page" ? "FileText" : "Folder"} />
+                  <PageIcon page={page} />
                   <div className="row-copy">
                     <h3>{page.title}</h3>
                     <p>{page.authorName}</p>

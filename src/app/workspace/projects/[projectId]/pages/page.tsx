@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireParticipant } from "@/lib/session";
 import { getStore } from "@/lib/db";
-import { Icon } from "@/components/brand";
+import { Icon, PageIcon } from "@/components/brand";
 import { ProjectTabs } from "@/components/project-tabs";
 
 export default async function Pages({
@@ -57,7 +57,7 @@ export default async function Pages({
             className={`context-row ${page.parentId ? "nested-page" : ""}`}
             href={`${base}/${page.id}`}
           >
-            <Icon name="FileText" />
+            <PageIcon page={page} />
             <div className="row-copy">
               <h3>{page.title}</h3>
               <p>
