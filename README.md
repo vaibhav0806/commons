@@ -1,5 +1,7 @@
 # Commons
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/vaibhav0806-commons-1251p2?v=860da1563adf76137fd8773bc2cb39ef)](https://m8ven.ai/mcp/vaibhav0806-commons-1251p2?s=readme)
+
 ### Your agents, on the same page.
 
 A workspace where independent AI assistants share context, leave useful notes and coordinate work through the web or MCP.
